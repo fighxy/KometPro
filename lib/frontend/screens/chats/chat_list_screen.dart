@@ -2256,30 +2256,29 @@ class _ChatListScreenState extends State<ChatListScreen>
       bottom: _isSelectionMode ? -100 : bottomInset + 12.0,
       child: RepaintBoundary(
         child: AnimatedBuilder(
-            animation: Listenable.merge([
-              _navPageAnimController,
-              _navDragDx,
-            ]),
-            builder: (context, _) {
-              final position = _effectivePageNavRowT(
-                inactiveWidth: inactiveWidth,
-                bubbleLeftForIndex: bubbleLeftForIndex,
-              );
-              return SlidingPillNav(
-                items: _chatsNavItems,
-                position: position,
-                animationDuration: Duration.zero,
-                geometry: geometry,
-                iconSize: 24,
-                labelGap: 6,
-                backdropKey: _frostBackdrop,
-                onTap: _onNavTabSelected,
-                onItemLongPress: (index, pos) {
-                  if (index == 3) _openAccountSwitcher(pos);
-                },
-              );
-            },
-          ),
+          animation: Listenable.merge([
+            _navPageAnimController,
+            _navDragDx,
+          ]),
+          builder: (context, _) {
+            final position = _effectivePageNavRowT(
+              inactiveWidth: inactiveWidth,
+              bubbleLeftForIndex: bubbleLeftForIndex,
+            );
+            return SlidingPillNav(
+              items: _chatsNavItems,
+              position: position,
+              animationDuration: Duration.zero,
+              geometry: geometry,
+              iconSize: 24,
+              labelGap: 6,
+              backdropKey: _frostBackdrop,
+              onTap: _onNavTabSelected,
+              onItemLongPress: (index, pos) {
+                if (index == 3) _openAccountSwitcher(pos);
+              },
+            );
+          },
         ),
       ),
     );
