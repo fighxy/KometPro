@@ -978,8 +978,9 @@ class MessageBubble extends StatelessWidget {
     BubbleBehavior bubbleBehavior,
     BubbleShape shape,
     bool hasPhotoWithCaption,
-    bool hasMultiplePhotosNoCaption,
-  ) {
+    bool hasMultiplePhotosNoCaption, {
+    bool hasCommentsFooter = false,
+  }) {
     final isTop =
         shape == BubbleShape.singleTop || shape == BubbleShape.singleMiddle;
     final isBottom =
@@ -992,6 +993,7 @@ class MessageBubble extends StatelessWidget {
       behavior: bubbleBehavior,
       hasPhotoWithCaption: hasPhotoWithCaption,
       hasMultiplePhotosNoCaption: hasMultiplePhotosNoCaption,
+      hasCommentsFooter: hasCommentsFooter,
     );
   }
 
@@ -1259,23 +1261,28 @@ class MessageBubble extends StatelessWidget {
         AppBubbleShape.current,
         AppBubbleBehavior.current,
       ]),
-      builder: (context, child) => Container(
-        constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: noBubbleBackground
-              ? null
-              : _borderRadiusFor(
-                  AppBubbleShape.current.value,
-                  AppBubbleBehavior.current.value,
-                  shape,
-                  hasPhotoCap,
-                  hasMultiPhotos,
-                ),
-        ),
-        padding: containerPadding,
-        child: child,
-      ),
+      builder: (context, child) {
+        final radius = noBubbleBackground
+            ? null
+            : _borderRadiusFor(
+                AppBubbleShape.current.value,
+                AppBubbleBehavior.current.value,
+                shape,
+                hasPhotoCap,
+                hasMultiPhotos,
+                hasCommentsFooter: hasCommentsFooter,
+              );
+        return Container(
+          constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+          clipBehavior: radius == null ? Clip.none : Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: radius,
+          ),
+          padding: containerPadding,
+          child: child,
+        );
+      },
       child: hasCommentsFooter
           ? _StackMatchTopWidth(
               growForBottom: true,
@@ -1331,6 +1338,10 @@ class MessageBubble extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onCommentsTap,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(kBubbleBigRadius),
+          bottomRight: Radius.circular(kBubbleBigRadius),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
