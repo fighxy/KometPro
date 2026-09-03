@@ -25,4 +25,16 @@ void main() {
     final size = BubbleContext.fitMediaSize(0, 0);
     expect(size.width, size.height);
   });
+
+  test('captioned portrait photo uses the album width, not the thin side', () {
+    final size = BubbleContext.captionedMediaSize(800, 2400);
+    expect(size.width, closeTo(BubbleContext.photoMaxSize, 0.1));
+    expect(size.height, closeTo(BubbleContext.photoMaxHeight, 0.1));
+  });
+
+  test('captioned 16:9 photo stays 16:9 at album width', () {
+    final size = BubbleContext.captionedMediaSize(1920, 1080);
+    expect(size.width, closeTo(BubbleContext.photoMaxSize, 0.1));
+    expect(size.height, closeTo(157.5, 0.1));
+  });
 }

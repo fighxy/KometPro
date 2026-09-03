@@ -31,16 +31,20 @@ class PhotoBubble extends StatelessWidget {
     this.hasContentAbove = false,
   });
 
-  static double layoutWidth(List<PhotoAttachment> photos) {
+  static double layoutWidth(
+    List<PhotoAttachment> photos, {
+    bool hasCaption = false,
+  }) {
     if (photos.length != 1) return BubbleContext.photoMaxSize;
+    if (hasCaption) return BubbleContext.photoMaxSize;
     return _displaySize(photos.single).width;
   }
 
-  static Size _displaySize(PhotoAttachment photo) {
-    return BubbleContext.fitMediaSize(
-      photo.width?.toDouble() ?? 0,
-      photo.height?.toDouble() ?? 0,
-    );
+  static Size _displaySize(PhotoAttachment photo, {bool hasCaption = false}) {
+    final width = photo.width?.toDouble() ?? 0;
+    final height = photo.height?.toDouble() ?? 0;
+    if (hasCaption) return BubbleContext.captionedMediaSize(width, height);
+    return BubbleContext.fitMediaSize(width, height);
   }
 
   @override
@@ -81,7 +85,7 @@ class PhotoBubble extends StatelessWidget {
 
     if (count == 1) {
       return SizedBox(
-        width: layoutWidth(photos),
+        width: BubbleContext.photoMaxSize,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,7 +141,7 @@ class PhotoBubble extends StatelessWidget {
     required bool hasCaption,
     required bool hasContentAbove,
   }) {
-    final size = _displaySize(photo);
+    final size = _displaySize(photo, hasCaption: hasCaption);
     final constrainedWidth = size.width;
     final constrainedHeight = size.height;
     final dpr = MediaQuery.of(ctx.context).devicePixelRatio;

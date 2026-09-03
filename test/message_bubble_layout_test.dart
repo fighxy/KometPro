@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/core/config/komet_settings.dart';
+import 'package:komet/frontend/widgets/attachment/bubbles/bubble_context.dart';
 import 'package:komet/frontend/widgets/message_bubble.dart';
 import 'package:komet/l10n/app_localizations.dart';
 import 'package:komet/models/attachment.dart';
@@ -277,9 +278,12 @@ void main() {
       find.textContaining('Вот те раз', findRichText: true),
     );
 
-    expect(quote.width, closeTo(_photoWidth - 16, 1));
+    expect(quote.width, closeTo(BubbleContext.photoMaxSize - 16, 1));
     expect(quote.left, greaterThan(0));
-    expect(quote.right, lessThanOrEqualTo(caption.left + _photoWidth));
+    expect(
+      quote.right,
+      lessThanOrEqualTo(caption.left + BubbleContext.photoMaxSize),
+    );
   });
 
   testWidgets('a bubble without a header or reply still hugs its text', (

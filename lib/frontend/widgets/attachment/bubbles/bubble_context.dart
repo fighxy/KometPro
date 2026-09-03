@@ -63,6 +63,7 @@ class BubblePresentation {
 
 class BubbleContext {
   static const double photoMaxSize = 280.0;
+  static const double photoMaxHeight = 360.0;
   static const double photoMinSize = 100.0;
   static const double photoBorderRadius = 12.0;
   static const double bubbleBorderRadius = 24.0;
@@ -90,6 +91,21 @@ class BubbleContext {
       h *= up;
     }
     return Size(w, h);
+  }
+
+  /// Width/height for a photo or video that also has a caption.
+  ///
+  /// The bubble must stay at [photoMaxSize] so a tall document does not
+  /// collapse the caption into a one-word column. Height follows the
+  /// source aspect until [photoMaxHeight], then the image is cropped.
+  static Size captionedMediaSize(double width, double height) {
+    if (width <= 0 || height <= 0) {
+      return const Size(photoMaxSize, photoMaxSize * 0.75);
+    }
+    var h = photoMaxSize * (height / width);
+    if (h > photoMaxHeight) h = photoMaxHeight;
+    if (h < photoMinSize) h = photoMinSize;
+    return Size(photoMaxSize, h);
   }
 
   final BuildContext context;
