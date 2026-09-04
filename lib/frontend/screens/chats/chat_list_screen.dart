@@ -2945,9 +2945,9 @@ class _ChatListScreenState extends State<ChatListScreen>
             ),
           ],
           style: const TextStyle(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w400,
-            height: 1.2,
+            height: 1.15,
           ),
         ),
         maxLines: 1,
@@ -2962,9 +2962,9 @@ class _ChatListScreenState extends State<ChatListScreen>
       italic: messageItalic,
       style: TextStyle(
         color: cs.outline,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: FontWeight.w400,
-        height: 1.2,
+        height: 1.15,
       ),
     );
   }
@@ -3304,8 +3304,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                                         style: TextStyle(
                                           color: cs.onSurface,
                                           fontSize: 17,
-                                          fontWeight: FontWeight.w600,
-                                          height: 1.15,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.1,
+                                          letterSpacing: -0.2,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -3339,6 +3340,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 style: TextStyle(
                                   color: cs.outline,
                                   fontSize: 14,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
