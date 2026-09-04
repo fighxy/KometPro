@@ -37,21 +37,23 @@ class GlassSurface extends StatelessWidget {
   final Color frostTint;
   final double frostSigma;
   final Color liquidTint;
+  final double frostSigma;
+  final Color liquidTint;
   final BoxBorder? border;
   final BackdropKey? backdropKey;
   final Widget child;
 
-  const GlassSurface({
+  GlassSurface({
     super.key,
     this.liquid = false,
     this.borderRadius = BorderRadius.zero,
     required this.frostTint,
-    this.frostSigma = AppFrost.sigma,
+    double? frostSigma,
     this.liquidTint = Colors.transparent,
     this.border,
     this.backdropKey,
     required this.child,
-  });
+  }) : frostSigma = frostSigma ?? AppFrost.sigma;
 
   @override
   Widget build(BuildContext context) {

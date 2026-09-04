@@ -253,7 +253,7 @@ class _ResizeDividerState extends State<_ResizeDivider> {
 class _EmptyChatPane extends StatelessWidget {
   final ColorScheme colorScheme;
 
-  const _EmptyChatPane({required this.colorScheme});
+  const _EmptyChatPane({super.key, required this.colorScheme});
 
   @override
   Widget build(BuildContext context) {

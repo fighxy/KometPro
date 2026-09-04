@@ -152,13 +152,13 @@ class _FrostedPanel extends StatelessWidget {
   final BackdropKey? backdropKey;
   final Widget child;
 
-  const _FrostedPanel({
+  _FrostedPanel({
     required this.tint,
     this.border,
-    this.sigma = AppFrost.panelSigma,
+    double? sigma,
     this.backdropKey,
     required this.child,
-  });
+  }) : sigma = sigma ?? AppFrost.panelSigma;
 
   @override
   Widget build(BuildContext context) {
