@@ -5478,7 +5478,7 @@ class _ChatScreenState extends State<ChatScreen>
                   child: underlap ? _buildUnderlapBody() : _buildColorBody(),
                 ),
                 builder: (context, body) => Scaffold(
-                  backgroundColor: cs.surface,
+                  backgroundColor: underlap ? Colors.transparent : cs.surface,
                   extendBodyBehindAppBar: underlap,
                   appBar: _buildAppBar(cs),
                   body: body,
