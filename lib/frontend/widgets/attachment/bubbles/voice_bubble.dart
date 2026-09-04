@@ -349,28 +349,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                 ),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _requestTranscription,
-                child: SizedBox(
-                  width: 20,
-                  height: 32,
-                  child: Center(
-                    child: _transcriptionLoading
-                        ? SmallSpinner(
-                            size: 12,
-                            color: widget.textColor.withValues(alpha: 0.6),
-                          )
-                        : Text(
-                            'Т',
-                            style: TextStyle(
-                              color: widget.textColor.withValues(alpha: 0.6),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                  ),
-                ),
-              ),
+              _buildTranscribeButton(),
             ],
           ),
           const SizedBox(height: 2),
@@ -452,6 +431,41 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildTranscribeButton() {
+    final on = widget.textColor;
+    final filled = _transcriptionText != null && !_transcriptionLoading;
+    final glyph = filled
+        ? (widget.isMe ? widget.cs.primary : widget.cs.surface)
+        : on.withValues(alpha: 0.78);
+    return GestureDetector(
+      onTap: _requestTranscription,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: filled ? on.withValues(alpha: 0.95) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: filled ? Colors.transparent : on.withValues(alpha: 0.48),
+            width: 1.4,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: _transcriptionLoading
+            ? SmallSpinner(size: 12, color: on.withValues(alpha: 0.7))
+            : Text(
+                '→Т',
+                style: TextStyle(
+                  color: glyph,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
+              ),
       ),
     );
   }
