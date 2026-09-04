@@ -2128,16 +2128,18 @@ class _ChatListScreenState extends State<ChatListScreen>
                     final isPlaceholder = chat.isLastMsgDeleted;
                     final isSavedWelcome =
                         chat.id == 0 && chat.lastMsgText == _savedWelcomeKey;
-                    final sender = chat.lastMsgSenderId != null
-                        ? ContactCache.get(chat.lastMsgSenderId!)
-                        : null;
-
-                    final senderPrefix =
-                        !isPlaceholder &&
-                            sender?.isNotEmpty == true &&
-                            chat.id != 0
-                        ? "$sender: "
-                        : "";
+                    final senderId = chat.lastMsgSenderId;
+                    var senderPrefix = '';
+                    if (!isPlaceholder && chat.id != 0 && senderId != null) {
+                      if (senderId == _profile?.id) {
+                        senderPrefix = 'Вы: ';
+                      } else {
+                        final sender = ContactCache.get(senderId);
+                        if (sender != null && sender.isNotEmpty) {
+                          senderPrefix = '$sender: ';
+                        }
+                      }
+                    }
                     final body = isPlaceholder
                         ? 'зайдите в чат для подгрузки'
                         : isSavedWelcome
@@ -2979,6 +2981,21 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
+  String _compactUnread(int count) {
+    if (count < 1000) return count.toString();
+    if (count < 10000) {
+      final tenths = (count / 100).round();
+      final whole = tenths ~/ 10;
+      final frac = tenths % 10;
+      return frac == 0 ? '${whole}K' : '$whole.${frac}K';
+    }
+    if (count < 1000000) return '${count ~/ 1000}K';
+    final millions = count / 1000000;
+    return millions >= 10
+        ? '${millions.round()}M'
+        : '${millions.toStringAsFixed(1)}M';
+  }
+
   Widget _countBadge(ColorScheme cs, String label, {required bool muted}) {
     return Container(
       constraints: const BoxConstraints(minWidth: 20),
@@ -3378,7 +3395,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                               if (unreadCount > 0)
                                 _countBadge(
                                   cs,
-                                  unreadCount.toString(),
+                                  _compactUnread(unreadCount),
                                   muted: isMuted,
                                 )
                               else if (isRead)
