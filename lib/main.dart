@@ -78,6 +78,8 @@ import 'core/links/deep_link_service.dart';
 import 'frontend/screens/calls/call_screen.dart';
 import 'core/push/fkm_controller.dart';
 import 'core/push/notification_bridge.dart';
+import 'core/push/windows_notifier.dart';
+import 'core/desktop/desktop_tray.dart';
 import 'core/share/share_intent_bridge.dart';
 import 'core/push/push_service.dart';
 import 'core/storage/app_database.dart';
@@ -202,6 +204,7 @@ void main(List<String> args) async {
   attachInfoCacheApi(api);
   chats.attachGlobalPushHandlers(api);
   unawaited(FkmController.instance.init(api));
+  unawaited(WindowsNotifier.instance.init(api));
   FoldersModule.attachGlobalPushHandlers(api);
   TranscriptionPushHandler.attach(api);
   commentsModule.attachPushHandlers(api);
@@ -312,6 +315,7 @@ void main(List<String> args) async {
   await DeviceContactsService.loadFromStartup();
   await trafficCaptureFuture;
   await debugLogFuture;
+  await DesktopTray.instance.init();
   runApp(
     KometApp(
       initialLocale: initialLocale,

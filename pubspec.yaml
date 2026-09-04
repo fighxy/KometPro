@@ -98,6 +98,8 @@ dependencies:
   sensors_plus: ^7.1.0
   smart_auth: ^3.2.0
   flutter_svg: ^2.0.10
+  window_manager: ^0.4.3
+  tray_manager: ^0.2.4
 
 dev_dependencies:
   flutter_test:

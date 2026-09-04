@@ -18,6 +18,7 @@ import '../storage/app_instance.dart';
 import '../storage/token_storage.dart';
 import '../transport/tls_config.dart';
 import '../utils/logger.dart';
+import 'notification_bridge.dart';
 
 const _channelId = 'komet_messages';
 const _channelName = 'Сообщения';
@@ -35,11 +36,14 @@ void _onNotificationResponse(NotificationResponse response) {
     if (payload != null) unawaited(_handleCallDecline(payload));
     return;
   }
-  if (response.actionId != 'reply') return;
-  final text = response.input?.trim();
-  final payload = response.payload;
-  if (text == null || text.isEmpty || payload == null) return;
-  unawaited(_handleReply(payload, text));
+  if (response.actionId == 'reply') {
+    final text = response.input?.trim();
+    final payload = response.payload;
+    if (text == null || text.isEmpty || payload == null) return;
+    unawaited(_handleReply(payload, text));
+    return;
+  }
+  unawaited(NotificationBridge.instance.openFromPayload(response.payload));
 }
 
 Future<void> _handleCallDecline(String payloadJson) async {
@@ -154,6 +158,9 @@ bool _localActionsReady = false;
 ///
 /// Нужна и FCM, и FKM: без неё кнопка «Ответить» в уведомлении не доезжает
 /// до фонового изолята.
+const _windowsAppId = 'ru.komet.app';
+const _windowsNotifGuid = '7e3c2a91-4b6f-4d18-9e5a-1c8f0d2b7a44';
+
 Future<void> initLocalNotificationActions() async {
   if (_localActionsReady) return;
   _localActionsReady = true;
@@ -161,6 +168,11 @@ Future<void> initLocalNotificationActions() async {
   await plugin.initialize(
     settings: const InitializationSettings(
       android: AndroidInitializationSettings('ic_notification'),
+      windows: WindowsInitializationSettings(
+        appName: 'Komet',
+        appUserModelId: _windowsAppId,
+        guid: _windowsNotifGuid,
+      ),
     ),
     onDidReceiveNotificationResponse: _onNotificationResponse,
     onDidReceiveBackgroundNotificationResponse: _onNotificationResponse,
