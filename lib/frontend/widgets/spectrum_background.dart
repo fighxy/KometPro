@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -16,11 +17,26 @@ class SpectrumTuning {
   static const double tintStrength = 0.3;
   static const double tintRadius = 190;
   static const double tintFollowRate = 3.5;
-  static const double frameInterval = 1 / 60;
+  static double get frameInterval {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux)) {
+      return 1 / 30;
+    }
+    return 1 / 60;
+  }
+
   static const double tintInterval = 0.2;
   static const double parallax = 0.06;
   static const int minBars = 4;
-  static const int maxBars = 1024;
+  static int get maxBars {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux)) {
+      return 280;
+    }
+    return 1024;
+  }
 
   static Color baseColor(ColorScheme cs) {
     final surface = cs.surface;
@@ -37,7 +53,7 @@ class SpectrumBackground extends StatefulWidget {
 }
 
 class _SpectrumBackgroundState extends State<SpectrumBackground>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const double _maxStep = 0.25;
 
   final List<SpectrumTintSample> _samples = <SpectrumTintSample>[];
@@ -55,16 +71,27 @@ class _SpectrumBackgroundState extends State<SpectrumBackground>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     SpectrumTintRegistry.instance.listenForResolvedColors(_onColorResolved);
     _ticker = createTicker(_onTick)..start();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     SpectrumTintRegistry.instance.listenForResolvedColors(null);
     _ticker.dispose();
     _field?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (!_ticker.isActive) _ticker.start();
+    } else {
+      if (_ticker.isActive) _ticker.stop();
+    }
   }
 
   void _onColorResolved() => _tintAccumulator = SpectrumTuning.tintInterval;
