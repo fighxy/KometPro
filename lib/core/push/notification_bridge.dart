@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../backend/api.dart';
 import '../../frontend/widgets/max_link_nav.dart';
 import '../../main.dart';
+import '../desktop/desktop_tray.dart';
 import '../utils/logger.dart';
 
 class NotificationBridge {
@@ -28,6 +30,11 @@ class NotificationBridge {
 
   int get _activeChatId => _activeChats.isEmpty ? 0 : _activeChats.last;
 
+  int? get activeChatId {
+    final id = _activeChatId;
+    return id > 0 ? id : null;
+  }
+
   bool get _native {
     try {
       return Platform.isAndroid || Platform.isIOS;
@@ -37,12 +44,14 @@ class NotificationBridge {
   }
 
   void init() {
-    if (_started || !_native) return;
+    if (_started) return;
     _started = true;
-    _events.receiveBroadcastStream().listen(
-      _onEvent,
-      onError: (e) => logger.w('NotificationBridge: events stream error: $e'),
-    );
+    if (_native) {
+      _events.receiveBroadcastStream().listen(
+        _onEvent,
+        onError: (e) => logger.w('NotificationBridge: events stream error: $e'),
+      );
+    }
     api.stateStream.listen((state) {
       if (state == SessionState.online) _flushPending();
     });
@@ -51,6 +60,24 @@ class NotificationBridge {
   void markReady() {
     _ready = true;
     _flushPending();
+  }
+
+  Future<void> openFromPayload(String? payload) async {
+    if (payload == null || payload.isEmpty) return;
+    int? chatId;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        chatId = (decoded['chat'] as num?)?.toInt();
+      }
+    } catch (_) {
+      chatId = int.tryParse(payload);
+    }
+    if (chatId == null || chatId <= 0) return;
+    await DesktopTray.instance.reveal();
+    final context = KometApp.navigatorKey.currentContext;
+    if (context == null) return;
+    await openChatById(context, chatId);
   }
 
   Future<void> checkInitialChat() async {
@@ -63,13 +90,13 @@ class NotificationBridge {
   }
 
   Future<void> pushActiveChat(int chatId) async {
-    if (!_native || chatId <= 0) return;
+    if (chatId <= 0) return;
     _activeChats.add(chatId);
     await _syncActiveChat();
   }
 
   Future<void> popActiveChat(int chatId) async {
-    if (!_native || chatId <= 0) return;
+    if (chatId <= 0) return;
     final index = _activeChats.lastIndexOf(chatId);
     if (index < 0) return;
     _activeChats.removeAt(index);
@@ -80,6 +107,7 @@ class NotificationBridge {
     final chatId = _activeChatId;
     if (chatId == _sentChatId) return;
     _sentChatId = chatId;
+    if (!_native) return;
     try {
       if (chatId > 0) {
         await _method.invokeMethod<void>('setActiveChat', {'chatId': chatId});

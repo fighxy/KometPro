@@ -152,21 +152,38 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                 onDragEnd: _persistListWidth,
               ),
               Expanded(
-                child: _selected == null
-                    ? _EmptyChatPane(colorScheme: cs)
-                    : ChatScreen(
-                        key: ValueKey(
-                          '${_selected!.chatId}:${_selected!.initialMessageId ?? ''}',
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 160),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeOut,
+                  layoutBuilder: (current, previous) {
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ...previous,
+                        if (current != null) current,
+                      ],
+                    );
+                  },
+                  child: _selected == null
+                      ? _EmptyChatPane(
+                          key: const ValueKey('empty'),
+                          colorScheme: cs,
+                        )
+                      : ChatScreen(
+                          key: ValueKey(
+                            '${_selected!.chatId}:${_selected!.initialMessageId ?? ''}',
+                          ),
+                          chatId: _selected!.chatId,
+                          name: _selected!.name,
+                          imageUrl: _selected!.imageUrl,
+                          chatType: _selected!.chatType,
+                          initialMessageId: _selected!.initialMessageId,
+                          initialMessageTime: _selected!.initialMessageTime,
+                          embedded: true,
+                          onClose: _closeChat,
                         ),
-                        chatId: _selected!.chatId,
-                        name: _selected!.name,
-                        imageUrl: _selected!.imageUrl,
-                        chatType: _selected!.chatType,
-                        initialMessageId: _selected!.initialMessageId,
-                        initialMessageTime: _selected!.initialMessageTime,
-                        embedded: true,
-                        onClose: _closeChat,
-                      ),
+                ),
               ),
             ],
           ),

@@ -107,7 +107,17 @@ class ChatPreviewLine extends StatelessWidget {
     );
 
     final spans = <InlineSpan>[];
-    if (prefix.isNotEmpty) spans.add(TextSpan(text: prefix, style: style));
+    if (prefix.isNotEmpty) {
+      spans.add(
+        TextSpan(
+          text: prefix,
+          style: style.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
     if (forwarded) spans.add(TextSpan(text: _forwardMark, style: bodyStyle));
 
     final leading = _leading(

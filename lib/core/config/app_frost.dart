@@ -1,11 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class AppFrost {
-  static const double sigma = 34;
-  static const double panelSigma = 24;
   static const double overlaySigma = 18;
-  static const double mediaBackdropSigma = 30;
   static const double glassAlpha = 0.28;
+  static const double blurPanelAlpha = 0.55;
+  static const double scrimAlpha = 0.4;
+
+  static bool get _softDesktop {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
+  }
+
+  static double get sigma => _softDesktop ? 14 : 34;
+  static double get panelSigma => _softDesktop ? 12 : 24;
+  static double get mediaBackdropSigma => _softDesktop ? 12 : 30;
   static const double blurPanelAlpha = 0.55;
   static const double scrimAlpha = 0.4;
 

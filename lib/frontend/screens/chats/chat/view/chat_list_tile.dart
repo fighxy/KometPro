@@ -153,9 +153,9 @@ class _ActivitySubtitleState extends State<ActivitySubtitle> {
             _lastLabel,
             style: TextStyle(
               color: cs.primary,
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
-              height: 1.2,
+              height: 1.15,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

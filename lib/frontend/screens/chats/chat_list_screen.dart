@@ -1911,7 +1911,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutCubic,
-              height: 36,
+              height: 42,
               color: cs.surface,
               child: ScrollConfiguration(
                 behavior: ScrollConfiguration.of(context).copyWith(
@@ -1927,10 +1927,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                         builder: (context, constraints) {
                           final availableWidth = constraints.maxWidth - 32;
                           final folderCount = _folders.length;
-                          final minWidthPerFolder = 80.0;
+                          final minWidthPerFolder = 56.0;
                           final totalMinWidth =
                               folderCount * minWidthPerFolder +
-                              (folderCount - 1) * 8;
+                              (folderCount - 1) * 4;
                           final needsScroll = totalMinWidth > availableWidth;
 
                           if (needsScroll) {
@@ -1945,7 +1945,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                               physics: const BouncingScrollPhysics(),
                               children: [
                                 for (var i = 0; i < _folders.length; i++) ...[
-                                  if (i > 0) const SizedBox(width: 8),
+                                  if (i > 0) const SizedBox(width: 4),
                                   _buildFolderChip(_folders[i]),
                                 ],
                               ],
@@ -1961,7 +1961,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                               child: Row(
                                 children: [
                                   for (var i = 0; i < _folders.length; i++) ...[
-                                    if (i > 0) const SizedBox(width: 8),
+                                    if (i > 0) const SizedBox(width: 4),
                                     Expanded(
                                       child: _buildFolderChip(_folders[i]),
                                     ),
@@ -2128,16 +2128,18 @@ class _ChatListScreenState extends State<ChatListScreen>
                     final isPlaceholder = chat.isLastMsgDeleted;
                     final isSavedWelcome =
                         chat.id == 0 && chat.lastMsgText == _savedWelcomeKey;
-                    final sender = chat.lastMsgSenderId != null
-                        ? ContactCache.get(chat.lastMsgSenderId!)
-                        : null;
-
-                    final senderPrefix =
-                        !isPlaceholder &&
-                            sender?.isNotEmpty == true &&
-                            chat.id != 0
-                        ? "$sender: "
-                        : "";
+                    final senderId = chat.lastMsgSenderId;
+                    var senderPrefix = '';
+                    if (!isPlaceholder && chat.id != 0 && senderId != null) {
+                      if (senderId == _profile?.id) {
+                        senderPrefix = 'Вы: ';
+                      } else {
+                        final sender = ContactCache.get(senderId);
+                        if (sender != null && sender.isNotEmpty) {
+                          senderPrefix = '$sender: ';
+                        }
+                      }
+                    }
                     final body = isPlaceholder
                         ? 'зайдите в чат для подгрузки'
                         : isSavedWelcome
@@ -2847,31 +2849,83 @@ class _ChatListScreenState extends State<ChatListScreen>
     return true;
   }
 
+  bool _folderHasActivity(ChatFolder folder) {
+    final myId = _profile?.id ?? 0;
+    final source = FoldersModule.isAllChatsFolder(folder)
+        ? _chats
+        : _chats.where(
+            (c) => FoldersModule.chatMatchesFolder(
+              c,
+              folder,
+              myId: myId,
+              contactIds: _contactIds,
+            ),
+          );
+    return source.any((c) => c.unreadCount > 0 || c.hasUnreadMention);
+  }
+
   Widget _buildFolderChip(ChatFolder folder) {
     final cs = Theme.of(context).colorScheme;
     final folderId = folder.id;
     final isSelected = _selectedFolderId == folderId;
+    final active = _folderHasActivity(folder);
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => _selectFolder(folderId),
       onLongPress: () {
         Haptics.medium();
         showFolderActionSheet(context, folder: folder);
       },
-      child: GlossyPill(
-        color: isSelected ? cs.primaryContainer : cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(50),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        depth: 4,
-        child: Center(
-          child: Text(
-            _folderChipLabel(folder),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isSelected ? cs.onPrimaryContainer : cs.primary,
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    _folderChipLabel(folder),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isSelected ? cs.primary : cs.onSurfaceVariant,
+                      fontSize: 16,
+                      fontWeight: isSelected
+                          ? FontWeight.w800
+                          : FontWeight.w700,
+                      height: 1.1,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+                if (active) ...[
+                  const SizedBox(width: 5),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: cs.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ),
+            const SizedBox(height: 6),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              height: 3,
+              width: isSelected ? 28 : 0,
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2945,9 +2999,9 @@ class _ChatListScreenState extends State<ChatListScreen>
             ),
           ],
           style: const TextStyle(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w400,
-            height: 1.2,
+            height: 1.15,
           ),
         ),
         maxLines: 1,
@@ -2962,9 +3016,9 @@ class _ChatListScreenState extends State<ChatListScreen>
       italic: messageItalic,
       style: TextStyle(
         color: cs.outline,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: FontWeight.w400,
-        height: 1.2,
+        height: 1.15,
       ),
     );
   }
@@ -2977,6 +3031,21 @@ class _ChatListScreenState extends State<ChatListScreen>
         child: const SizedBox(height: 0.5, width: double.infinity),
       ),
     );
+  }
+
+  String _compactUnread(int count) {
+    if (count < 1000) return count.toString();
+    if (count < 10000) {
+      final tenths = (count / 100).round();
+      final whole = tenths ~/ 10;
+      final frac = tenths % 10;
+      return frac == 0 ? '${whole}K' : '$whole.${frac}K';
+    }
+    if (count < 1000000) return '${count ~/ 1000}K';
+    final millions = count / 1000000;
+    return millions >= 10
+        ? '${millions.round()}M'
+        : '${millions.toStringAsFixed(1)}M';
   }
 
   Widget _countBadge(ColorScheme cs, String label, {required bool muted}) {
@@ -3304,8 +3373,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                                         style: TextStyle(
                                           color: cs.onSurface,
                                           fontSize: 17,
-                                          fontWeight: FontWeight.w600,
-                                          height: 1.15,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.1,
+                                          letterSpacing: -0.2,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -3339,6 +3409,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 style: TextStyle(
                                   color: cs.outline,
                                   fontSize: 14,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
@@ -3376,7 +3447,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                               if (unreadCount > 0)
                                 _countBadge(
                                   cs,
-                                  unreadCount.toString(),
+                                  _compactUnread(unreadCount),
                                   muted: isMuted,
                                 )
                               else if (isRead)

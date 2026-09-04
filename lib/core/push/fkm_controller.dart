@@ -167,7 +167,7 @@ class FkmController {
         return;
     }
 
-    final data = await _buildNotification(chatId, msg);
+    final data = await buildMessageNotification(chatId, msg);
     if (data != null) await FkmBridge.instance.showMessage(data);
   }
 
@@ -224,7 +224,7 @@ class FkmController {
     });
   }
 
-  Future<Map<String, String>?> _buildNotification(
+  Future<Map<String, String>?> buildMessageNotification(
     int chatId,
     Map<dynamic, dynamic> msg,
   ) async {
