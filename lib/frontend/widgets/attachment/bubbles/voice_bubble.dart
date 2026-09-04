@@ -383,7 +383,8 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                   ),
                   style: TextStyle(
                     color: widget.textColor.withValues(alpha: 0.6),
-                    fontSize: 10,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 if (widget.isMe) ...[
@@ -412,7 +413,8 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                   ),
                   style: TextStyle(
                     color: widget.textColor.withValues(alpha: 0.6),
-                    fontSize: 10,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 if (widget.isMe) ...[

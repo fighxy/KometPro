@@ -1735,7 +1735,7 @@ class MessageBubble extends StatelessWidget {
             style: const TextStyle(
               color: Colors.white,
               fontSize: 11,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
           if (ctx.isMe) ...[
@@ -1956,7 +1956,11 @@ class MessageBubble extends StatelessWidget {
         ],
         Text(
           message.status == 'EDITED' ? '${ctx.clockText} ред.' : ctx.clockText,
-          style: TextStyle(color: ctx.dim, fontSize: 10),
+          style: TextStyle(
+            color: ctx.dim,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         if (isMe) ...[const SizedBox(width: 4), ctx.statusIcon()],
         if (message.deleted) ...[const SizedBox(width: 4), ctx.deletedIcon()],

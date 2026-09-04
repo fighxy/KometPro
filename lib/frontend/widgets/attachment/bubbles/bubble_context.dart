@@ -226,7 +226,14 @@ class BubbleContext {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Text(clockText, style: TextStyle(color: dim, fontSize: 11)),
+          Text(
+            clockText,
+            style: TextStyle(
+              color: dim,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           if (isMe) ...[const SizedBox(width: 4), statusIcon()],
           if (message.deleted) ...[const SizedBox(width: 4), deletedIcon()],
         ],
@@ -255,7 +262,7 @@ class BubbleContext {
             style: const TextStyle(
               color: Colors.white,
               fontSize: 10,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
           if (message.deleted) ...[
