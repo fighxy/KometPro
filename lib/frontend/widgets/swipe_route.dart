@@ -25,10 +25,10 @@ class SwipeRoute<T> extends PageRoute<T> {
   String? get barrierLabel => null;
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 400);
+  Duration get transitionDuration => const Duration(milliseconds: 340);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 400);
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 300);
 
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
