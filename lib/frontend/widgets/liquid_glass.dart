@@ -37,8 +37,6 @@ class GlassSurface extends StatelessWidget {
   final Color frostTint;
   final double frostSigma;
   final Color liquidTint;
-  final double frostSigma;
-  final Color liquidTint;
   final BoxBorder? border;
   final BackdropKey? backdropKey;
   final Widget child;
