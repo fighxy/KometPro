@@ -41,6 +41,18 @@ class ChatInfo {
     return null;
   }
 
+  String? roleLabel(
+    int id, {
+    required String owner,
+    required String admin,
+  }) {
+    if (isOwner(id)) return owner;
+    final alias = adminAlias(id);
+    if (alias != null) return alias;
+    if (isAdmin(id)) return admin;
+    return null;
+  }
+
   int? get participantsCount => raw['participantsCount'] as int?;
   int? get blockedParticipantsCount => raw['blockedParticipantsCount'] as int?;
   String? get link => raw['link'] as String?;

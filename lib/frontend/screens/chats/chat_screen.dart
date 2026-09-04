@@ -723,6 +723,9 @@ class _ChatScreenState extends State<ChatScreen>
     _scrollController.addListener(_scheduleReadMarker);
     _scrollController.addListener(_updateScrollDownVisible);
     MediaPlayback.instance.enterChat(widget.chatId);
+    if (widget.chatType == 'CHAT') {
+      unawaited(_ensureChatRoles());
+    }
     AppVisualStyle.current.addListener(_onVisualStyleChanged);
     AppChatChrome.current.addListener(_onVisualStyleChanged);
     AppComposerStyle.current.addListener(_onVisualStyleChanged);
@@ -3749,6 +3752,25 @@ class _ChatScreenState extends State<ChatScreen>
   bool get _isGroupChat =>
       widget.chatType == 'CHAT' || widget.chatType == 'CHANNEL';
 
+  Future<void> _ensureChatRoles() async {
+    await ChatInfoFetch.get(widget.chatId);
+    if (mounted) setState(() {});
+  }
+
+  String? _senderRoleLabel(int senderId) {
+    if (widget.chatType != 'CHAT') return null;
+    final info = ChatInfoFetch.peek(widget.chatId);
+    if (info == null) return null;
+    final l10n = AppLocalizations.of(context)!;
+    final label = info.roleLabel(
+      senderId,
+      owner: l10n.chatInfoRoleOwner,
+      admin: l10n.chatInfoRoleAdmin,
+    );
+    if (label == null) return null;
+    return label.toLowerCase();
+  }
+
   String _headerStatus() {
     final conn = connectionStatusLabel(api.state);
     if (conn != null) return conn;
@@ -5902,6 +5924,9 @@ class _ChatScreenState extends State<ChatScreen>
                                 senderAvatarOverride: isCommentedPost
                                     ? widget.imageUrl
                                     : null,
+                                senderRole: isCommentedPost
+                                    ? null
+                                    : _senderRoleLabel(message.senderId),
                                 textSelection: _textSelection,
                                 textSelectionDrag: _textSelectionDrag,
                                 onExitTextSelection: _exitTextSelection,

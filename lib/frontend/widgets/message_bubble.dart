@@ -740,6 +740,7 @@ class MessageBubble extends StatelessWidget {
   final String? peerAvatarUrl;
   final String? senderNameOverride;
   final String? senderAvatarOverride;
+  final String? senderRole;
   final ValueListenable<({String id, Offset pos})?>? textSelection;
   final ValueListenable<Offset?>? textSelectionDrag;
   final VoidCallback? onExitTextSelection;
@@ -771,6 +772,7 @@ class MessageBubble extends StatelessWidget {
     this.peerAvatarUrl,
     this.senderNameOverride,
     this.senderAvatarOverride,
+    this.senderRole,
     this.textSelection,
     this.textSelectionDrag,
     this.onExitTextSelection,
@@ -1011,19 +1013,35 @@ class MessageBubble extends StatelessWidget {
   Widget _buildSenderHeader(ColorScheme cs, bool needsInset) {
     final name = senderNameOverride ?? ContactCache.get(message.senderId);
     if (name == null || name.isEmpty) return const SizedBox.shrink();
+    final role = senderRole?.trim();
     final header = Padding(
       padding: needsInset
           ? const EdgeInsets.fromLTRB(12, 6, 12, 2)
           : const EdgeInsets.only(bottom: 2),
-      child: Text(
-        name,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: name,
+              style: TextStyle(
+                color: _senderColor(message.senderId),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (role != null && role.isNotEmpty)
+              TextSpan(
+                text: ' $role',
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+          ],
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: _senderColor(message.senderId),
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
 
