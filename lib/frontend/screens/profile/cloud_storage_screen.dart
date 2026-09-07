@@ -168,7 +168,7 @@ class _CloudStorageScreenState extends State<CloudStorageScreen>
 
     if (envGroup == null && orphans.isNotEmpty) {
       final repaired = await CloudStorageModule.repairOrphan(
-        api,
+        AppScope.read(context).api,
         orphans.first,
       );
       if (repaired != null) {
@@ -205,7 +205,7 @@ class _CloudStorageScreenState extends State<CloudStorageScreen>
     final isAdmin = chat.owner == accountId || chat.admins.contains(accountId);
     if (isAdmin) {
       await chats.deleteChat(
-        api,
+        AppScope.read(context).api,
         chatId: chat.id,
         lastEventTime: chat.lastEventTime,
         forAll: true,
@@ -991,7 +991,7 @@ class _FileDetailsSheetState extends State<_FileDetailsSheet> {
     if (f.fileId == null) return;
     setState(() => _loading = true);
     final result = await CloudStorageModule.fetchFileUrl(
-      api,
+      AppScope.read(context).api,
       accountId: f.accountId,
       fileId: f.fileId!,
       chatId: f.chatId,

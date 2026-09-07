@@ -526,7 +526,7 @@ class ChatController extends ChangeNotifier {
       chatId,
       messageId: msg.id,
       time: msg.time,
-      text: msg.text,
+      text: msg.text ?? '',
       status: msg.status ?? 'sending',
       elements: elements,
     );

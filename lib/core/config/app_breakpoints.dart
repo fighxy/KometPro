@@ -1,3 +1,5 @@
+import 'dart:ui' show DisplayFeature, DisplayFeatureType;
+
 import 'package:flutter/widgets.dart';
 
 class AppBreakpoints {

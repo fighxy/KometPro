@@ -119,7 +119,7 @@ class KometSettingsScreen extends StatelessWidget {
                     label: 'Ghost Mode',
                     subtitle: 'Вас не видно в сети',
                     value: value,
-                    onChanged: _setGhostMode,
+                    onChanged: (value) => _setGhostMode(context, value),
                   ),
                 ),
                 ValueListenableBuilder<bool>(
@@ -152,7 +152,7 @@ class KometSettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _setGhostMode(bool value) async {
+  Future<void> _setGhostMode(BuildContext context, bool value) async {
     await KometSettings.setGhostMode(value);
     AppScope.read(context).api.sendPing(interactive: !value);
   }

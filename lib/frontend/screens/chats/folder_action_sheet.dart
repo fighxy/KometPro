@@ -6,6 +6,7 @@ import '../../../backend/modules/folders.dart';
 import '../../../core/protocol/packet.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/utils/haptics.dart';
+import '../../widgets/app_scope.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/sheet_helpers.dart';
@@ -94,7 +95,7 @@ Future<void> _confirmDelete(BuildContext context, ChatFolder folder) async {
   if (accountId == null || !context.mounted) return;
 
   try {
-    await FoldersModule.deleteFolders(api, accountId, [folder.id]);
+    await FoldersModule.deleteFolders(AppScope.read(context).api, accountId, [folder.id]);
     Haptics.success();
   } catch (e) {
     Haptics.error();

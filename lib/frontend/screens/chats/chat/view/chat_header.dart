@@ -134,6 +134,7 @@ class ChatHeaderRow extends StatelessWidget {
                   _withOnlineDot(
                     cs,
                     _heroAvatar(
+                      context,
                       44,
                       (d) => imageUrl.isNotEmpty
                           ? CircleAvatar(
@@ -300,6 +301,7 @@ class ChatHeaderRow extends StatelessWidget {
                 _withOnlineDot(
                   cs,
                   _heroAvatar(
+                    context,
                     36,
                     (d) => imageUrl.isNotEmpty
                         ? CircleAvatar(
@@ -412,6 +414,7 @@ class ChatHeaderRow extends StatelessWidget {
       chatType == 'DIALOG' ? (_isSavedMessages ? 0 : chatId ^ myId) : chatId;
 
   Widget _heroAvatar(
+    BuildContext context,
     double size,
     Widget Function(double diameter) avatarBuilder,
   ) {
