@@ -362,14 +362,15 @@ extension _ChatNavigation on _ChatScreenState {
   }
 
   Future<void> _runGoToMessage(String id, int targetTime) async {
+    final gen = _chatController.sessionGen;
     await WidgetsBinding.instance.endOfFrame;
-    if (!mounted) return;
+    if (!_sessionAlive(gen)) return;
 
     if (!_messages.any((m) => m.id == id)) {
       await _loadMessageWindow(id, targetTime);
-      if (!mounted) return;
+      if (!_sessionAlive(gen)) return;
       await WidgetsBinding.instance.endOfFrame;
-      if (!mounted) return;
+      if (!_sessionAlive(gen)) return;
     }
 
     if (!_messages.any((m) => m.id == id)) {

@@ -66,6 +66,10 @@ class ChatController extends ChangeNotifier {
 
   bool Function() isMounted = () => true;
 
+  int get sessionGen => _sessionGen;
+
+  bool accept(int gen) => _sameSession(gen);
+
   bool _sameSession(int gen) => isMounted() && gen == _sessionGen;
 
   int attach({required int chatId, int? myId}) {

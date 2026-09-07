@@ -92,6 +92,7 @@ import 'chat/mention_panel_controller.dart';
 import 'chat/view/selection_bar.dart';
 import 'chat/view/chat_header.dart';
 import 'chat/view/shimmer_loading.dart';
+import '../../widgets/app_scope.dart';
 import '../../../core/config/app_commands.dart';
 import '../../../core/config/app_visual_style.dart';
 import '../../../core/config/app_chat_chrome.dart';
@@ -216,6 +217,15 @@ class ChatScreen extends StatefulWidget {
       if (screen.widget.chatId != chatId) continue;
       if (!screen.mounted || !screen._isRouteCurrent) continue;
       unawaited(screen._sendBotStart(startPayload));
+      return true;
+    }
+    return false;
+  }
+
+  static bool openSearchInVisibleChat() {
+    for (final screen in _open.reversed) {
+      if (!screen.mounted || !screen._isRouteCurrent) continue;
+      screen._openSearch();
       return true;
     }
     return false;
@@ -486,7 +496,7 @@ class _ChatScreenState extends State<ChatScreen>
   bool _previewChat = false;
   bool _subscribing = false;
   String? _channelLink;
-  final ChatController _chatController = ChatController();
+  late final ChatController _chatController;
 
   List<CachedMessage> get _messages => _chatController.messages;
   set _messages(List<CachedMessage> v) => _chatController.messages = v;
@@ -527,6 +537,9 @@ class _ChatScreenState extends State<ChatScreen>
   bool _floatingDateScheduled = false;
   int get _myId => _chatController.myId;
   set _myId(int v) => _chatController.myId = v;
+
+  bool _sessionAlive([int? gen]) =>
+      mounted && (gen == null || _chatController.accept(gen));
   CachedChat? chat;
   bool _peerIsBot = false;
   bool _botStartRequested = false;
@@ -613,6 +626,12 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   void initState() {
     super.initState();
+    final deps = AppScope.read(context);
+    _chatController = ChatController(
+      api: deps.api,
+      messages: deps.messages,
+      chats: deps.chats,
+    );
     _previewChat = widget.channelSubscribed == false;
     _chatController.attach(chatId: widget.chatId);
     _chatController.isMounted = () => mounted;

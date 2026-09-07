@@ -49,6 +49,7 @@ extension _ChatSendPipeline on _ChatScreenState {
   }
 
   Future<void> _sendTextMessage() async {
+    final gen = _chatController.sessionGen;
     final content = _messageController.buildContent();
     final rawText = content.text;
     final text = rawText.trim();
@@ -78,11 +79,11 @@ extension _ChatSendPipeline on _ChatScreenState {
         message: l10n.chatSendConfirmMessage,
         confirmLabel: l10n.chatSendConfirmAction,
       );
-      if (!confirmed || !mounted) return;
+      if (!confirmed || !_sessionAlive(gen)) return;
     }
 
     final wireText = await _encryptOutgoing(text);
-    if (wireText == null || !mounted) return;
+    if (wireText == null || !_sessionAlive(gen)) return;
     final encrypted = wireText != text;
 
     final tempId = _nextTempId();
@@ -182,6 +183,8 @@ extension _ChatSendPipeline on _ChatScreenState {
               replySourceChatId: replySourceChatId,
               elements: elements,
             );
+
+      if (!_sessionAlive(gen)) return;
 
       final index = _messages.indexWhere((m) => m.id == tempId);
       if (index != -1 && mounted) {
@@ -787,6 +790,7 @@ extension _ChatSendPipeline on _ChatScreenState {
 
   Future<void> _sendPhotos(List<PickedPhoto> picked, String caption) async {
     if (_myId == 0) return;
+    final gen = _chatController.sessionGen;
     if (_encryptionEnabled) return _sendEncryptedPhotos(picked, caption);
     final videos = picked.where((ph) => ph.item.isVideo).toList();
     final photos = picked.where((ph) => !ph.item.isVideo).toList();
@@ -813,7 +817,7 @@ extension _ChatSendPipeline on _ChatScreenState {
         PhotoAttachment(localPath: file.path, width: dim?.$1, height: dim?.$2),
       );
     }
-    if (jobs.isEmpty || !mounted) return;
+    if (jobs.isEmpty || !_sessionAlive(gen)) return;
 
     final tempId = _nextTempId();
     final placeholder = CachedMessage(

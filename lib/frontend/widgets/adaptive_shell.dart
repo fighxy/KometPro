@@ -127,6 +127,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   Widget build(BuildContext context) {
     return DesktopShortcuts(
       onClosePane: _closeChat,
+      onSearchChats: ChatListScreen.openSearch,
+      onFindInChat: () {
+        if (_selected.value == null || !ChatScreen.openSearchInVisibleChat()) {
+          ChatListScreen.openSearch();
+        }
+      },
       child: ValueListenableBuilder<DesktopChatSelection?>(
         valueListenable: _selected,
         builder: (context, selected, _) {

@@ -77,6 +77,18 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
   final GlobalKey _boundaryKey = GlobalKey();
   Offset? _lastTapDown;
   Timer? _openTimer;
+  bool _hovering = false;
+
+  bool get _desktopHover {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.macOS:
+        return true;
+      default:
+        return false;
+    }
+  }
 
   bool _isPinnedNow() => widget.isPinned();
 
@@ -289,8 +301,13 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
           builder: (context, selected, _) {
             final isSelected = selected.contains(widget.message.id);
             final active = selected.isNotEmpty;
+            final hoverReply =
+                _desktopHover && !active && widget.onReply != null;
 
-            return GestureDetector(
+            return MouseRegion(
+              onEnter: hoverReply ? (_) => setState(() => _hovering = true) : null,
+              onExit: hoverReply ? (_) => setState(() => _hovering = false) : null,
+              child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTapDown: (d) => _lastTapDown = d.globalPosition,
               onTap: _handleTap,
@@ -325,9 +342,23 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
                           child: _buildCheckCircle(isSelected, cs),
                         ),
                       ),
+                    if (hoverReply && _hovering)
+                      Positioned(
+                        right: widget.isMe ? null : 8,
+                        left: widget.isMe ? 8 : null,
+                        top: 4,
+                        child: IconButton.filledTonal(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 18,
+                          onPressed: widget.onReply,
+                          icon: const Icon(Symbols.reply),
+                          tooltip: 'Reply',
+                        ),
+                      ),
                   ],
                 ),
               ),
+            ),
             );
           },
         );
