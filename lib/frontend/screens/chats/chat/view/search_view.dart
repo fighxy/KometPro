@@ -22,6 +22,7 @@ class SearchTopBar extends StatelessWidget {
     required this.search,
     required this.focusNode,
     required this.onClose,
+    this.onPickDate,
   });
 
   final ColorScheme cs;
@@ -29,6 +30,7 @@ class SearchTopBar extends StatelessWidget {
   final ChatSearchController search;
   final FocusNode focusNode;
   final VoidCallback onClose;
+  final VoidCallback? onPickDate;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +66,15 @@ class SearchTopBar extends StatelessWidget {
       ),
       onPressed: onClose,
     );
+    final dateBtn = IconButton(
+      tooltip: 'Перейти к дате',
+      icon: Icon(
+        Symbols.calendar_month,
+        weight: glossy ? 500 : 400,
+        color: cs.onSurface,
+      ),
+      onPressed: onPickDate,
+    );
     final searchBtn = IconButton(
       icon: AnimatedLottieIcon(
         asset: AppAnimations.search,
@@ -82,6 +93,7 @@ class SearchTopBar extends StatelessWidget {
           children: [
             backBtn,
             Expanded(child: field),
+            dateBtn,
             searchBtn,
           ],
         ),
@@ -98,6 +110,7 @@ class SearchTopBar extends StatelessWidget {
             children: [
               backBtn,
               Expanded(child: field),
+              dateBtn,
               searchBtn,
             ],
           ),

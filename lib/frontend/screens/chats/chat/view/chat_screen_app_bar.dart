@@ -148,6 +148,7 @@ extension _ChatAppBarBuild on _ChatScreenState {
                           search: _search,
                           focusNode: _searchFocusNode,
                           onClose: _closeSearch,
+                          onPickDate: _pickSearchDate,
                         ),
                       ),
                     ),

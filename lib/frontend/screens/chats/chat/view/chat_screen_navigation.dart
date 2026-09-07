@@ -350,6 +350,52 @@ extension _ChatNavigation on _ChatScreenState {
     _search.reset();
   }
 
+  Future<void> _pickSearchDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime(2018),
+      lastDate: now,
+      helpText: 'Перейти к дате',
+      cancelText: 'Отмена',
+      confirmText: 'Перейти',
+    );
+    if (picked == null || !mounted) return;
+    _closeSearch();
+    await _jumpToDate(picked);
+  }
+
+  Future<void> _jumpToDate(DateTime day) async {
+    final start = DateTime(day.year, day.month, day.day);
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = start.add(const Duration(days: 1)).millisecondsSinceEpoch;
+    try {
+      final fetched = await _deps.messages.fetchHistory(
+        _myId,
+        widget.chatId,
+        fromTime: endMs,
+        backward: 80,
+      );
+      if (!mounted) return;
+      if (fetched.isEmpty) {
+        showCustomNotification(context, 'Нет сообщений на эту дату');
+        return;
+      }
+      final onDay = fetched
+          .where((m) => m.time >= startMs && m.time < endMs)
+          .toList();
+      final pool = onDay.isNotEmpty ? onDay : fetched;
+      pool.sort((a, b) => a.time.compareTo(b.time));
+      final target = onDay.isNotEmpty ? pool.first : pool.last;
+      await _runGoToMessage(target.id, target.time);
+    } catch (e) {
+      if (mounted) {
+        showCustomNotification(context, 'Не удалось открыть дату');
+      }
+    }
+  }
+
   Future<void> _navigateToInitialMessage() async {
     final id = widget.initialMessageId;
     if (id == null) {
