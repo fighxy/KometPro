@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/utils/format.dart';
+import '../../../core/utils/system_insets.dart';
 import '../../../core/config/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import 'package:komet/frontend/widgets/app_scope.dart';
@@ -260,13 +261,13 @@ class _DevicesScreenState extends State<DevicesScreen>
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
+        padding: SystemInsets.scroll(context, extra: 32),
         child: Column(
           children: [
             const SizedBox(height: 16),
             _buildPromoCard(context, cs),
             const SizedBox(height: 12),
             _buildDevicesList(context, cs),
-            const SizedBox(height: 32),
           ],
         ),
       ),

@@ -21,6 +21,7 @@ import '../../../core/config/app_stories.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/storage/chat_members_store.dart';
 import '../../../core/utils/format.dart';
+import '../../../core/utils/system_insets.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/route_settle.dart';
 import '../../../core/utils/haptics.dart';
@@ -648,7 +649,12 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
                   constraints: BoxConstraints(
                     minHeight: math.max(0, viewport.maxHeight - collapsedH),
                   ),
-                  child: _buildBody(cs),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: SystemInsets.bottom(context),
+                    ),
+                    child: _buildBody(cs),
+                  ),
                 ),
               ),
             ],

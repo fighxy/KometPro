@@ -13,6 +13,7 @@ import '../../../core/config/komet_settings.dart';
 import '../../../core/config/app_show_extra_info.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/format.dart';
+import '../../../core/utils/system_insets.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/utils/update_checker.dart';
 import '../../../l10n/app_localizations.dart';
@@ -674,7 +675,11 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
                       ),
                     ),
                   ),
-                const SliverToBoxAdapter(child: SizedBox(height: 120)),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 120 + SystemInsets.bottom(context),
+                  ),
+                ),
               ],
             ),
           ),

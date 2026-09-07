@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../backend/modules/contacts.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/image_utils.dart';
+import '../../../core/utils/system_insets.dart';
 import '../../../l10n/app_localizations.dart';
 import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/frontend/komet_app.dart' show KometApp;
@@ -218,7 +219,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: _isLoading
           ? const Center(child: SmallSpinner(size: 36))
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                24 + SystemInsets.bottom(context),
+              ),
               children: [
                 Center(
                   child: Stack(
