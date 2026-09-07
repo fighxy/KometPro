@@ -521,6 +521,7 @@ class _ChatScreenState extends State<ChatScreen>
   late final ChatController _chatController;
   late final PhotoViewerActions _photoActions;
   final Map<String, GlobalKey> _messageKeys = {};
+  final Map<String, double> _itemExtentCache = {};
   bool _badgeRefreshing = false;
   bool _badgeRefreshQueued = false;
 

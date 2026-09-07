@@ -657,9 +657,14 @@ extension _ChatTranscriptBuild on _ChatScreenState {
 
                               final builtItem = RepaintBoundary(
                                 key: ValueKey('msg_${message.id}'),
-                                child: KeyedSubtree(
-                                  key: _keyForMessage(message.id),
-                                  child: highlightable,
+                                child: _ExtentRecorder(
+                                  cacheKey:
+                                      '${message.id}:${message.time}:${message.text?.length ?? 0}',
+                                  cache: _itemExtentCache,
+                                  child: KeyedSubtree(
+                                    key: _keyForMessage(message.id),
+                                    child: highlightable,
+                                  ),
                                 ),
                               );
                               return message.id == _prank.bubbleId
@@ -672,6 +677,31 @@ extension _ChatTranscriptBuild on _ChatScreenState {
                             childCount:
                                 items.length + 1 + (_isLoadingMore ? 1 : 0),
                             addRepaintBoundaries: false,
+                            findChildIndexCallback: (key) {
+                              if (key is! ValueKey<String>) return null;
+                              final raw = key.value;
+                              if (!raw.startsWith('msg_')) return null;
+                              final id = raw.substring(4);
+                              final pos = items.lastIndexWhere(
+                                (e) =>
+                                    e is ChatListMessageItem &&
+                                    e.message.id == id,
+                              );
+                              if (pos < 0) return null;
+                              return items.length - pos;
+                            },
+                            itemExtentBuilder: (index, _) {
+                              if (index == 0) return null;
+                              if (index > items.length) return 48;
+                              final item = items[items.length - index];
+                              if (item is DateSeparatorItem) return null;
+                              if (item is UnreadSeparatorItem) return null;
+                              if (item is ChatListMessageItem) {
+                                final message = item.message;
+                                return _itemExtentCache['${message.id}:${message.time}:${message.text?.length ?? 0}'];
+                              }
+                              return null;
+                            },
                           ),
                         ),
                       ),
@@ -822,4 +852,49 @@ extension _ChatTranscriptBuild on _ChatScreenState {
       ),
     );
   }
+}
+
+class _ExtentRecorder extends StatefulWidget {
+  const _ExtentRecorder({
+    required this.cacheKey,
+    required this.cache,
+    required this.child,
+  });
+
+  final String cacheKey;
+  final Map<String, double> cache;
+  final Widget child;
+
+  @override
+  State<_ExtentRecorder> createState() => _ExtentRecorderState();
+}
+
+class _ExtentRecorderState extends State<_ExtentRecorder> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _record());
+  }
+
+  @override
+  void didUpdateWidget(covariant _ExtentRecorder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _record());
+  }
+
+  void _record() {
+    if (!mounted) return;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final height = box.size.height;
+    if (height <= 0) return;
+    if (widget.cache[widget.cacheKey] == height) return;
+    widget.cache[widget.cacheKey] = height;
+    if (widget.cache.length > 800) {
+      widget.cache.remove(widget.cache.keys.first);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
