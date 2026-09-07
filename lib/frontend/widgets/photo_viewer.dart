@@ -718,6 +718,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         bindings: {
           const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _step(1),
           const SingleActivator(LogicalKeyboardKey.arrowRight): () => _step(-1),
+          const SingleActivator(LogicalKeyboardKey.keyR, control: true):
+              _rotate,
         },
         child: Focus(
           autofocus: true,
