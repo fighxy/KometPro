@@ -21,7 +21,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
     unawaited(_refreshBadge());
 
     try {
-      final chatRows = await chats.getChat(_myId, widget.chatId);
+      final chatRows = await _deps.chats.getChat(_myId, widget.chatId);
       if (!mounted) return;
       if (chatRows.isNotEmpty) {
         final channelSubscribed =
@@ -167,8 +167,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
       _myId = profile?.id ?? 0;
     }
     try {
-      final sent = await messagesModule.sendBotStart(
-        widget.chatId,
+      final sent = await _chatController.sendBotStart(
         startPayload,
       );
       if (!mounted) return;
@@ -477,7 +476,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
         .where((m) => m.time > _readMarkTime && m.senderId != _myId)
         .length;
     unawaited(
-      chats.markReadUpTo(
+      _deps.chats.markReadUpTo(
         api,
         _myId,
         widget.chatId,
@@ -510,7 +509,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
   }
 
   Future<void> _markMessageUnread(CachedMessage message) async {
-    final unread = await chats.markUnread(
+    final unread = await _deps.chats.markUnread(
       api,
       _myId,
       widget.chatId,
@@ -532,8 +531,8 @@ extension _ChatHistoryLoad on _ChatScreenState {
   }
 
   Future<List<MessageReader>> _loadReadBy(CachedMessage message) async {
-    final marks = await chats.getReadMarks(api, _myId, widget.chatId);
-    final reactions = await messagesModule.getDetailedReactions(
+    final marks = await _deps.chats.getReadMarks(_deps.api, _myId, widget.chatId);
+    final reactions = await _deps.messages.getDetailedReactions(
       widget.chatId,
       message.id,
     );
@@ -544,12 +543,12 @@ extension _ChatHistoryLoad on _ChatScreenState {
     }..removeAll({_myId, message.senderId});
     if (readerIds.isEmpty || !mounted) return const [];
 
-    await messagesModule.ensureContactNames(readerIds);
-    await animojiModule.ensureLoaded();
+    await _deps.messages.ensureContactNames(readerIds);
+    await _deps.animoji.ensureLoaded();
     if (!mounted) return const [];
 
     final animojiByEmoji = {
-      for (final animoji in animojiModule.animojis)
+      for (final animoji in _deps.animoji.animojis)
         EmojiKeywordIndex.normalize(animoji.emoji): animoji,
     };
     final unknownName = AppLocalizations.of(
@@ -607,7 +606,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
         isPreview: preview.isPreview,
       );
     }
-    final error = await chats.setPinnedMessage(
+    final error = await _deps.chats.setPinnedMessage(
       api,
       chatId: widget.chatId,
       messageId: willUnpin ? null : messageId,
@@ -628,7 +627,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
   Future<void> _unpinCurrentMessage() async {
     final previousChat = chat;
     _applyPinnedMessageLocally();
-    final error = await chats.setPinnedMessage(
+    final error = await _deps.chats.setPinnedMessage(
       api,
       chatId: widget.chatId,
       messageId: null,
@@ -697,7 +696,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
 
   Future<void> _reloadChatMeta() async {
     if (_myId == 0) return;
-    final rows = await chats.getChat(_myId, widget.chatId);
+    final rows = await _deps.chats.getChat(_myId, widget.chatId);
     if (!mounted || rows.isEmpty) return;
     final fresh = rows.first;
     final current = chat;
@@ -1090,7 +1089,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
     }
     if (pending.isEmpty) return;
     unawaited(
-      commentsModule.fetchInfo(
+      _deps.comments.fetchInfo(
         accountId: _myId,
         chatId: widget.chatId,
         postIds: pending,
@@ -1154,7 +1153,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
 
   Future<void> _loadCommentsHistory() async {
     final post = widget.postMessage;
-    final loaded = await commentsModule.fetchHistory(
+    final loaded = await _deps.comments.fetchHistory(
       _myId,
       widget.chatId,
       widget.commentPostId!,
@@ -1181,7 +1180,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
     _commentsLoadingMore = true;
     final newest = _messages.last;
     try {
-      final more = await commentsModule.fetchHistory(
+      final more = await _deps.comments.fetchHistory(
         _myId,
         widget.chatId,
         widget.commentPostId!,
@@ -1235,7 +1234,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
         .where((id) => id != 0 && ContactCache.get(id) == null)
         .toSet();
     if (ids.isEmpty) return;
-    final resolved = await messagesModule.ensureContactNames(ids);
+    final resolved = await _deps.messages.ensureContactNames(ids);
     if (resolved && mounted) _bumpMessages();
   }
 

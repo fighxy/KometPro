@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/backend/modules/animoji.dart';
 import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/core/config/app_colors.dart';
@@ -147,7 +147,7 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
       selectedReaction: widget.reactions?.value?['yourReaction']?.toString(),
       quickReactions: _quickReactionEmojis(),
       loadReactionEmojis: () async {
-        await animojiModule.ensureLoaded();
+        await AppScope.read(ctx).animoji.ensureLoaded();
         return _animojiReactionEmojis();
       },
       onDispose: controller.dispose,
@@ -155,7 +155,8 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
   }
 
   List<ReactionEmoji> _quickReactionEmojis() {
-    final quick = animojiModule.quickAnimojis;
+    final animoji = AppScope.read(context).animoji;
+    final quick = animoji.quickAnimojis;
     if (quick.isEmpty) {
       return AnimojiModule.fallbackReactions
           .map((e) => ReactionEmoji(emoji: e))
@@ -165,7 +166,7 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
   }
 
   List<ReactionEmoji> _animojiReactionEmojis() {
-    final list = animojiModule.animojis;
+    final list = AppScope.read(context).animoji.animojis;
     if (list.isEmpty) {
       return AnimojiModule.fallbackReactions
           .map((e) => ReactionEmoji(emoji: e))

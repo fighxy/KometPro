@@ -94,7 +94,7 @@ extension _ChatSelectionActions on _ChatScreenState {
     final forEveryone = await _showDeleteMessageDialog(canForEveryone);
     if (forEveryone == null || !mounted) return;
 
-    final ok = await messagesModule.deleteMessages(
+    final ok = await _deps.messages.deleteMessages(
       widget.chatId,
       serverMsgs.map((m) => m.id).toList(),
       forEveryone: forEveryone,
@@ -180,7 +180,7 @@ extension _ChatSelectionActions on _ChatScreenState {
   Future<bool> _sendForwardRequest() async {
     var request = _forwardRequest;
     if (request == null) return true;
-    if (api.state != SessionState.online) {
+    if (_deps.api.state != SessionState.online) {
       showCustomNotification(context, 'Нет соединения');
       return false;
     }
@@ -229,7 +229,7 @@ extension _ChatSelectionActions on _ChatScreenState {
     final wireId = rawWireId is int ? rawWireId : null;
     if (wireId == null) return false;
     try {
-      final realId = await messagesModule.forwardMessage(
+      final realId = await _deps.messages.forwardMessage(
         widget.chatId,
         sourceChatId,
         wireId,
@@ -271,7 +271,7 @@ extension _ChatSelectionActions on _ChatScreenState {
   }) async {
     await _persistOutgoing(message, removeId: removeId);
     try {
-      await chats.applyOutgoing(
+      await _deps.chats.applyOutgoing(
         _myId,
         widget.chatId,
         messageId: message.id,
@@ -326,7 +326,7 @@ extension _ChatSelectionActions on _ChatScreenState {
       return;
     }
 
-    final ok = await messagesModule.editMessage(
+    final ok = await _deps.messages.editMessage(
       widget.chatId,
       message.id,
       text: newText,
@@ -381,7 +381,7 @@ extension _ChatSelectionActions on _ChatScreenState {
     final forEveryone = await _showDeleteMessageDialog(canForEveryone);
     if (forEveryone == null || !mounted) return;
 
-    final ok = await messagesModule.deleteMessages(widget.chatId, [
+    final ok = await _deps.messages.deleteMessages(widget.chatId, [
       messageId,
     ], forEveryone: forEveryone);
     if (!mounted) return;
@@ -410,7 +410,7 @@ extension _ChatSelectionActions on _ChatScreenState {
     _bumpMessages();
     try {
       await AppDatabase.deleteMessage(_myId, widget.chatId, messageId);
-      await chats.reconcileLastMessage(_myId, widget.chatId);
+      await _deps.chats.reconcileLastMessage(_myId, widget.chatId);
     } catch (_) {}
   }
 

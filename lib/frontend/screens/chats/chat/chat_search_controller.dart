@@ -2,17 +2,22 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../../../../backend/modules/messages.dart';
 import '../../../../core/utils/logger.dart';
-import 'package:komet/backend/app_services.dart';
 import 'message_search_result.dart';
 
 class ChatSearchController {
-  ChatSearchController({required this.chatId, required this.isMounted}) {
+  ChatSearchController({
+    required this.chatId,
+    required this.isMounted,
+    required this.messages,
+  }) {
     searchController.addListener(_onTextChanged);
   }
 
   final int chatId;
   final bool Function() isMounted;
+  final MessagesModule messages;
 
   final TextEditingController searchController = TextEditingController();
   final ValueNotifier<bool> searchMode = ValueNotifier(false);
@@ -51,7 +56,7 @@ class ChatSearchController {
     loading.value = true;
     List<Map<String, dynamic>> raw;
     try {
-      raw = await messagesModule.searchMessages(chatId, trimmed);
+      raw = await messages.searchMessages(chatId, trimmed);
     } catch (e) {
       logger.e('Search error: $e');
       raw = const [];

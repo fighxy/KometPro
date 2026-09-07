@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:komet/backend/modules/chat_preview.dart';
-import 'package:komet/backend/modules/chats.dart';
+import 'package:komet/backend/modules/_deps.chats.dart';
 import 'package:komet/backend/modules/comments.dart';
 import 'package:komet/backend/modules/upload_service.dart';
 import 'package:komet/backend/modules/webapp.dart';
@@ -29,7 +29,6 @@ import 'package:komet/frontend/screens/chats/poll_create_screen.dart';
 import 'package:komet/frontend/widgets/custom_notification.dart';
 import 'package:komet/frontend/widgets/chat_menu_overlay.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:komet/backend/app_services.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../backend/api.dart';
 import '../../../backend/modules/messages.dart';
@@ -93,6 +92,7 @@ import 'chat/view/selection_bar.dart';
 import 'chat/view/chat_header.dart';
 import 'chat/view/shimmer_loading.dart';
 import '../../widgets/app_scope.dart';
+import '../../../backend/app_deps.dart';
 import '../../../core/config/app_commands.dart';
 import '../../../core/config/app_visual_style.dart';
 import '../../../core/config/app_chat_chrome.dart';
@@ -340,8 +340,8 @@ class _ChatScreenState extends State<ChatScreen>
     ({bool ok, Map<String, dynamic>? info}) result;
     try {
       result = isToggleOff
-          ? await messagesModule.cancelReaction(widget.chatId, message.id)
-          : await messagesModule.setReaction(widget.chatId, message.id, emoji);
+          ? await _deps.messages.cancelReaction(widget.chatId, message.id)
+          : await _deps.messages.setReaction(widget.chatId, message.id, emoji);
     } catch (_) {
       result = (ok: false, info: null);
     }
@@ -496,6 +496,7 @@ class _ChatScreenState extends State<ChatScreen>
   bool _previewChat = false;
   bool _subscribing = false;
   String? _channelLink;
+  late final AppDeps _deps;
   late final ChatController _chatController;
 
   List<CachedMessage> get _messages => _chatController.messages;
@@ -614,7 +615,7 @@ class _ChatScreenState extends State<ChatScreen>
       2.0,
     );
     final px = ((44.0 * dpr).clamp(96.0, 512.0) / 32).ceil() * 32;
-    for (final a in animojiModule.quickAnimojis) {
+    for (final a in _deps.animoji.quickAnimojis) {
       for (final url in [a.lottieUrl, a.lottiePlayUrl]) {
         if (url != null && url.isNotEmpty) {
           unawaited(RlottieEngine.instance.prewarm(url, px));
@@ -627,6 +628,7 @@ class _ChatScreenState extends State<ChatScreen>
   void initState() {
     super.initState();
     final deps = AppScope.read(context);
+    _deps = deps;
     _chatController = ChatController(
       api: deps.api,
       messages: deps.messages,
@@ -641,7 +643,7 @@ class _ChatScreenState extends State<ChatScreen>
       unawaited(NotificationBridge.instance.pushActiveChat(widget.chatId));
     }
     unawaited(
-      animojiModule
+      _deps.animoji
           .ensureLoaded()
           .then((_) {
             _prewarmQuickReactions();
@@ -652,7 +654,7 @@ class _ChatScreenState extends State<ChatScreen>
     WidgetsBinding.instance.addObserver(this);
     _uploadEventSub = UploadService.instance.events.listen(_onUploadEvent);
     _syncUploadStatus();
-    chats.chatsChanged.addListener(_onChatsBump);
+    _deps.chats.chatsChanged.addListener(_onChatsBump);
     _messageController.addListener(_onTextChanged);
     _scrollController.addListener(_onScrollForDate);
     _scrollController.addListener(_maybeLoadMoreHistory);
@@ -678,7 +680,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
     _stickers = StickerPanelController(
       vsync: this,
-      onSendTyping: () => messagesModule.sendTyping(widget.chatId, 'STICKER'),
+      onSendTyping: () => _deps.messages.sendTyping(widget.chatId, 'STICKER'),
     );
     _showAttachmentPanel.addListener(_onAttachPanelToggle);
     _commandPanel = CommandPanelController(
@@ -707,6 +709,7 @@ class _ChatScreenState extends State<ChatScreen>
     _search = ChatSearchController(
       chatId: widget.chatId,
       isMounted: () => mounted,
+      messages: _deps.messages,
     );
     final incomingReply = widget.replyRequest;
     if (incomingReply != null) {
@@ -720,7 +723,7 @@ class _ChatScreenState extends State<ChatScreen>
       _forwardRequest = incomingForward;
       _pendingForwards.value = incomingForward.messages;
     }
-    _pushSub = api.pushStream
+    _pushSub = _deps.api.pushStream
         .where(
           (p) =>
               p.opcode == Opcode.notifMark ||
@@ -728,18 +731,18 @@ class _ChatScreenState extends State<ChatScreen>
               p.opcode == Opcode.notifMsgDelayed,
         )
         .listen(_onIncomingPush);
-    _messageEventSub = chats.messageEvents
+    _messageEventSub = _deps.chats.messageEvents
         .where((e) => e.chatId == widget.chatId)
         .listen(_onMessageEvent);
     if (_commentsMode) {
-      _commentSub = commentsModule.commentStream
+      _commentSub = _deps.comments.commentStream
           .where(
             (e) =>
                 e.chatId == widget.chatId && e.postId == widget.commentPostId,
           )
           .listen(_onLiveComment);
     } else if (widget.chatType == 'CHANNEL') {
-      _commentsInfoSub = commentsModule.infoStream.listen(_onCommentsInfo);
+      _commentsInfoSub = _deps.comments.infoStream.listen(_onCommentsInfo);
     }
     ChatActivityStore.instance
         .listenable(widget.chatId)
@@ -747,7 +750,7 @@ class _ChatScreenState extends State<ChatScreen>
     ChatMembersStore.instance
         .listenable(widget.chatId)
         .addListener(_recomputeHeaderStatus);
-    _connSub = api.stateStream.listen((_) {
+    _connSub = _deps.api.stateStream.listen((_) {
       if (mounted) _recomputeHeaderStatus();
     });
     debugForceOffline.addListener(_recomputeHeaderStatus);
@@ -789,7 +792,7 @@ class _ChatScreenState extends State<ChatScreen>
   Future<void> _loadParticipantsCount() async {
     if (_commentsMode) return;
     if (widget.chatType != 'CHAT' && widget.chatType != 'CHANNEL') return;
-    final info = await chats.getChatInfo(api, widget.chatId);
+    final info = await _deps.chats.getChatInfo(_deps.api, widget.chatId);
     if (!mounted) return;
     if (widget.chatType == 'CHANNEL') {
       final link = info?['link'];
@@ -864,11 +867,11 @@ class _ChatScreenState extends State<ChatScreen>
     }
     _chatController.persistSessionCache();
     if (_previewChat) {
-      unawaited(chats.subscribeChat(api, widget.chatId, subscribe: false));
+      unawaited(_deps.chats.subscribeChat(_deps.api, widget.chatId, subscribe: false));
     }
     WidgetsBinding.instance.removeObserver(this);
     _uploadEventSub?.cancel();
-    chats.chatsChanged.removeListener(_onChatsBump);
+    _deps.chats.chatsChanged.removeListener(_onChatsBump);
     _otherUnread.dispose();
     _animojiHold.dispose();
     _saveDraft();
@@ -1083,7 +1086,7 @@ class _ChatScreenState extends State<ChatScreen>
   Future<void> _refreshScheduledCount() async {
     if (_myId == 0) return;
     try {
-      final list = await messagesModule.fetchDelayedMessages(
+      final list = await _deps.messages.fetchDelayedMessages(
         _myId,
         widget.chatId,
       );
@@ -1289,13 +1292,13 @@ class _ChatScreenState extends State<ChatScreen>
     try {
       var link = _channelLink;
       if (link == null || link.isEmpty) {
-        final info = await chats.getChatInfo(api, widget.chatId);
+        final info = await _deps.chats.getChatInfo(_deps.api, widget.chatId);
         link = info?['link'] as String?;
       }
       if (link == null || link.isEmpty) {
         throw const PacketError('Не удалось получить ссылку канала');
       }
-      final result = await chats.joinChannel(api, link, _myId);
+      final result = await _deps.chats.joinChannel(_deps.api, link, _myId);
       if (!mounted) return;
       setState(() {
         _previewChat = false;
@@ -1323,7 +1326,7 @@ class _ChatScreenState extends State<ChatScreen>
     if (current == null) return;
     final muted = current.isMuted;
     final target = muted ? ChatsModule.muteOff : ChatsModule.muteForever;
-    final error = await chats.setChatMute(
+    final error = await _deps.chats.setChatMute(
       api,
       chatId: widget.chatId,
       dontDisturbUntil: target,
@@ -1471,7 +1474,7 @@ class _ChatScreenState extends State<ChatScreen>
       checkboxLabel: canClearForAll ? 'Для всех' : null,
     );
     if (!mounted || !choice.confirmed) return;
-    final err = await chats.clearHistory(
+    final err = await _deps.chats.clearHistory(
       api,
       chatId: widget.chatId,
       lastEventTime: current?.lastEventTime ?? 0,
@@ -1500,7 +1503,7 @@ class _ChatScreenState extends State<ChatScreen>
       destructive: true,
     );
     if (!mounted || !confirmed) return;
-    final err = await chats.deleteChat(
+    final err = await _deps.chats.deleteChat(
       api,
       chatId: widget.chatId,
       lastEventTime: chat?.lastEventTime ?? 0,
@@ -1566,25 +1569,8 @@ class _ChatScreenState extends State<ChatScreen>
     await Future.delayed(const Duration(milliseconds: 700));
     if (!mounted || _myId == 0) return;
     try {
-      final serverMessages = await messagesModule.fetchHistory(
-        _myId,
-        widget.chatId,
-      );
-      if (KometSettings.viewDeleted.value) {
-        await chats.reconcileDeletedFromFetch(
-          _myId,
-          widget.chatId,
-          serverMessages,
-        );
-      }
-      final rows = await AppDatabase.loadMessages(
-        _myId,
-        widget.chatId,
-        limit: 100,
-        onlyVisible: !KometSettings.viewDeleted.value,
-      );
-      final decoded = await CachedMessage.fromDbRowsAsync(rows);
-      if (mounted) _applyMergedMessages(decoded);
+      final decoded = await _chatController.refreshLatest();
+      if (mounted && decoded.isNotEmpty) _applyMergedMessages(decoded);
     } catch (e) {
       logger.w('Обновление после звонка не удалось: $e');
     }
@@ -1636,7 +1622,7 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   String _headerStatus() {
-    final conn = connectionStatusLabel(api.state);
+    final conn = connectionStatusLabel(_deps.api.state);
     if (conn != null) return conn;
     final activity = ChatActivityStore.instance.snapshot(widget.chatId);
     if (activity != null) {
@@ -1674,7 +1660,7 @@ class _ChatScreenState extends State<ChatScreen>
   Future<void> _ensureTypingName(int userId) async {
     if (!_isGroupChat) return;
     if (ContactCache.get(userId) != null) return;
-    final resolved = await messagesModule.ensureContactNames({userId});
+    final resolved = await _deps.messages.ensureContactNames({userId});
     if (resolved && mounted) _recomputeHeaderStatus();
   }
 

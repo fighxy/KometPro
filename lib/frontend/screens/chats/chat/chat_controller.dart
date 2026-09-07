@@ -435,6 +435,114 @@ class ChatController extends ChangeNotifier {
     }
   }
 
+  bool get isOnline => api.state == SessionState.online;
+
+  Future<List<CachedMessage>> refreshLatest() async {
+    final gen = _sessionGen;
+    final serverMessages = await messagesModule.fetchHistory(myId, chatId);
+    if (!_sameSession(gen)) return const [];
+    if (KometSettings.viewDeleted.value) {
+      await chatsModule.reconcileDeletedFromFetch(myId, chatId, serverMessages);
+    }
+    if (!_sameSession(gen)) return const [];
+    final onlyVisible = !KometSettings.viewDeleted.value;
+    final rows = await AppDatabase.loadMessages(
+      myId,
+      chatId,
+      limit: 100,
+      onlyVisible: onlyVisible,
+    );
+    if (!_sameSession(gen)) return const [];
+    return CachedMessage.fromDbRowsAsync(rows);
+  }
+
+  Future<String> sendText(
+    String text, {
+    int? scheduledTime,
+    int? replyToMessageId,
+    int? replySourceChatId,
+    List<Map<String, dynamic>> elements = const [],
+  }) async {
+    final gen = _sessionGen;
+    final id = await messagesModule.sendMessage(
+      myId,
+      chatId,
+      text,
+      scheduledTime: scheduledTime,
+      replyToMessageId: replyToMessageId,
+      replySourceChatId: replySourceChatId,
+      elements: elements,
+    );
+    if (!_sameSession(gen)) return '';
+    return id;
+  }
+
+  Future<bool> editText(String messageId, String text) async {
+    final gen = _sessionGen;
+    final ok = await messagesModule.editMessage(chatId, messageId, text: text);
+    return ok && _sameSession(gen);
+  }
+
+  Future<String?> sendFile(
+    int fileId, {
+    String? token,
+  }) async {
+    final gen = _sessionGen;
+    final id = await messagesModule.sendFileMessage(
+      chatId,
+      fileId,
+      token: token,
+    );
+    if (!_sameSession(gen)) return null;
+    return id;
+  }
+
+  Future<Map<String, dynamic>?> sendSticker(int stickerId) async {
+    final gen = _sessionGen;
+    final result = await messagesModule.sendStickerMessage(chatId, stickerId);
+    if (!_sameSession(gen)) return null;
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> sendLocation(double lat, double lon) async {
+    final gen = _sessionGen;
+    final result = await messagesModule.sendLocationMessage(chatId, lat, lon);
+    if (!_sameSession(gen)) return null;
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> sendContact(int contactId) async {
+    final gen = _sessionGen;
+    final result = await messagesModule.sendContactMessage(chatId, contactId);
+    if (!_sameSession(gen)) return null;
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> sendPoll({
+    required String title,
+    required List<String> options,
+    bool multiple = false,
+    bool anonymous = true,
+  }) async {
+    final gen = _sessionGen;
+    final result = await messagesModule.sendPollMessage(
+      chatId,
+      title,
+      options,
+      multiple: multiple,
+      anonymous: anonymous,
+    );
+    if (!_sameSession(gen)) return null;
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> sendBotStart(String startPayload) async {
+    final gen = _sessionGen;
+    final result = await messagesModule.sendBotStart(chatId, startPayload);
+    if (!_sameSession(gen)) return null;
+    return result;
+  }
+
   @override
   void dispose() {
     _sessionGen++;

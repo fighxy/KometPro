@@ -14,7 +14,7 @@ import 'package:komet/frontend/widgets/encryption_lock_badge.dart';
 import 'package:komet/frontend/widgets/glossy_pill.dart';
 import 'package:komet/frontend/widgets/online_dot.dart';
 import 'package:komet/frontend/widgets/profile_hero.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/models/story.dart';
 import '../../../../../core/config/app_fonts.dart';
 
@@ -425,9 +425,9 @@ class ChatHeaderRow extends StatelessWidget {
     }
     const gap = 3.0;
     return ValueListenableBuilder<int>(
-      valueListenable: storiesModule.storiesChanged,
+      valueListenable: AppScope.read(context).stories.storiesChanged,
       builder: (context, _, _) {
-        final preview = storiesModule.previewFor(ownerId);
+        final preview = AppScope.read(context).stories.previewFor(ownerId);
         final hasStory = preview != null && !preview.isEmpty;
         final inner = hasStory ? size - gap * 2 : size;
         return GestureDetector(

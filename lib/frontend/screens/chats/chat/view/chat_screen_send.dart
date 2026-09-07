@@ -88,7 +88,7 @@ extension _ChatSendPipeline on _ChatScreenState {
 
     final tempId = _nextTempId();
     final now = DateTime.now().millisecondsSinceEpoch;
-    final online = api.state == SessionState.online;
+    final online = _chatController.isOnline;
 
     final reply = _replyTo.value;
     final int? replyId = reply == null ? null : int.tryParse(reply.id);
@@ -167,7 +167,7 @@ extension _ChatSendPipeline on _ChatScreenState {
 
     try {
       final actualId = _commentsMode
-          ? await commentsModule.sendComment(
+          ? await _deps.comments.sendComment(
               _myId,
               widget.chatId,
               widget.commentPostId!,
@@ -175,9 +175,7 @@ extension _ChatSendPipeline on _ChatScreenState {
               replyToMessageId: replyId,
               elements: elements,
             )
-          : await messagesModule.sendMessage(
-              _myId,
-              widget.chatId,
+          : await _chatController.sendText(
               wireText,
               replyToMessageId: replyId,
               replySourceChatId: replySourceChatId,
@@ -358,7 +356,7 @@ extension _ChatSendPipeline on _ChatScreenState {
     if (!mounted || _myId == 0) return '';
     final tempId = _nextTempId();
     final now = DateTime.now().millisecondsSinceEpoch;
-    final online = api.state == SessionState.online;
+    final online = _chatController.isOnline;
     final composed = CachedMessage(
       id: tempId,
       accountId: _myId,
@@ -384,11 +382,7 @@ extension _ChatSendPipeline on _ChatScreenState {
     );
     if (!online) return tempId;
     try {
-      final actualId = await messagesModule.sendMessage(
-        _myId,
-        widget.chatId,
-        text,
-      );
+      final actualId = await _chatController.sendText(text);
       final realId = actualId.isNotEmpty ? actualId : tempId;
       final i = _messages.indexWhere((m) => m.id == tempId);
       if (i != -1) {
@@ -419,7 +413,7 @@ extension _ChatSendPipeline on _ChatScreenState {
       unawaited(_persistOutgoing(edited));
     }
     if (!id.startsWith('temp_')) {
-      await messagesModule.editMessage(widget.chatId, id, text: text);
+      await _chatController.editText(id, text);
     }
   }
 
@@ -428,8 +422,8 @@ extension _ChatSendPipeline on _ChatScreenState {
     chatId: widget.chatId,
     otherUserId: _resolveOtherId(),
     args: args,
-    messages: messagesModule,
-    isOnline: () => api.state == SessionState.online,
+    messages: _deps.messages,
+    isOnline: () => _chatController.isOnline,
     isActive: () => mounted,
     notify: (message, {duration}) {
       if (mounted) showCustomNotification(context, message, duration: duration);
@@ -448,9 +442,7 @@ extension _ChatSendPipeline on _ChatScreenState {
     if (when == null || !mounted) return;
 
     try {
-      await messagesModule.sendMessage(
-        _myId,
-        widget.chatId,
+      await _chatController.sendText(
         text,
         scheduledTime: when.millisecondsSinceEpoch,
       );
@@ -509,7 +501,7 @@ extension _ChatSendPipeline on _ChatScreenState {
     }
     if (unknownIds.isEmpty) return;
 
-    final resolved = await messagesModule.ensureContactNames(unknownIds);
+    final resolved = await _deps.messages.ensureContactNames(unknownIds);
     if (resolved && mounted) _bumpMessages();
   }
 
@@ -532,7 +524,7 @@ extension _ChatSendPipeline on _ChatScreenState {
 
     final resolved = <int, ({String name, String? avatar})>{};
     for (final id in forwardIds) {
-      final name = await messagesModule.searchContactById(id);
+      final name = await _deps.messages.searchContactById(id);
       if (name != null) {
         resolved[id] = (name: name, avatar: ContactCache.getAvatar(id));
       }
@@ -703,8 +695,7 @@ extension _ChatSendPipeline on _ChatScreenState {
     ).id;
     _showAttachmentPanel.value = false;
     try {
-      final realId = await messagesModule.sendFileMessage(
-        widget.chatId,
+      final realId = await _chatController.sendFile(
         entry.fileId,
         token: entry.token,
       );
@@ -723,8 +714,7 @@ extension _ChatSendPipeline on _ChatScreenState {
       FileAttachment(fileId: fileId),
     ).id;
     try {
-      final realId = await messagesModule.sendFileMessage(
-        widget.chatId,
+      final realId = await _chatController.sendFile(
         fileId,
       );
       final ok = realId != null;
@@ -1159,12 +1149,12 @@ extension _ChatSendPipeline on _ChatScreenState {
         width: sticker.width,
         height: sticker.height,
       ),
-    ], () => messagesModule.sendStickerMessage(widget.chatId, sticker.id));
+    ], () => _chatController.sendSticker(sticker.id));
   }
 
   void _insertAnimoji(Animoji animoji) {
     _messageController.insertAnimoji(animoji);
-    unawaited(animojiModule.noteUsed(animoji));
+    unawaited(_deps.animoji.noteUsed(animoji));
     Haptics.selection();
   }
 
@@ -1175,7 +1165,7 @@ extension _ChatSendPipeline on _ChatScreenState {
     final lon = position.longitude;
     await _sendAttachMessage([
       LocationAttachment(latitude: lat, longitude: lon, zoom: 15),
-    ], () => messagesModule.sendLocationMessage(widget.chatId, lat, lon));
+    ], () => _chatController.sendLocation(lat, lon));
   }
 
   Future<Position?> _resolveCurrentPosition() async {
@@ -1221,7 +1211,7 @@ extension _ChatSendPipeline on _ChatScreenState {
         name: fullName,
         photoUrl: contact.baseUrl,
       ),
-    ], () => messagesModule.sendContactMessage(widget.chatId, contact.id));
+    ], () => _chatController.sendContact(contact.id));
   }
 
   Future<void> _createPoll() async {
@@ -1229,10 +1219,9 @@ extension _ChatSendPipeline on _ChatScreenState {
     if (draft == null || !mounted) return;
     await _sendAttachMessage(
       [PollAttachment(pollId: 0, title: draft.title)],
-      () => messagesModule.sendPollMessage(
-        widget.chatId,
-        draft.title,
-        draft.answers,
+      () => _chatController.sendPoll(
+        title: draft.title,
+        options: draft.answers,
         multiple: draft.multiple,
         anonymous: draft.anonymous,
       ),
@@ -1304,7 +1293,7 @@ extension _ChatSendPipeline on _ChatScreenState {
     if (caption.isNotEmpty) {
       final wire = await _encryptOutgoing(caption);
       if (wire != null && mounted) {
-        await messagesModule.sendMessage(_myId, widget.chatId, wire);
+        await _chatController.sendText(wire);
       }
     }
   }
