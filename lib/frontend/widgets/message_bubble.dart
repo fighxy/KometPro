@@ -1159,7 +1159,7 @@ class MessageBubble extends StatelessWidget {
     final bubbleColor = noBubbleBackground
         ? Colors.transparent
         : (isMe
-              ? BubbleCss.outgoingFill(cs, Theme.brightnessOf(context))
+              ? BubbleCss.outgoingFill(cs, cs.brightness)
               : cs.surfaceContainerHighest);
 
     BubbleContext makeCtx({bool metaInFooter = false}) => BubbleContext(
@@ -1342,7 +1342,7 @@ class MessageBubble extends StatelessWidget {
   Widget _buildCommentsFooter(ColorScheme cs) {
     final label = commentsLabel ?? 'Комментарии';
     final accent = isMe
-        ? BubbleCss.outgoingOn(cs, Theme.brightnessOf(context))
+        ? BubbleCss.outgoingOn(cs, cs.brightness)
         : cs.primary;
     return Material(
       color: Colors.transparent,

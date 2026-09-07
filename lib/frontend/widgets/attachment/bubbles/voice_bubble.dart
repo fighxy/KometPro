@@ -213,7 +213,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   }
 
   Color get _accent => widget.isMe
-      ? BubbleCss.outgoingOn(widget.cs, Theme.brightnessOf(context))
+      ? BubbleCss.outgoingOn(widget.cs, widget.cs.brightness)
       : widget.cs.primary;
 
   Widget _buildPlayButton() {

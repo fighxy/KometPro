@@ -690,18 +690,6 @@ extension _ChatTranscriptBuild on _ChatScreenState {
                               if (pos < 0) return null;
                               return items.length - pos;
                             },
-                            itemExtentBuilder: (index, _) {
-                              if (index == 0) return null;
-                              if (index > items.length) return 48;
-                              final item = items[items.length - index];
-                              if (item is DateSeparatorItem) return null;
-                              if (item is UnreadSeparatorItem) return null;
-                              if (item is ChatListMessageItem) {
-                                final message = item.message;
-                                return _itemExtentCache['${message.id}:${message.time}:${message.status}:${message.text?.length ?? 0}'];
-                              }
-                              return null;
-                            },
                           ),
                         ),
                       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import '../config/app_bubble_behavior.dart';
 import '../config/app_bubble_shape.dart';
