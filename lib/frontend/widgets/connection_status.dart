@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:m3e_collection/m3e_collection.dart';
 
 import '../../backend/api.dart';
-import 'package:komet/backend/app_services.dart';
+import 'app_scope.dart';
 import 'small_spinner.dart';
 
 final ValueNotifier<bool> debugForceOffline = ValueNotifier<bool>(false);
@@ -29,12 +29,14 @@ class ConnectionStatusBuilder extends StatefulWidget {
 }
 
 class _ConnectionStatusBuilderState extends State<ConnectionStatusBuilder> {
-  late SessionState _state = api.state;
+  late SessionState _state;
   StreamSubscription<SessionState>? _sub;
 
   @override
   void initState() {
     super.initState();
+    final api = AppScope.read(context).api;
+    _state = api.state;
     _sub = api.stateStream.listen((s) {
       if (mounted && s != _state) setState(() => _state = s);
     });

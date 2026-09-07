@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/backend/modules/chats.dart';
 import 'package:komet/backend/modules/contacts.dart';
 import 'package:komet/backend/modules/messages.dart' show ContactCache;
@@ -130,8 +130,8 @@ class _AddMembersCardState extends State<_AddMembersCard> {
   Future<void> _submit() async {
     if (_selected.isEmpty || _submitting) return;
     setState(() => _submitting = true);
-    final ok = await chats.addMembers(
-      api,
+    final ok = await AppScope.read(context).chats.addMembers(
+      AppScope.read(context).api,
       chatId: widget.chatId,
       userIds: _selected.toList(),
     );

@@ -6,7 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../backend/modules/chats.dart';
 import '../../../core/utils/image_utils.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/sheet_helpers.dart';
 import '../../widgets/swipe_route.dart';
@@ -64,7 +64,7 @@ class _CreateChannelFlowState extends State<_CreateChannelFlow> {
     setState(() => _creating = true);
     final navigator = Navigator.of(context, rootNavigator: true);
     try {
-      final chat = await chats.createChannel(api, title: title);
+      final chat = await AppScope.read(context).chats.createChannel(AppScope.read(context).api, title: title);
       if (!mounted) return;
       if (chat == null) {
         showCustomNotification(context, 'Не удалось создать канал');
@@ -73,7 +73,7 @@ class _CreateChannelFlowState extends State<_CreateChannelFlow> {
       }
 
       if (_avatar != null) {
-        final url = await chats.requestChatPhotoUploadUrl(api);
+        final url = await AppScope.read(context).chats.requestChatPhotoUploadUrl(AppScope.read(context).api);
         if (url != null) {
           final bytes = await compressAvatar(await _avatar!.readAsBytes());
           if (bytes == null) {
@@ -81,13 +81,13 @@ class _CreateChannelFlowState extends State<_CreateChannelFlow> {
               showCustomNotification(context, 'Не удалось обработать аватарку');
             }
           } else {
-            final token = await fileUploader.uploadImage(
+            final token = await AppScope.read(context).fileUploader.uploadImage(
               Uri.parse(url),
               bytes,
               filename: 'avatar.jpg',
             );
             if (token != null) {
-              await chats.setChatPhoto(api, chatId: chat.id, photoToken: token);
+              await AppScope.read(context).chats.setChatPhoto(AppScope.read(context).api, chatId: chat.id, photoToken: token);
             } else if (mounted) {
               showCustomNotification(context, 'Не удалось загрузить аватарку');
             }

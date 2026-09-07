@@ -12,7 +12,7 @@ import '../../../core/protocol/packet.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/schedule_time_picker.dart';
@@ -47,7 +47,7 @@ class _ScheduledMessagesScreenState extends State<ScheduledMessagesScreen>
   @override
   void initState() {
     super.initState();
-    _pushSub = api.pushStream
+    _pushSub = AppScope.read(context).api.pushStream
         .where(
           (p) =>
               p.opcode == Opcode.notifMsgDelayed &&
@@ -68,7 +68,7 @@ class _ScheduledMessagesScreenState extends State<ScheduledMessagesScreen>
   void reloadAfterReconnect() => _load();
 
   Future<void> _load() async {
-    final list = await messagesModule.fetchDelayedMessages(
+    final list = await AppScope.read(context).messages.fetchDelayedMessages(
       widget.accountId,
       widget.chatId,
     );
@@ -189,7 +189,7 @@ class _ScheduledMessagesScreenState extends State<ScheduledMessagesScreen>
       return;
     }
 
-    final ok = await messagesModule.editScheduledMessage(
+    final ok = await AppScope.read(context).messages.editScheduledMessage(
       widget.chatId,
       msg.id,
       text: controller.text.trim(),
@@ -216,7 +216,7 @@ class _ScheduledMessagesScreenState extends State<ScheduledMessagesScreen>
     );
     if (!confirmed || !mounted) return;
 
-    final ok = await messagesModule.deleteMessages(
+    final ok = await AppScope.read(context).messages.deleteMessages(
       widget.chatId,
       [msg.id],
       forEveryone: true,

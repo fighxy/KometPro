@@ -81,6 +81,7 @@ import '../../../core/storage/token_storage.dart';
 import '../../../core/storage/chat_activity_store.dart';
 import 'package:komet/backend/app_deps.dart';
 import '../../widgets/app_scope.dart';
+import '../../widgets/desktop_scroll.dart';
 import '../../widgets/attachment/attachment_sheet.dart';
 import '../../widgets/spectrum_background.dart';
 import '../../widgets/spectrum_tint.dart';
@@ -2007,7 +2008,9 @@ class _ChatListScreenState extends State<ChatListScreen>
         }
         return _handleStoriesScrollNotification(n);
       },
-      child: CustomScrollView(
+      child: DesktopScroll(
+        controller: sc,
+        child: CustomScrollView(
         controller: sc,
         physics: _StoriesScrollPhysics(
           blockPositive: _shouldBlockPositiveScroll,
@@ -2198,6 +2201,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             ),
           ),
         ],
+      ),
       ),
     );
   }

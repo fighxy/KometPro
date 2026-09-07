@@ -10,7 +10,7 @@ import '../../../backend/modules/messages.dart';
 import '../../../core/protocol/packet.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/utils/haptics.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/komet_avatar.dart';
@@ -114,7 +114,7 @@ class _FolderEditSheetState extends State<_FolderEditSheet> {
         if (mounted) setState(() => _loading = false);
         return;
       }
-      final list = await chats.getChats(accountId);
+      final list = await AppScope.read(context).chats.getChats(accountId);
       list.removeWhere(CloudStorageModule.isCloudStorageGroup);
       if (!mounted) return;
       setState(() {
@@ -174,7 +174,7 @@ class _FolderEditSheetState extends State<_FolderEditSheet> {
       final folder = widget.folder;
       if (folder == null) {
         await FoldersModule.createFolder(
-          api,
+          AppScope.read(context).api,
           _myId,
           title: title,
           include: _chatIds.toList(),
@@ -182,7 +182,7 @@ class _FolderEditSheetState extends State<_FolderEditSheet> {
         );
       } else {
         await FoldersModule.updateFolder(
-          api,
+          AppScope.read(context).api,
           _myId,
           folder,
           title: title,
@@ -221,7 +221,7 @@ class _FolderEditSheetState extends State<_FolderEditSheet> {
     setState(() => _busy = true);
     final navigator = Navigator.of(context);
     try {
-      await FoldersModule.deleteFolders(api, _myId, [folder.id]);
+      await FoldersModule.deleteFolders(AppScope.read(context).api, _myId, [folder.id]);
       Haptics.success();
       if (mounted) navigator.pop();
     } catch (e) {

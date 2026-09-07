@@ -6,7 +6,6 @@ import '../../../backend/modules/folders.dart';
 import '../../../core/protocol/packet.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/utils/haptics.dart';
-import 'package:komet/backend/app_services.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/sheet_helpers.dart';

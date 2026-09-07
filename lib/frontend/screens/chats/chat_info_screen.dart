@@ -8,7 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../contacts/edit_contact_sheet.dart';
 import '../../../backend/modules/complaints.dart';
@@ -182,7 +182,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
   @override
   void initState() {
     super.initState();
-    storiesModule.storiesChanged.addListener(_onStoriesChanged);
+    AppScope.read(context).stories.storiesChanged.addListener(_onStoriesChanged);
     ChatMembersStore.instance
         .listenable(widget.chatId)
         .addListener(_onMemberCountChanged);
@@ -225,7 +225,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
   @override
   void dispose() {
     _routeSettle.dispose();
-    storiesModule.storiesChanged.removeListener(_onStoriesChanged);
+    AppScope.read(context).stories.storiesChanged.removeListener(_onStoriesChanged);
     ChatMembersStore.instance
         .listenable(widget.chatId)
         .removeListener(_onMemberCountChanged);
@@ -293,7 +293,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
 
     _mediaChatId = (info?.raw['id'] as int?) ?? widget.chatId;
 
-    final cached = await chats.getChat(_myId, _mediaChatId);
+    final cached = await AppScope.read(context).chats.getChat(_myId, _mediaChatId);
     if (!mounted) return;
     if (cached.isNotEmpty) {
       _dontDisturbUntil = cached.first.dontDisturbUntil;
@@ -308,7 +308,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     }
     if (_anchorMsgId == null && info != null) {
       try {
-        final recent = await messagesModule.fetchHistory(
+        final recent = await AppScope.read(context).messages.fetchHistory(
           _myId,
           _mediaChatId,
           count: 1,
@@ -369,7 +369,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
   }
 
   Future<void> _loadBlockedState(int peerId) async {
-    final blocked = await ContactsModule.isBlocked(api, peerId);
+    final blocked = await ContactsModule.isBlocked(AppScope.read(context).api, peerId);
     if (!mounted || blocked == _blocked) return;
     _loadedUpdate(() => _blocked = blocked);
   }
@@ -467,8 +467,8 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     _membersLoading = true;
     if (!initial) _loadedRebuild();
 
-    final page = await chats.getChatMembers(
-      api,
+    final page = await AppScope.read(context).chats.getChatMembers(
+      AppScope.read(context).api,
       widget.chatId,
       marker: _memberMarker,
     );
@@ -494,7 +494,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       _scheduleMemberFillCheck();
     }
     if (fresh.isNotEmpty && AppStories.current.value) {
-      unawaited(storiesModule.loadOwnersPreviews(fresh));
+      unawaited(AppScope.read(context).stories.loadOwnersPreviews(fresh));
     }
 
     final total = _memberCount;
@@ -1099,7 +1099,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       _unreadStories = const [];
       return;
     }
-    final stories = storiesModule.cachedStories(preview.owner.ownerId);
+    final stories = AppScope.read(context).stories.cachedStories(preview.owner.ownerId);
     if (stories == null || stories.isEmpty) {
       _unreadStories = const [];
       return;
@@ -1519,7 +1519,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
 
     CachedContact? contact;
     try {
-      contact = await ContactsModule.addContact(api, peerId, '');
+      contact = await ContactsModule.addContact(AppScope.read(context).api, peerId, '');
     } catch (_) {}
 
     if (!mounted) return;
@@ -1557,8 +1557,8 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     setState(() => _muteBusy = true);
     final muted = _isMuted;
     final target = muted ? ChatsModule.muteOff : ChatsModule.muteForever;
-    final error = await chats.setChatMute(
-      api,
+    final error = await AppScope.read(context).chats.setChatMute(
+      AppScope.read(context).api,
       chatId: _mediaChatId,
       dontDisturbUntil: target,
     );
@@ -1639,7 +1639,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     );
     if (!mounted || !choice.confirmed) return;
 
-    final ok = await chats.leaveChat(api, chatId: _mediaChatId);
+    final ok = await AppScope.read(context).chats.leaveChat(AppScope.read(context).api, chatId: _mediaChatId);
     if (!mounted) return;
     if (!ok) {
       showCustomNotification(context, l10n.chatInfoLeaveFailed);
@@ -1661,8 +1661,8 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     );
     if (!mounted || !choice.confirmed) return;
 
-    final error = await chats.clearHistory(
-      api,
+    final error = await AppScope.read(context).chats.clearHistory(
+      AppScope.read(context).api,
       chatId: _mediaChatId,
       lastEventTime: _lastEventTime,
       forAll: canClearForAll && choice.checked,
@@ -1682,8 +1682,8 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     );
     if (!mounted || !choice.confirmed) return;
 
-    final error = await chats.deleteChat(
-      api,
+    final error = await AppScope.read(context).chats.deleteChat(
+      AppScope.read(context).api,
       chatId: _mediaChatId,
       lastEventTime: _lastEventTime,
       forAll: false,
@@ -1713,7 +1713,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       if (!mounted || !choice.confirmed) return;
     }
 
-    final ok = await ContactsModule.setBlocked(api, peerId, block);
+    final ok = await ContactsModule.setBlocked(AppScope.read(context).api, peerId, block);
     if (!mounted) return;
     if (!ok) {
       showCustomNotification(context, l10n.chatInfoBlockFailed);
@@ -1738,7 +1738,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       emptyLabel: l10n.chatInfoComplaintEmpty,
       loadReasons: () async {
         final reasons = await ComplaintsModule.reasonsFor(
-          api,
+          AppScope.read(context).api,
           ComplaintsModule.userTypeId,
         );
         return reasons
@@ -1747,7 +1747,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       },
       onSend: (reasonId) async {
         final ok = await ComplaintsModule.sendComplaint(
-          api,
+          AppScope.read(context).api,
           reasonId: reasonId,
           typeId: ComplaintsModule.userTypeId,
           ids: [peerId],
@@ -2378,7 +2378,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
 
     final story = member.blocked || !AppStories.current.value
         ? null
-        : storiesModule.previewOf(member.id);
+        : AppScope.read(context).stories.previewOf(member.id);
     final avatarRadius = story == null ? 22.0 : 19.0;
 
     return InkWell(
@@ -2809,7 +2809,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     final cached = ContactsModule.cachedPhotos(peerId);
     if (cached != null) _applyAvatarPhotos(cached);
     try {
-      final photos = await ContactsModule.fetchPhotos(api, peerId, count: 30);
+      final photos = await ContactsModule.fetchPhotos(AppScope.read(context).api, peerId, count: 30);
       if (!mounted) return;
       _avatarHistoryLoaded = true;
       _applyAvatarPhotos(photos);
@@ -2848,14 +2848,14 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
 
   Future<void> _loadStories(int peerId) async {
     if (!AppStories.current.value || _peerDeleted) return;
-    final cached = storiesModule.previewOf(peerId);
+    final cached = AppScope.read(context).stories.previewOf(peerId);
     if (cached != null && !cached.isEmpty && mounted) {
       setState(() {
         _storyPreview = cached;
         _refreshUnreadStories();
       });
     }
-    final fresh = await storiesModule.loadOwnerPreview(
+    final fresh = await AppScope.read(context).stories.loadOwnerPreview(
       StoryOwner(ownerId: peerId),
     );
     if (!mounted) return;

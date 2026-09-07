@@ -6,7 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../backend/modules/share_sender.dart';
 import '../../../core/media/share_thumbnail.dart';
 import '../../../core/share/share_labels.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../../models/animoji.dart';
 import '../../../models/shared_payload.dart';
 import '../../widgets/emoji_panel.dart';
@@ -71,7 +71,7 @@ class _ShareComposerBarState extends State<ShareComposerBar> {
 
   void _insertAnimoji(Animoji animoji) {
     _controller.insertAnimoji(animoji);
-    unawaited(animojiModule.noteUsed(animoji));
+    unawaited(AppScope.read(context).animoji.noteUsed(animoji));
   }
 
   Future<void> _send() async {

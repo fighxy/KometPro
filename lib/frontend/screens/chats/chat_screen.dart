@@ -92,6 +92,7 @@ import 'chat/view/selection_bar.dart';
 import 'chat/view/chat_header.dart';
 import 'chat/view/shimmer_loading.dart';
 import '../../widgets/app_scope.dart';
+import '../../widgets/desktop_scroll.dart';
 import '../../../backend/app_deps.dart';
 import '../../../core/config/app_commands.dart';
 import '../../../core/config/app_visual_style.dart';

@@ -3,17 +3,21 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../backend/api.dart';
-import 'package:komet/backend/app_services.dart';
+import 'app_scope.dart';
+
 mixin ReloadOnReconnect<T extends StatefulWidget> on State<T> {
   StreamSubscription<SessionState>? _reconnectSub;
-  int _reloadedEpoch = api.sessionEpoch;
+  late Api _api;
+  int _reloadedEpoch = 0;
 
   void reloadAfterReconnect();
 
   @override
   void initState() {
     super.initState();
-    _reconnectSub = api.stateStream.listen(_onSessionState);
+    _api = AppScope.read(context).api;
+    _reloadedEpoch = _api.sessionEpoch;
+    _reconnectSub = _api.stateStream.listen(_onSessionState);
   }
 
   @override
@@ -24,8 +28,8 @@ mixin ReloadOnReconnect<T extends StatefulWidget> on State<T> {
 
   void _onSessionState(SessionState state) {
     if (state != SessionState.online) return;
-    if (api.sessionEpoch == _reloadedEpoch) return;
-    _reloadedEpoch = api.sessionEpoch;
+    if (_api.sessionEpoch == _reloadedEpoch) return;
+    _reloadedEpoch = _api.sessionEpoch;
     if (mounted) reloadAfterReconnect();
   }
 }
