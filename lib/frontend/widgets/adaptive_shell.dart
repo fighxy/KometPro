@@ -14,6 +14,7 @@ import '../screens/chats/chat_list_screen.dart';
 import '../screens/chats/chat_screen.dart';
 import 'auth_limits_sheet.dart';
 import 'desktop_shortcuts.dart';
+import 'swipe_to_pop.dart';
 import 'update_dialog.dart';
 
 class AdaptiveShell extends StatefulWidget {
@@ -41,7 +42,8 @@ class DesktopChatSelection {
   });
 }
 
-class _AdaptiveShellState extends State<AdaptiveShell> {
+class _AdaptiveShellState extends State<AdaptiveShell>
+    with WidgetsBindingObserver {
   static const double _defaultListWidth = 380;
   static const double _minListWidth = 280;
   static const double _maxListWidth = 560;
@@ -52,19 +54,39 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
 
   final ValueNotifier<double> _listWidth = ValueNotifier(_defaultListWidth);
   final ValueNotifier<DesktopChatSelection?> _selected = ValueNotifier(null);
+  bool _hadHinge = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadListWidth();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _runStartupPrompts());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _hadHinge = AppBreakpoints.hingeOf(MediaQuery.of(context)) != null;
+      _runStartupPrompts();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _listWidth.dispose();
     _selected.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final hinge = AppBreakpoints.hingeOf(MediaQuery.of(context));
+      final hasHinge = hinge != null;
+      if (_hadHinge && !hasHinge) {
+        unawaited(_loadListWidth());
+      }
+      _hadHinge = hasHinge;
+    });
   }
 
   Future<void> _runStartupPrompts() async {
@@ -89,6 +111,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   Future<void> _persistListWidth() async {
+    if (_hadHinge) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_prefsKey, _listWidth.value);
   }
@@ -194,7 +217,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                     child: ValueListenableBuilder<DesktopChatSelection?>(
                       valueListenable: _selected,
                       builder: (context, selected, _) {
-                        return AnimatedSwitcher(
+                        final pane = AnimatedSwitcher(
                           duration: const Duration(milliseconds: 160),
                           switchInCurve: Curves.easeOut,
                           switchOutCurve: Curves.easeOut,
@@ -225,6 +248,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                                   embedded: true,
                                   onClose: _closeChat,
                                 ),
+                        );
+                        final iosPane = defaultTargetPlatform == TargetPlatform.iOS;
+                        return SwipeToPop(
+                          enabled: selected != null && iosPane,
+                          onPop: _closeChat,
+                          child: pane,
                         );
                       },
                     ),

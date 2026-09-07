@@ -44,6 +44,7 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
       registerNotifications(messenger)
       registerScreen(messenger)
       registerCalls(messenger)
+      registerHaptics(messenger)
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -192,5 +193,26 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
       }
     }
     events("ru.komet.app/calls_events", messenger) { _ in }
+  }
+
+  private func registerHaptics(_ messenger: FlutterBinaryMessenger) {
+    method("ru.komet.app/haptics", messenger) { call, result in
+      guard call.method == "notification" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      let type = (call.arguments as? [String: Any])?["type"] as? String ?? "success"
+      let generator = UINotificationFeedbackGenerator()
+      generator.prepare()
+      switch type {
+      case "warning":
+        generator.notificationOccurred(.warning)
+      case "error":
+        generator.notificationOccurred(.error)
+      default:
+        generator.notificationOccurred(.success)
+      }
+      result(nil)
+    }
   }
 }

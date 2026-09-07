@@ -15,10 +15,14 @@ class Haptics {
   Haptics._();
 
   static const String _prefKey = 'haptics_enabled';
+  static const _channel = MethodChannel('ru.komet.app/haptics');
 
   /// Master switch. Silences every haptic app-wide when `false`.
   /// Controlled by the user via Settings; persisted across launches.
   static bool enabled = true;
+
+  static bool get _ios =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   /// Restores the saved preference. Call once during app startup,
   /// before the first frame. Defaults to enabled when never set.
@@ -51,6 +55,10 @@ class Haptics {
     }
   }
 
+  static Future<void> _notify(String type) => _fire(
+    () => _channel.invokeMethod<void>('notification', {'type': type}),
+  );
+
   /// A crisp, light tick — taps, toggles, opening panels.
   static Future<void> tap() => _fire(HapticFeedback.lightImpact);
 
@@ -65,15 +73,17 @@ class Haptics {
 
   /// Message sent: a quick, instant tick (the "whoosh").
   static Future<void> send() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      return selection();
-    }
+    if (_ios) return selection();
     return tap();
   }
 
   /// A two-beat rising pulse — success, completion, "it landed".
   static Future<void> success() async {
     if (!enabled) return;
+    if (_ios) {
+      await _notify('success');
+      return;
+    }
     await _fire(HapticFeedback.lightImpact);
     await Future.delayed(const Duration(milliseconds: 90));
     await _fire(HapticFeedback.mediumImpact);
@@ -82,6 +92,10 @@ class Haptics {
   /// A double thud — errors, rejected or failed actions.
   static Future<void> error() async {
     if (!enabled) return;
+    if (_ios) {
+      await _notify('error');
+      return;
+    }
     await _fire(HapticFeedback.heavyImpact);
     await Future.delayed(const Duration(milliseconds: 120));
     await _fire(HapticFeedback.heavyImpact);
