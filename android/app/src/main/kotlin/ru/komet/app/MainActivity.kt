@@ -214,8 +214,21 @@ class MainActivity : FlutterActivity() {
 
             fun launch(intent: Intent, asForeground: Boolean) {
                 try {
+                    if (asForeground && Build.VERSION.SDK_INT >= 33) {
+                        val granted = ContextCompat.checkSelfPermission(
+                            ctx,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (!granted) {
+                            ActivityCompat.requestPermissions(
+                                ctx,
+                                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                4101,
+                            )
+                        }
+                    }
                     if (asForeground && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        startForegroundService(intent)
+                        ContextCompat.startForegroundService(ctx, intent)
                     } else {
                         startService(intent)
                     }

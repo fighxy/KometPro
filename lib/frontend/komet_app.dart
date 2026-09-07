@@ -32,6 +32,7 @@ import 'package:komet/core/storage/chat_wallpaper_store.dart';
 import 'package:komet/core/storage/token_storage.dart';
 import 'package:komet/core/transport/tls_config.dart';
 import 'package:komet/core/transport/vpn_bypass.dart';
+import 'package:komet/core/utils/android_system_ui.dart';
 import 'package:komet/core/utils/debug_session_log.dart';
 import 'package:komet/core/utils/logger.dart';
 import 'package:komet/core/utils/wallpaper_seed.dart';
@@ -748,6 +749,12 @@ class KometAppState extends State<KometApp>
             final darkScheme = _adjustDarkScheme(darkBase);
 
             _rebuildThemesIfNeeded(lightScheme, darkScheme);
+            final dark =
+                _effectiveThemeMode == ThemeMode.dark ||
+                (_effectiveThemeMode == ThemeMode.system &&
+                    MediaQuery.platformBrightnessOf(context) ==
+                        Brightness.dark);
+            syncAndroidSystemUi(dark ? Brightness.dark : Brightness.light);
 
             return MaterialApp(
               title: 'Komet',

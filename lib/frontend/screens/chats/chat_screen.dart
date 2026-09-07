@@ -1802,18 +1802,26 @@ class _ChatScreenState extends State<ChatScreen>
         _selectedIds,
         _search.searchMode,
         _textSelection,
+        _showAttachmentPanel,
+        _stickers.showPanel,
       ]),
       builder: (context, child) => PopScope(
         canPop:
             _selectedIds.value.isEmpty &&
             !_search.searchMode.value &&
-            _textSelection.value == null,
+            _textSelection.value == null &&
+            !_showAttachmentPanel.value &&
+            !_stickers.showPanel.value,
         onPopInvokedWithResult: (didPop, _) {
           if (didPop) return;
           if (_search.searchMode.value) {
             _closeSearch();
           } else if (_textSelection.value != null) {
             _exitTextSelection();
+          } else if (_showAttachmentPanel.value) {
+            _showAttachmentPanel.value = false;
+          } else if (_stickers.showPanel.value) {
+            _stickers.hide();
           } else {
             _clearSelection();
           }

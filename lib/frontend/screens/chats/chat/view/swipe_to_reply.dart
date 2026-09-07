@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/core/utils/haptics.dart';
@@ -27,6 +28,19 @@ class SwipeToReplyState extends State<SwipeToReply>
   double _dragX = 0.0;
   double _springFrom = 0.0;
   bool _triggered = false;
+  bool _edgeBlocked = false;
+
+  static bool get _android =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  void _onDragStart(DragStartDetails d) {
+    if (!_android) {
+      _edgeBlocked = false;
+      return;
+    }
+    final edge = MediaQuery.paddingOf(context).left + 28;
+    _edgeBlocked = d.globalPosition.dx <= edge;
+  }
 
   @override
   void initState() {
@@ -48,6 +62,7 @@ class SwipeToReplyState extends State<SwipeToReply>
   }
 
   void _onDragUpdate(DragUpdateDetails d) {
+    if (_edgeBlocked) return;
     if (_springBack.isAnimating) _springBack.stop();
     var next = _dragX + d.delta.dx;
     if (next > 0) next = 0;
@@ -59,6 +74,10 @@ class SwipeToReplyState extends State<SwipeToReply>
   }
 
   void _onDragEnd(DragEndDetails d) {
+    if (_edgeBlocked) {
+      _edgeBlocked = false;
+      return;
+    }
     if (_triggered) widget.onReply();
     _settle();
   }
@@ -83,6 +102,7 @@ class SwipeToReplyState extends State<SwipeToReply>
               () => LeftwardDragRecognizer(debugOwner: this),
               (instance) {
                 instance
+                  ..onStart = _onDragStart
                   ..onUpdate = _onDragUpdate
                   ..onEnd = _onDragEnd
                   ..onCancel = _onDragCancel;
