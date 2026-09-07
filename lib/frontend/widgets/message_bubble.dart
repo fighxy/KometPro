@@ -1158,7 +1158,9 @@ class MessageBubble extends StatelessWidget {
         isVideoNote || _isSticker || jumboAnimoji != null;
     final bubbleColor = noBubbleBackground
         ? Colors.transparent
-        : (isMe ? cs.primaryContainer : cs.surfaceContainerHighest);
+        : (isMe
+              ? BubbleCss.outgoingFill(cs, Theme.brightnessOf(context))
+              : cs.surfaceContainerHighest);
 
     BubbleContext makeCtx({bool metaInFooter = false}) => BubbleContext(
       context: context,
@@ -1339,7 +1341,9 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildCommentsFooter(ColorScheme cs) {
     final label = commentsLabel ?? 'Комментарии';
-    final accent = isMe ? cs.onPrimaryContainer : cs.primary;
+    final accent = isMe
+        ? BubbleCss.outgoingOn(cs, Theme.brightnessOf(context))
+        : cs.primary;
     return Material(
       color: Colors.transparent,
       child: InkWell(

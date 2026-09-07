@@ -212,8 +212,9 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     return Icon(icon, size: 14, color: color);
   }
 
-  Color get _accent =>
-      widget.isMe ? widget.cs.onPrimaryContainer : widget.cs.primary;
+  Color get _accent => widget.isMe
+      ? BubbleCss.outgoingOn(widget.cs, Theme.brightnessOf(context))
+      : widget.cs.primary;
 
   Widget _buildPlayButton() {
     final uploading = widget.uploadProgress;
@@ -288,10 +289,10 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,
             builder: (context, shown, _) => CircularProgressIndicator(
-              strokeWidth: 2,
+              strokeWidth: 3,
               value: shown >= 1.0 ? null : shown,
               color: _accent,
-              backgroundColor: _accent.withValues(alpha: 0.2),
+              backgroundColor: _accent.withValues(alpha: 0.22),
             ),
           );
         },

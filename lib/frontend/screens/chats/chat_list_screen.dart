@@ -3170,7 +3170,10 @@ class _ChatListScreenState extends State<ChatListScreen>
     final story = (_isSelectionMode || widget.forwardMode)
         ? null
         : _storyPreviewFor(storyOwnerId);
-    final avatarRadius = story == null ? 30.0 : 26.0;
+    final desktopPane = widget.onChatSelected != null;
+    final avatarRadius = desktopPane
+        ? (story == null ? 22.0 : 20.0)
+        : (story == null ? 30.0 : 26.0);
 
     final CircleAvatar rawAvatar = CircleAvatar(
       radius: avatarRadius,
@@ -3213,7 +3216,6 @@ class _ChatListScreenState extends State<ChatListScreen>
               ),
             ),
           );
-    final desktopPane = widget.onChatSelected != null;
     return DesktopChatChrome(
       pinned: isPinned,
       active: isActive,
@@ -3302,7 +3304,9 @@ class _ChatListScreenState extends State<ChatListScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                padding: desktopPane
+                    ? const EdgeInsets.fromLTRB(12, 5, 12, 5)
+                    : const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -3349,7 +3353,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: SizedBox(
-                    height: 54,
+                    height: desktopPane ? 44 : 54,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

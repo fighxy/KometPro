@@ -30,7 +30,7 @@ class _AnimatedLottieIconState extends State<AnimatedLottieIcon>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 280),
     );
     if (widget.active && widget.animateOnMount) {
       _controller.forward(from: 0);
@@ -70,7 +70,13 @@ class _AnimatedLottieIconState extends State<AnimatedLottieIcon>
           ],
         ),
         onLoaded: (composition) {
-          _controller.duration = composition.duration;
+          final reduce = MediaQuery.disableAnimationsOf(context);
+          _controller.duration = reduce
+              ? Duration.zero
+              : composition.duration * 0.7;
+          if (reduce) {
+            _controller.value = widget.active ? 1.0 : 0.0;
+          }
         },
       ),
     );

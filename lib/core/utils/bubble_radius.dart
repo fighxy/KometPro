@@ -44,6 +44,17 @@ class BubbleCss {
     AppBubbleShape.current,
     AppBubbleBehavior.current,
   ]);
+
+  /// Darker ink on light outgoing bubbles so clock/icons match Telegram.
+  static Color outgoingOn(ColorScheme cs, Brightness brightness) {
+    if (brightness == Brightness.dark) return cs.onPrimaryContainer;
+    return Color.lerp(cs.onPrimaryContainer, cs.onSurface, 0.58)!;
+  }
+
+  static Color outgoingFill(ColorScheme cs, Brightness brightness) {
+    if (brightness == Brightness.dark) return cs.primaryContainer;
+    return Color.lerp(cs.primaryContainer, cs.primary, 0.16)!;
+  }
 }
 
 const double kBubbleBigRadius = 24;
