@@ -67,7 +67,6 @@ class FormattedMessageText extends StatefulWidget {
     final fontSize = style.fontSize ?? 16;
     final spans = <InlineSpan>[];
     for (final segment in segmentizeFormats(text, ranges)) {
-      final content = text.substring(segment.start, segment.end);
       final animojiUrl = segment.animojiUrl;
       if (animojiUrl != null) {
         final box = fontSize * 1.35;
@@ -77,23 +76,18 @@ class FormattedMessageText extends StatefulWidget {
             child: SizedBox(
               width: box,
               height: box,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Text(content, style: style.copyWith(fontSize: fontSize)),
-                  LottieImage(
-                    lottieUrl: animojiUrl,
-                    size: box,
-                    memCacheWidth: 96,
-                    shimmer: false,
-                  ),
-                ],
+              child: LottieImage(
+                lottieUrl: animojiUrl,
+                size: box,
+                memCacheWidth: 96,
+                shimmer: false,
               ),
             ),
           ),
         );
         continue;
       }
+      final content = text.substring(segment.start, segment.end);
       spans.add(
         TextSpan(
           text: content,
@@ -290,21 +284,12 @@ class _FormattedMessageTextState extends State<FormattedMessageText> {
             child: SizedBox(
               width: box,
               height: box,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Text(
-                    content,
-                    style: widget.style.copyWith(fontSize: fontSize * 1.15),
-                  ),
-                  LottieImage(
-                    lottieUrl: segment.animojiUrl,
-                    size: box,
-                    memCacheWidth: 120,
-                    shimmer: false,
-                    eager: true,
-                  ),
-                ],
+              child: LottieImage(
+                lottieUrl: segment.animojiUrl,
+                size: box,
+                memCacheWidth: 120,
+                shimmer: false,
+                eager: true,
               ),
             ),
           ),
