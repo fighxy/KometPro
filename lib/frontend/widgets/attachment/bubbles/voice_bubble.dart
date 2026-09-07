@@ -8,6 +8,7 @@ import '../../../../core/config/komet_settings.dart';
 import '../../../../core/media/media_playback.dart';
 import '../../../../core/media/voice_audio_controller.dart';
 import '../../../../core/utils/format.dart';
+import '../../../../core/utils/chat_layout.dart';
 import '../../../../core/utils/logger.dart';
 import '../../custom_notification.dart';
 import '../../small_spinner.dart';
@@ -326,113 +327,122 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
         ? widget.cs.onPrimaryContainer
         : widget.cs.primary;
 
-    return SizedBox(
-      width: 240,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildPlayButton(),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _SeekableWaveform(
-                  onClaim: _claimPlayback,
-                  onToggle: _toggle,
-                  audio: _audio,
-                  amps: _amps,
-                  active: waveActiveColor,
-                  inactive: waveInactiveColor,
-                ),
-              ),
-              const SizedBox(width: 8),
-              _buildTranscribeButton(),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        final width = !_transcriptionVisible
+            ? 240.0
+            : maxW.isFinite
+            ? maxW
+            : ChatLayout.maxBubbleWidth(MediaQuery.sizeOf(context).width);
+        const playSize = 32.0;
+        const playWaveGap = 10.0;
+        return SizedBox(
+          width: width,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(width: 32, child: Center(child: _buildTimeLabel())),
-              const SizedBox(width: 10),
-              Expanded(
-                child: AnimatedSize(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  alignment: Alignment.topLeft,
-                  child: _transcriptionVisible
-                      ? Text(
-                          _transcriptionText ?? '',
-                          style: TextStyle(
-                            color: widget.textColor.withValues(alpha: 0.85),
-                            fontSize: 14,
-                            height: 1.35,
-                          ),
-                        )
-                      : const SizedBox.shrink(),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildPlayButton(),
+                  const SizedBox(width: playWaveGap),
+                  Expanded(
+                    child: _SeekableWaveform(
+                      onClaim: _claimPlayback,
+                      onToggle: _toggle,
+                      audio: _audio,
+                      amps: _amps,
+                      active: waveActiveColor,
+                      inactive: waveInactiveColor,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildTranscribeButton(),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: playSize + playWaveGap,
+                  top: 1,
+                ),
+                child: Row(
+                  children: [
+                    _buildTimeLabel(),
+                    if (!_transcriptionVisible) ...[
+                      const Spacer(),
+                      Text(
+                        formatClock(
+                          DateTime.fromMillisecondsSinceEpoch(widget.time),
+                          withSeconds: KometSettings.fullTimestamp.value,
+                        ),
+                        style: TextStyle(
+                          color: widget.textColor.withValues(alpha: 0.6),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (widget.isMe) ...[
+                        const SizedBox(width: 2),
+                        _buildStatusIcon(),
+                      ],
+                      if (widget.deleted) ...[
+                        const SizedBox(width: 2),
+                        Icon(
+                          Symbols.delete,
+                          size: 13,
+                          color: widget.textColor.withValues(alpha: 0.6),
+                        ),
+                      ],
+                    ],
+                  ],
                 ),
               ),
-              if (!_transcriptionVisible) ...[
+              if (_transcriptionVisible) ...[
+                const SizedBox(height: 6),
                 Text(
-                  formatClock(
-                    DateTime.fromMillisecondsSinceEpoch(widget.time),
-                    withSeconds: KometSettings.fullTimestamp.value,
-                  ),
+                  _transcriptionText ?? '',
                   style: TextStyle(
-                    color: widget.textColor.withValues(alpha: 0.6),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    color: widget.textColor.withValues(alpha: 0.85),
+                    fontSize: 14,
+                    height: 1.35,
                   ),
                 ),
-                if (widget.isMe) ...[
-                  const SizedBox(width: 2),
-                  _buildStatusIcon(),
-                ],
-                if (widget.deleted) ...[
-                  const SizedBox(width: 2),
-                  Icon(
-                    Symbols.delete,
-                    size: 13,
-                    color: widget.textColor.withValues(alpha: 0.6),
-                  ),
-                ],
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      formatClock(
+                        DateTime.fromMillisecondsSinceEpoch(widget.time),
+                        withSeconds: KometSettings.fullTimestamp.value,
+                      ),
+                      style: TextStyle(
+                        color: widget.textColor.withValues(alpha: 0.6),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (widget.isMe) ...[
+                      const SizedBox(width: 2),
+                      _buildStatusIcon(),
+                    ],
+                    if (widget.deleted) ...[
+                      const SizedBox(width: 2),
+                      Icon(
+                        Symbols.delete,
+                        size: 13,
+                        color: widget.textColor.withValues(alpha: 0.6),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ],
           ),
-          if (_transcriptionVisible) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  formatClock(
-                    DateTime.fromMillisecondsSinceEpoch(widget.time),
-                    withSeconds: KometSettings.fullTimestamp.value,
-                  ),
-                  style: TextStyle(
-                    color: widget.textColor.withValues(alpha: 0.6),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (widget.isMe) ...[
-                  const SizedBox(width: 2),
-                  _buildStatusIcon(),
-                ],
-                if (widget.deleted) ...[
-                  const SizedBox(width: 2),
-                  Icon(
-                    Symbols.delete,
-                    size: 13,
-                    color: widget.textColor.withValues(alpha: 0.6),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 

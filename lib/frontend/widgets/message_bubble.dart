@@ -78,7 +78,7 @@ class _RenderTextWithMeta extends RenderBox
         ContainerRenderObjectMixin<RenderBox, _TextWithMetaParentData>,
         RenderBoxContainerDefaultsMixin<RenderBox, _TextWithMetaParentData> {
   static const double _gap = 8;
-  static const double _baselineNudge = 2;
+  static const double _belowMid = 1;
 
   RenderBox get _text => firstChild!;
   RenderBox get _meta => lastChild!;
@@ -175,11 +175,15 @@ class _RenderTextWithMeta extends RenderBox
     size = constraints.constrain(Size(width, height));
 
     (_text.parentData! as _TextWithMetaParentData).offset = Offset.zero;
+    final metaY = metaOnOwnLine
+        ? size.height - metaSize.height
+        : math.max(
+            textSize.height * 0.5 + _belowMid,
+            size.height - metaSize.height,
+          );
     (_meta.parentData! as _TextWithMetaParentData).offset = Offset(
       math.max(0, size.width - metaSize.width),
-      metaOnOwnLine
-          ? size.height - metaSize.height
-          : size.height - metaSize.height - _baselineNudge,
+      metaY,
     );
   }
 
