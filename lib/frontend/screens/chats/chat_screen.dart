@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:komet/backend/modules/chat_preview.dart';
-import 'package:komet/backend/modules/_deps.chats.dart';
+import 'package:komet/backend/modules/chats.dart';
 import 'package:komet/backend/modules/comments.dart';
 import 'package:komet/backend/modules/upload_service.dart';
 import 'package:komet/backend/modules/webapp.dart';
