@@ -13,12 +13,14 @@ class MediaPlaybackPill extends StatelessWidget {
     super.key,
     this.borderRadius,
     this.margin = EdgeInsets.zero,
+    this.onlyChatId,
   });
 
   final BorderRadius? borderRadius;
   final EdgeInsets margin;
+  final int? onlyChatId;
 
-  static const double height = 30;
+  static const double height = 48;
 
   @override
   Widget build(BuildContext context) {
@@ -32,24 +34,32 @@ class MediaPlaybackPill extends StatelessWidget {
           case PlaybackKind.voice:
             return ValueListenableBuilder<VoiceTrack?>(
               valueListenable: playback.voice,
-              builder: (context, track, _) => track == null
-                  ? const SizedBox.shrink()
-                  : _VoicePill(
-                      track: track,
-                      borderRadius: borderRadius,
-                      margin: margin,
-                    ),
+              builder: (context, track, _) {
+                if (track == null) return const SizedBox.shrink();
+                if (onlyChatId != null && track.chatId != onlyChatId) {
+                  return const SizedBox.shrink();
+                }
+                return _VoicePill(
+                  track: track,
+                  borderRadius: borderRadius,
+                  margin: margin,
+                );
+              },
             );
           case PlaybackKind.videoNote:
             return ValueListenableBuilder<VideoNoteTrack?>(
               valueListenable: playback.videoNote,
-              builder: (context, track, _) => track == null
-                  ? const SizedBox.shrink()
-                  : _VideoNotePill(
-                      track: track,
-                      borderRadius: borderRadius,
-                      margin: margin,
-                    ),
+              builder: (context, track, _) {
+                if (track == null) return const SizedBox.shrink();
+                if (onlyChatId != null && track.chatId != onlyChatId) {
+                  return const SizedBox.shrink();
+                }
+                return _VideoNotePill(
+                  track: track,
+                  borderRadius: borderRadius,
+                  margin: margin,
+                );
+              },
             );
         }
       },
@@ -228,7 +238,7 @@ class _PillSurface extends StatelessWidget {
                                 ? Symbols.pause
                                 : Symbols.play_arrow,
                             color: cs.primary,
-                            size: 19,
+                            size: 26,
                             onTap: onToggle,
                           ),
                         ),
@@ -239,7 +249,7 @@ class _PillSurface extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: cs.onSurfaceVariant,
-                              fontSize: 13,
+                              fontSize: 15,
                             ),
                           ),
                         ),
@@ -247,7 +257,7 @@ class _PillSurface extends StatelessWidget {
                         _IconTap(
                           icon: Symbols.close,
                           color: cs.onSurfaceVariant,
-                          size: 17,
+                          size: 22,
                           onTap: onClose,
                         ),
                       ],
@@ -323,20 +333,17 @@ class _SpeedChip extends StatelessWidget {
       radius: 22,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-            width: 1.2,
-          ),
-          borderRadius: BorderRadius.circular(6),
+          color: cs.primaryContainer,
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: cs.onSurfaceVariant,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+            color: cs.onPrimaryContainer,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),

@@ -49,7 +49,6 @@ import 'notifications_screen.dart';
 import 'profile_qr_sheet.dart';
 import 'security_screen.dart';
 import 'spoof_screen.dart';
-import '../../widgets/media_playback_pill.dart';
 import '../../../core/config/app_fonts.dart';
 import '../../../core/config/app_shape.dart';
 
@@ -392,11 +391,6 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
                     expandedExtent: expandedH,
                     headerBuilder: (ctx, t) =>
                         _buildHeader(ctx, cs, fullName, phone, t),
-                  ),
-                ),
-                const SliverToBoxAdapter(
-                  child: MediaPlaybackPill(
-                    margin: EdgeInsets.fromLTRB(16, 8, 16, 0),
                   ),
                 ),
                 SliverToBoxAdapter(

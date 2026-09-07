@@ -91,6 +91,7 @@ extension _ChatTranscriptBuild on _ChatScreenState {
           children: [
             ?banner,
             MediaPlaybackPill(
+              onlyChatId: widget.chatId,
               borderRadius: banner == null
                   ? BorderRadius.circular(16)
                   : const BorderRadius.vertical(bottom: Radius.circular(16)),
@@ -133,6 +134,11 @@ extension _ChatTranscriptBuild on _ChatScreenState {
     return Column(
       children: [
         ?banner,
+        MediaPlaybackPill(
+          onlyChatId: widget.chatId,
+          margin: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+          borderRadius: BorderRadius.circular(16),
+        ),
         Expanded(
           child: Stack(
             fit: StackFit.expand,

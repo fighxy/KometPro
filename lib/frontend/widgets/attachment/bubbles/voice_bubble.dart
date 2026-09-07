@@ -458,14 +458,25 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
         alignment: Alignment.center,
         child: _transcriptionLoading
             ? SmallSpinner(size: 12, color: on.withValues(alpha: 0.7))
-            : Text(
-                '→Т',
-                style: TextStyle(
-                  color: glyph,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                ),
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Symbols.arrow_right_alt, size: 12, color: glyph, weight: 700),
+                  Text(
+                    'Т',
+                    textHeightBehavior: const TextHeightBehavior(
+                      applyHeightToFirstAscent: false,
+                      applyHeightToLastDescent: false,
+                    ),
+                    style: TextStyle(
+                      color: glyph,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
+                ],
               ),
       ),
     );
