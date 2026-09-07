@@ -43,6 +43,7 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
       registerVideoNote(messenger)
       registerNotifications(messenger)
       registerScreen(messenger)
+      registerCalls(messenger)
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -173,5 +174,23 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
     events("ru.komet.app/notification_events", messenger) { sink in
       KometNotifications.shared.attach(sink)
     }
+  }
+
+  private func registerCalls(_ messenger: FlutterBinaryMessenger) {
+    method("ru.komet.app/calls", messenger) { call, result in
+      switch call.method {
+      case "consumeInitialCall",
+           "notifyAccepted",
+           "ensureOngoing",
+           "setScreenShare",
+           "dropOngoing",
+           "notifyEnded",
+           "cancelIncoming":
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    events("ru.komet.app/calls_events", messenger) { _ in }
   }
 }

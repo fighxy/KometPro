@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,7 +64,12 @@ class Haptics {
   static Future<void> selection() => _fire(HapticFeedback.selectionClick);
 
   /// Message sent: a quick, instant tick (the "whoosh").
-  static Future<void> send() => tap();
+  static Future<void> send() {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      return selection();
+    }
+    return tap();
+  }
 
   /// A two-beat rising pulse — success, completion, "it landed".
   static Future<void> success() async {

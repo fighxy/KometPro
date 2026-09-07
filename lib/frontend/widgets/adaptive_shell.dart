@@ -138,10 +138,17 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
             },
             child: LayoutBuilder(
           builder: (context, constraints) {
-            if (!AppBreakpoints.useSplitView(constraints.maxWidth)) {
+            final hinge = AppBreakpoints.hingeOf(MediaQuery.of(context));
+            if (!AppBreakpoints.useSplitView(
+              constraints.maxWidth,
+              hinge: hinge,
+            )) {
               return const ChatListScreen();
             }
             final totalWidth = constraints.maxWidth;
+            final hingeWidth = hinge == null
+                ? null
+                : AppBreakpoints.hingeListWidth(hinge, totalWidth);
             final cs = Theme.of(context).colorScheme;
             return Scaffold(
               backgroundColor: cs.surface,
@@ -150,7 +157,8 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                   ValueListenableBuilder<double>(
                     valueListenable: _listWidth,
                     builder: (context, width, _) {
-                      final effectiveListWidth = width.clamp(
+                      final hingeLocked = hingeWidth;
+                      final effectiveListWidth = (hingeLocked ?? width).clamp(
                         _minListWidth,
                         (totalWidth - _minChatPaneWidth - _dividerHitWidth)
                             .clamp(_minListWidth, _maxListWidth),

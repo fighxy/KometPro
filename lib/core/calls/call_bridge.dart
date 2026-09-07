@@ -24,8 +24,18 @@ class CallBridge {
     }
   }
 
+  bool get _ios {
+    try {
+      return Platform.isIOS;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool get _native => _android || _ios;
+
   void init() {
-    if (_started || !_android) return;
+    if (_started || !_native) return;
     _started = true;
     _events.receiveBroadcastStream().listen(
       _handle,
@@ -34,7 +44,7 @@ class CallBridge {
   }
 
   Future<void> checkInitialCall() async {
-    if (!_android) return;
+    if (!_native) return;
     try {
       _handle(await _method.invokeMethod<dynamic>('consumeInitialCall'));
     } catch (e) {
@@ -70,7 +80,7 @@ class CallBridge {
   }
 
   Future<void> notifyAccepted({String? caller}) async {
-    if (!_android) return;
+    if (!_native) return;
     try {
       await _method.invokeMethod<void>('notifyAccepted', {'caller': caller});
     } catch (e) {
@@ -79,7 +89,7 @@ class CallBridge {
   }
 
   Future<void> ensureOngoing({String? caller}) async {
-    if (!_android) return;
+    if (!_native) return;
     try {
       await _method.invokeMethod<void>('ensureOngoing', {'caller': caller});
     } catch (e) {
@@ -88,7 +98,7 @@ class CallBridge {
   }
 
   Future<void> setScreenShare(bool enabled, {String? caller}) async {
-    if (!_android) return;
+    if (!_native) return;
     try {
       await _method.invokeMethod<void>('setScreenShare', {
         'enabled': enabled,
@@ -100,7 +110,7 @@ class CallBridge {
   }
 
   Future<void> dropOngoing() async {
-    if (!_android) return;
+    if (!_native) return;
     try {
       await _method.invokeMethod<void>('dropOngoing');
     } catch (e) {
@@ -109,7 +119,7 @@ class CallBridge {
   }
 
   Future<void> notifyEnded() async {
-    if (!_android) return;
+    if (!_native) return;
     try {
       await _method.invokeMethod<void>('notifyEnded');
     } catch (e) {
@@ -118,7 +128,7 @@ class CallBridge {
   }
 
   Future<void> cancelIncoming() async {
-    if (!_android) return;
+    if (!_native) return;
     try {
       await _method.invokeMethod<void>('cancelIncoming');
     } catch (e) {
