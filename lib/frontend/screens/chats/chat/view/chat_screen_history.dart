@@ -21,7 +21,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
     unawaited(_refreshBadge());
 
     try {
-      final chatRows = await _deps._deps.chats.getChat(_myId, widget.chatId);
+      final chatRows = await _deps.chats.getChat(_myId, widget.chatId);
       if (!mounted) return;
       if (chatRows.isNotEmpty) {
         final channelSubscribed =
@@ -685,7 +685,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
 
   Future<void> _reloadChatMeta() async {
     if (_myId == 0) return;
-    final rows = await _deps._deps.chats.getChat(_myId, widget.chatId);
+    final rows = await _deps.chats.getChat(_myId, widget.chatId);
     if (!mounted || rows.isEmpty) return;
     final fresh = rows.first;
     final current = chat;

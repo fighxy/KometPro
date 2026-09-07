@@ -146,6 +146,26 @@ part 'chat/view/chat_screen_navigation.dart';
 part 'chat/view/chat_screen_selection.dart';
 part 'chat/view/chat_screen_send.dart';
 
+const bool _crossChatReplySupported = false;
+const double _jumpCacheExtentPx = 800.0;
+const double _avgMessageHeight = 72.0;
+const double _historyPrefetchExtent = _avgMessageHeight * 8;
+const double _scrollDownRevealExtent = _avgMessageHeight * 30;
+const double _scrollDownRevealFactor = 0.6;
+const double _scrollDownTeleportFactor = 2.0;
+const double _glossyHeaderHeight = 76.0;
+const double _glossySearchHeight = 58.0;
+const double _pinnedBannerLift = 6.0;
+const double _edgeFadeHeight = 24.0;
+const double _scrollDownSize = 46.0;
+const double _materialIconSlot = 48.0;
+const double _unreadSeparatorHeight = 30.0;
+const double _unreadSeparatorInset = 72.0;
+const double _unreadAnchorFallbackAlignment = 0.3;
+const int _jumpStallLimit = 8;
+const int _jumpFrameLimit = 240;
+const double _jumpStepMaxScreens = 4.0;
+
 class ForwardRequest {
   final int sourceChatId;
   final String sourceChatName;
@@ -461,7 +481,6 @@ class _ChatScreenState extends State<ChatScreen>
   final ValueNotifier<List<CachedMessage>> _pendingForwards = ValueNotifier(
     const [],
   );
-  static const bool _crossChatReplySupported = false;
   int? _replySourceChatId;
   ForwardRequest? _forwardRequest;
   bool _forwardSending = false;
@@ -469,7 +488,6 @@ class _ChatScreenState extends State<ChatScreen>
   Timer? _highlightTimer;
   final ValueNotifier<double?> _jumpCacheExtent = ValueNotifier<double?>(null);
   Timer? _goToMessageSettleTimer;
-  static const double _jumpCacheExtentPx = 800.0;
 
   late final RouteSettle _routeSettle = RouteSettle(isMounted: () => mounted);
 
@@ -515,24 +533,6 @@ class _ChatScreenState extends State<ChatScreen>
   final GlobalKey _messageListKey = GlobalKey();
   _ChatMessageList? _messageListWidget;
   final Set<String> _deletingIds = {};
-
-  static const double _avgMessageHeight = 72.0;
-  static const double _historyPrefetchExtent = _avgMessageHeight * 8;
-  static const double _scrollDownRevealExtent = _avgMessageHeight * 30;
-  static const double _scrollDownRevealFactor = 0.6;
-  static const double _scrollDownTeleportFactor = 2.0;
-  static const double _glossyHeaderHeight = 76.0;
-  static const double _glossySearchHeight = 58.0;
-  static const double _pinnedBannerLift = 6.0;
-  static const double _edgeFadeHeight = 24.0;
-  static const double _scrollDownSize = 46.0;
-  static const double _materialIconSlot = 48.0;
-  static const double _unreadSeparatorHeight = 30.0;
-  static const double _unreadSeparatorInset = 72.0;
-  static const double _unreadAnchorFallbackAlignment = 0.3;
-  static const int _jumpStallLimit = 8;
-  static const int _jumpFrameLimit = 240;
-  static const double _jumpStepMaxScreens = 4.0;
 
   final BackdropKey _barBackdrop = BackdropKey();
   final BackdropKey _pillBackdrop = BackdropKey();
@@ -1753,7 +1753,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
-  static bool _sameElements(
+  bool _sameElements(
     List<Map<String, dynamic>> a,
     List<Map<String, dynamic>> b,
   ) {
