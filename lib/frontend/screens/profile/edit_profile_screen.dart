@@ -4,7 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/image_utils.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
@@ -62,7 +62,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     setState(() => _isSaving = true);
     try {
-      final newProfile = await accountModule.updateProfileName(
+      final newProfile = await AppScope.read(context).account.updateProfileName(
         firstName,
         _lastNameController.text.trim().isEmpty
             ? null
@@ -112,8 +112,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         setState(() => _isSaving = false);
         return;
       }
-      final url = await accountModule.getAvatarUploadUrl();
-      final token = await fileUploader.uploadImage(
+      final url = await AppScope.read(context).account.getAvatarUploadUrl();
+      final token = await AppScope.read(context).fileUploader.uploadImage(
         Uri.parse(url),
         processed,
         filename: 'avatar.jpg',
@@ -124,7 +124,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         setState(() => _isSaving = false);
         return;
       }
-      final newProfile = await accountModule.updateProfileAvatar(token);
+      final newProfile = await AppScope.read(context).account.updateProfileAvatar(token);
       if (!mounted) return;
       setState(() {
         _avatarUrl = newProfile.baseUrl;
@@ -144,7 +144,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (_isSaving || _photoId == null) return;
     setState(() => _isSaving = true);
     try {
-      final newProfile = await accountModule.removeProfilePhoto(_photoId!);
+      final newProfile = await AppScope.read(context).account.removeProfilePhoto(_photoId!);
       _avatarUrl = newProfile.baseUrl;
       _photoId = newProfile.photoId;
       if (!mounted) return;

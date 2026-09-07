@@ -3,7 +3,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/storage/spoofing_service.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../../models/spoof_profile.dart';
 import '../../widgets/adaptive_shell.dart';
 import '../../widgets/custom_notification.dart';
@@ -104,7 +104,7 @@ class _TokenLoginScreenState extends State<TokenLoginScreen> {
 
     try {
       await SpoofingService.saveProfile(SpoofingService.pendingScope, profile);
-      await accountModule.loginWithToken(_tokenController.text.trim());
+      await AppScope.read(context).account.loginWithToken(_tokenController.text.trim());
       if (!mounted) return;
       await Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const AdaptiveShell()),

@@ -3,7 +3,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../backend/modules/account/account_models.dart';
 import '../../../core/protocol/packet.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/auth_limits_sheet.dart';
 import '../../widgets/custom_notification.dart';
@@ -65,7 +65,7 @@ class _Password2FAScreenState extends State<Password2FAScreen>
 
     var passed = false;
     try {
-      final result = await accountModule.checkPassword(
+      final result = await AppScope.read(context).account.checkPassword(
         password: _passwordController.text,
         trackId: widget.trackId,
       );
@@ -73,7 +73,7 @@ class _Password2FAScreenState extends State<Password2FAScreen>
 
       if (!mounted) return;
 
-      final loginResult = await accountModule.login(
+      final loginResult = await AppScope.read(context).account.login(
         accountId: result.accountId,
         token: result.loginToken,
       );

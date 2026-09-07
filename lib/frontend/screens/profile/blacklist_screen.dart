@@ -7,7 +7,7 @@ import '../../../core/config/app_fonts.dart';
 import '../../../core/config/app_shape.dart';
 import '../../../core/utils/names.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/glossy_pill.dart';
@@ -42,7 +42,7 @@ class _BlacklistScreenState extends State<BlacklistScreen>
 
   Future<void> _load() async {
     try {
-      final contacts = await accountModule.getBlockedContacts();
+      final contacts = await AppScope.read(context).account.getBlockedContacts();
       if (!mounted) return;
       setState(() {
         _contacts = contacts;
@@ -68,7 +68,7 @@ class _BlacklistScreenState extends State<BlacklistScreen>
     if (_pending.contains(contact.id)) return;
     final l10n = AppLocalizations.of(context)!;
     setState(() => _pending.add(contact.id));
-    final ok = await ContactsModule.setBlocked(api, contact.id, false);
+    final ok = await ContactsModule.setBlocked(AppScope.read(context).api, contact.id, false);
     if (!mounted) return;
     setState(() {
       _pending.remove(contact.id);

@@ -4,7 +4,7 @@ import 'package:komet/l10n/app_localizations.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../backend/modules/account.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/auth_limits_sheet.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/login_success_screen.dart';
@@ -51,14 +51,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      final accountId = await accountModule.completeRegistration(
+      final accountId = await AppScope.read(context).account.completeRegistration(
         token: widget.registerToken,
         firstName: firstName,
         lastName: lastName.isEmpty ? null : lastName,
         photoId: _selectedPhotoId,
       );
 
-      final loginResult = await accountModule.login(
+      final loginResult = await AppScope.read(context).account.login(
         accountId: accountId,
         token: '',
       );

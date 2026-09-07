@@ -8,7 +8,7 @@ import '../../../core/push/fkm_controller.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/config/build_profile.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/reload_on_reconnect.dart';
@@ -48,7 +48,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   void reloadAfterReconnect() => _load();
 
   Future<void> _load() async {
-    final config = await accountModule.getPrivacyConfig();
+    final config = await AppScope.read(context).account.getPrivacyConfig();
     if (!mounted) return;
     setState(() {
       _allNotifications = config.chatsPushNotification == 'ON';
@@ -214,7 +214,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                         value: _allNotifications,
                         onChanged: (v) => _apply(
                           v,
-                          () => accountModule.setChatsPushNotification(v),
+                          () => AppScope.read(context).account.setChatsPushNotification(v),
                           (b) => _allNotifications = b,
                         ),
                       ),
@@ -235,7 +235,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                         enabled: _allNotifications,
                         onChanged: (v) => _apply(
                           v,
-                          () => accountModule.setMessagePreview(v),
+                          () => AppScope.read(context).account.setMessagePreview(v),
                           (b) => _messagePreview = b,
                         ),
                       ),
@@ -246,7 +246,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                         enabled: _allNotifications,
                         onChanged: (v) => _apply(
                           v,
-                          () => accountModule.setNotificationSound(v),
+                          () => AppScope.read(context).account.setNotificationSound(v),
                           (b) => _sound = b,
                         ),
                       ),
@@ -266,7 +266,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                         value: _callNotifications,
                         onChanged: (v) => _apply(
                           v,
-                          () => accountModule.setCallNotifications(v),
+                          () => AppScope.read(context).account.setCallNotifications(v),
                           (b) => _callNotifications = b,
                         ),
                       ),
@@ -276,7 +276,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                         value: _newContacts,
                         onChanged: (v) => _apply(
                           v,
-                          () => accountModule.setNewContacts(v),
+                          () => AppScope.read(context).account.setNewContacts(v),
                           (b) => _newContacts = b,
                         ),
                       ),

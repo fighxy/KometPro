@@ -7,16 +7,20 @@ class AppScope extends InheritedWidget {
 
   final AppDeps deps;
 
-  static AppDeps of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
-    if (scope != null) return scope.deps;
-    return AppDeps.shared;
-  }
+  static AppDeps of(BuildContext context) => _resolve(context, listen: true);
 
-  static AppDeps read(BuildContext context) {
-    final scope = context.getInheritedWidgetOfExactType<AppScope>();
-    if (scope != null) return scope.deps;
-    return AppDeps.shared;
+  static AppDeps read(BuildContext context) => _resolve(context, listen: false);
+
+  static AppDeps _resolve(BuildContext context, {required bool listen}) {
+    final scope = listen
+        ? context.dependOnInheritedWidgetOfExactType<AppScope>()
+        : context.getInheritedWidgetOfExactType<AppScope>();
+    assert(
+      scope != null,
+      'AppScope missing. Wrap the app with AppScope and do not '
+      'read AppDeps.shared from widgets.',
+    );
+    return scope?.deps ?? AppDeps.shared;
   }
 
   @override

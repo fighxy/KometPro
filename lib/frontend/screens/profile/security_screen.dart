@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../../backend/modules/account.dart'
     show PrivacyConfig, BlockedContact;
 import '../../../core/storage/app_database.dart';
@@ -62,18 +62,18 @@ class _SecurityScreenState extends State<SecurityScreen>
   void reloadAfterReconnect() => _loadData();
 
   Future<void> _loadData() async {
-    final deletionAt = await accountModule.profileDeletionScheduledAt();
+    final deletionAt = await AppScope.read(context).account.profileDeletionScheduledAt();
     if (mounted) setState(() => _profileDeletionAt = deletionAt);
 
     try {
       final results = await Future.wait([
-        accountModule.getPrivacyConfig(),
-        accountModule.getBlockedContacts(),
+        AppScope.read(context).account.getPrivacyConfig(),
+        AppScope.read(context).account.getBlockedContacts(),
         AppDatabase.loadActiveProfile(),
       ]);
       bool is2faEnabled;
       try {
-        is2faEnabled = (await accountModule.get2faStatus()).enabled;
+        is2faEnabled = (await AppScope.read(context).account.get2faStatus()).enabled;
       } catch (_) {
         final profile = results[2] as ProfileData?;
         is2faEnabled = profile?.profileOptions?.contains(2) ?? false;
@@ -104,7 +104,7 @@ class _SecurityScreenState extends State<SecurityScreen>
     Haptics.selection();
     setState(() => _isSaving = true);
     try {
-      final newConfig = await accountModule.setSafeMode(value);
+      final newConfig = await AppScope.read(context).account.setSafeMode(value);
       if (mounted) {
         setState(() => _privacyConfig = newConfig);
       }
@@ -156,7 +156,7 @@ class _SecurityScreenState extends State<SecurityScreen>
     if (_isSaving) return;
     setState(() => _isSaving = true);
     try {
-      final newConfig = await accountModule.updatePrivacyConfig({key: value});
+      final newConfig = await AppScope.read(context).account.updatePrivacyConfig({key: value});
       if (mounted) {
         setState(() => _privacyConfig = newConfig);
       }
@@ -799,7 +799,7 @@ class _SecurityScreenState extends State<SecurityScreen>
     );
     if (!mounted) return;
     try {
-      final contacts = await accountModule.getBlockedContacts();
+      final contacts = await AppScope.read(context).account.getBlockedContacts();
       if (mounted) setState(() => _blockedContacts = contacts);
     } catch (_) {}
   }
@@ -826,7 +826,7 @@ class _SecurityScreenState extends State<SecurityScreen>
     if (_deletionBusy) return;
     setState(() => _deletionBusy = true);
     try {
-      final scheduledAt = await accountModule.setProfileDeletion(delete);
+      final scheduledAt = await AppScope.read(context).account.setProfileDeletion(delete);
       if (!mounted) return;
       setState(() => _profileDeletionAt = scheduledAt);
       showCustomNotification(context, successText);

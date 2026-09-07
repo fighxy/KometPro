@@ -4,7 +4,7 @@ import 'package:komet/backend/api.dart';
 import 'package:komet/core/config/proxy_config.dart';
 import 'package:komet/l10n/app_localizations.dart';
 
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/labeled_settings_field.dart';
 import '../../widgets/sheet_helpers.dart';
@@ -68,11 +68,11 @@ class _ProxySettingsSheetState extends State<ProxySettingsSheet> {
         password: password.isNotEmpty ? password : null,
       );
       await ProxyConfig.save(settings);
-      await api.disconnect();
-      await api.connect();
+      await AppScope.read(context).api.disconnect();
+      await AppScope.read(context).api.connect();
       if (!mounted) return;
       setState(() => _applied = settings);
-      if (api.state == SessionState.online) {
+      if (AppScope.read(context).api.state == SessionState.online) {
         showCustomNotification(context, l10n.proxySettingsSaved);
       } else {
         showCustomNotification(context, l10n.serverReconnectFailed);
@@ -90,10 +90,10 @@ class _ProxySettingsSheetState extends State<ProxySettingsSheet> {
         _selectedType = ProxyType.none;
         _applied = const ProxySettings();
       });
-      await api.disconnect();
-      await api.connect();
+      await AppScope.read(context).api.disconnect();
+      await AppScope.read(context).api.connect();
       if (!mounted) return;
-      if (api.state == SessionState.online) {
+      if (AppScope.read(context).api.state == SessionState.online) {
         showCustomNotification(context, l10n.proxySettingsSaved);
       } else {
         showCustomNotification(context, l10n.serverReconnectFailed);

@@ -9,7 +9,7 @@ import 'session_stale_recovery.dart';
 import '../../../backend/api.dart';
 import '../../../core/protocol/packet.dart';
 import '../../../core/utils/sms_code_listener.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/auth_limits_sheet.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/login_success_screen.dart';
@@ -111,7 +111,7 @@ class _CodeConfirmationScreenState extends State<CodeConfirmationScreen>
       }
       if (!mounted) return;
       setState(() {
-        sessionEpoch = api.sessionEpoch;
+        sessionEpoch = AppScope.read(context).api.sessionEpoch;
         dropNotified = false;
       });
       showCustomNotification(context, 'Соединение восстановлено');
@@ -128,8 +128,8 @@ class _CodeConfirmationScreenState extends State<CodeConfirmationScreen>
   }
 
   Future<bool> _waitForOnline() async {
-    if (api.state == SessionState.online) return true;
-    final back = await api.stateStream
+    if (AppScope.read(context).api.state == SessionState.online) return true;
+    final back = await AppScope.read(context).api.stateStream
         .firstWhere((s) => s == SessionState.online)
         .timeout(
           const Duration(seconds: 12),
@@ -149,12 +149,12 @@ class _CodeConfirmationScreenState extends State<CodeConfirmationScreen>
         return;
       }
       final fresh = resend
-          ? await accountModule.resendCode(widget.rawPhone)
-          : await accountModule.requestCode(widget.rawPhone);
+          ? await AppScope.read(context).account.resendCode(widget.rawPhone)
+          : await AppScope.read(context).account.requestCode(widget.rawPhone);
       if (!mounted) return;
       setState(() {
         _token = fresh.token;
-        sessionEpoch = api.sessionEpoch;
+        sessionEpoch = AppScope.read(context).api.sessionEpoch;
         dropNotified = false;
         _codeController.clear();
         _errorMessage = null;
@@ -257,7 +257,7 @@ class _CodeConfirmationScreenState extends State<CodeConfirmationScreen>
     setState(() => _verifying = true);
     var verified = false;
     try {
-      final result = await accountModule.verifyCode(
+      final result = await AppScope.read(context).account.verifyCode(
         _codeController.text,
         _token,
       );
@@ -300,7 +300,7 @@ class _CodeConfirmationScreenState extends State<CodeConfirmationScreen>
         return;
       }
 
-      final loginResult = await accountModule.login();
+      final loginResult = await AppScope.read(context).account.login();
 
       if (!mounted) return;
 

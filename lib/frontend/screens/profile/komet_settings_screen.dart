@@ -5,7 +5,7 @@ import '../../widgets/connection_status.dart';
 
 import '../../../core/config/build_profile.dart';
 import '../../../core/config/komet_settings.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/settings_card.dart';
 
@@ -154,6 +154,6 @@ class KometSettingsScreen extends StatelessWidget {
 
   Future<void> _setGhostMode(bool value) async {
     await KometSettings.setGhostMode(value);
-    api.sendPing(interactive: !value);
+    AppScope.read(context).api.sendPing(interactive: !value);
   }
 }

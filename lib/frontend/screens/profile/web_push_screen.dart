@@ -9,7 +9,7 @@ import '../../../core/utils/link_opener.dart';
 import '../../../core/webpush/max_web_socket.dart';
 import '../../../core/webpush/web_push_service.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
@@ -121,7 +121,7 @@ class _WebPushScreenState extends State<WebPushScreen> {
 
   Future<void> _connect() => _run(() async {
     final l10n = AppLocalizations.of(context)!;
-    if (api.state != SessionState.online) {
+    if (AppScope.read(context).api.state != SessionState.online) {
       showCustomNotification(context, l10n.webPushNeedsOnline);
       return;
     }
@@ -131,7 +131,7 @@ class _WebPushScreenState extends State<WebPushScreen> {
     if (!mounted) return;
     setState(() => _stage = _Stage.waiting);
 
-    await accountModule.authorizeWebQrLogin(track.qrLink);
+    await AppScope.read(context).account.authorizeWebQrLogin(track.qrLink);
     final step = await service.awaitApproval(track);
     await _applyStep(step);
   });

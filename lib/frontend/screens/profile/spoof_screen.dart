@@ -15,7 +15,7 @@ import '../../../core/storage/token_storage.dart';
 import '../../../core/utils/device_locale.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/spoof_profile.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
@@ -357,12 +357,12 @@ class _SpoofScreenState extends State<SpoofScreen> {
 
     if (confirmed == 'relogin') {
       await _persistProfile();
-      await api.disconnect();
+      await AppScope.read(context).api.disconnect();
       final accountId = await TokenStorage.getActiveAccountId();
       if (accountId != null) {
         await TokenStorage.deleteToken(accountId);
       }
-      await api.connect();
+      await AppScope.read(context).api.connect();
       if (mounted) {
         final navState = KometApp.navigatorKey.currentState;
         if (navState != null) {
@@ -380,8 +380,8 @@ class _SpoofScreenState extends State<SpoofScreen> {
     await _persistProfile();
 
     try {
-      await api.disconnect();
-      await api.connect();
+      await AppScope.read(context).api.disconnect();
+      await AppScope.read(context).api.connect();
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }

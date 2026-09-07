@@ -8,7 +8,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/config/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../../backend/modules/account.dart' show SessionInfo;
 import '../../widgets/custom_notification.dart';
 import '../../widgets/connection_status.dart';
@@ -57,7 +57,7 @@ class _DevicesScreenState extends State<DevicesScreen>
 
   Future<void> _loadSessions() async {
     try {
-      final sessions = await accountModule.getSessions();
+      final sessions = await AppScope.read(context).account.getSessions();
       if (mounted) {
         setState(() {
           _sessions = sessions;
@@ -110,7 +110,7 @@ class _DevicesScreenState extends State<DevicesScreen>
 
   Future<void> _terminateOthers() async {
     try {
-      await accountModule.terminateOtherSessions();
+      await AppScope.read(context).account.terminateOtherSessions();
       if (mounted) {
         showCustomNotification(
           context,
@@ -149,7 +149,7 @@ class _DevicesScreenState extends State<DevicesScreen>
       client.connectionTimeout = const Duration(seconds: 5);
       final request = await client.getUrl(
         Uri.parse(
-          'http://ip-api.com/json/$ip?fields=status,message,country,city,isp,as,mobile,proxy,timezone',
+          'http://ip-AppScope.read(context).api.com/json/$ip?fields=status,message,country,city,isp,as,mobile,proxy,timezone',
         ),
       );
       final response = await request.close();

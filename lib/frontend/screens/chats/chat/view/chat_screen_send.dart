@@ -134,146 +134,84 @@ extension _ChatSendPipeline on _ChatScreenState {
 
     _hasText.value = false;
     _lastSentId = tempId;
-    _messages.add(composed);
     _messageController.clear();
     if (!_commentsMode &&
         DraftStore.instance.get(_myId, widget.chatId) != null) {
       unawaited(DraftStore.instance.clear(_myId, widget.chatId));
     }
-    _bumpMessages();
-    if (!_commentsMode) {
-      unawaited(_persistOutgoing(composed));
-      unawaited(
-        chats.applyOutgoing(
-          _myId,
-          widget.chatId,
-          messageId: tempId,
-          time: now,
-          text: wireText,
-          status: composed.status ?? 'sending',
-          elements: elements,
-        ),
-      );
-    }
-
-    // Instant tactile "whoosh" the moment the message leaves the composer,
-    // not after the network round-trip — feedback must feel immediate.
     Haptics.send();
-
     _scrollToBottom();
     _prank.checkTrigger(composed);
 
-    if (!online) return;
-
-    try {
-      final actualId = _commentsMode
-          ? await _deps.comments.sendComment(
-              _myId,
-              widget.chatId,
-              widget.commentPostId!,
-              wireText,
-              replyToMessageId: replyId,
-              elements: elements,
-            )
-          : await _chatController.sendText(
-              wireText,
-              replyToMessageId: replyId,
-              replySourceChatId: replySourceChatId,
-              elements: elements,
-            );
-
-      if (!_sessionAlive(gen)) return;
-
-      final index = _messages.indexWhere((m) => m.id == tempId);
-      if (index != -1 && mounted) {
-        final sent = CachedMessage(
-          id: actualId.isNotEmpty ? actualId : tempId,
-          accountId: _myId,
-          chatId: widget.chatId,
-          senderId: _myId,
-          text: wireText,
-          time: now,
-          status: 'sent',
-          payload: composedPayload,
+    if (_commentsMode) {
+      _chatController.appendMessage(composed);
+      if (!online) return;
+      try {
+        final actualId = await _deps.comments.sendComment(
+          _myId,
+          widget.chatId,
+          widget.commentPostId!,
+          wireText,
+          replyToMessageId: replyId,
+          elements: elements,
         );
-        if (encrypted) {
-          MessageDecryptionCache.instance.adopt(tempId, sent.id);
-        }
-        _messages[index] = sent;
-        _bumpMessages();
-        if (!_commentsMode) {
-          unawaited(_persistOutgoing(sent, removeId: tempId));
-          unawaited(
-            chats.applyOutgoing(
-              _myId,
-              widget.chatId,
-              messageId: sent.id,
-              time: now,
-              text: wireText,
-              status: 'sent',
-              elements: elements,
-            ),
-          );
-        }
-      }
-
-      if (!_commentsMode && chat == null) {
-        unawaited(
-          chats.refreshChats(api, [widget.chatId]).then((list) {
-            if (!mounted || list.isEmpty) return;
-            setState(() => chat = list.first);
-            _bumpMessages();
-            _syncOtherReadTime();
-          }),
+        if (!_sessionAlive(gen)) return;
+        _chatController.replaceMessage(
+          tempId,
+          CachedMessage(
+            id: actualId.isNotEmpty ? actualId : tempId,
+            accountId: _myId,
+            chatId: widget.chatId,
+            senderId: _myId,
+            text: wireText,
+            time: now,
+            status: 'sent',
+            payload: composedPayload,
+          ),
+        );
+      } catch (e) {
+        if (!_sessionAlive(gen)) return;
+        _chatController.replaceMessage(
+          tempId,
+          CachedMessage(
+            id: tempId,
+            accountId: _myId,
+            chatId: widget.chatId,
+            senderId: _myId,
+            text: text,
+            time: now,
+            status: isPermanentSendFailure(e) ? 'error' : 'pending',
+            payload: composedPayload,
+          ),
         );
       }
-    } catch (e) {
-      if (replySourceChatId != null) {
-        logger.w('Cross-chat reply rejected: $e');
-        final index = _messages.indexWhere((m) => m.id == tempId);
-        if (index != -1 && mounted) {
-          _messages.removeAt(index);
+      return;
+    }
+
+    final result = await _chatController.dispatchOptimisticText(
+      composed: composed,
+      elements: elements,
+      replyToMessageId: replyId,
+      replySourceChatId: replySourceChatId,
+    );
+    if (result.dropped || !mounted) return;
+    if (encrypted && result.message != null) {
+      MessageDecryptionCache.instance.adopt(tempId, result.message!.id);
+    }
+    if (result.error != null && replySourceChatId != null) {
+      Haptics.error();
+      showCustomNotification(context, result.error.toString());
+      return;
+    }
+    if (result.message?.status == 'sent' && chat == null) {
+      unawaited(
+        _deps.chats.refreshChats(_deps.api, [widget.chatId]).then((list) {
+          if (!mounted || list.isEmpty) return;
+          setState(() => chat = list.first);
           _bumpMessages();
-        }
-        unawaited(AppDatabase.deleteMessage(_myId, widget.chatId, tempId));
-        if (mounted) {
-          Haptics.error();
-          showCustomNotification(context, e.toString());
-        }
-        return;
-      }
-      final failed = isPermanentSendFailure(e);
-      final status = failed ? 'error' : 'pending';
-      if (failed) logger.w('Отправка отклонена сервером: $e');
-      final index = _messages.indexWhere((m) => m.id == tempId);
-      if (index != -1 && mounted) {
-        final queued = CachedMessage(
-          id: tempId,
-          accountId: _myId,
-          chatId: widget.chatId,
-          senderId: _myId,
-          text: text,
-          time: now,
-          status: status,
-          payload: composedPayload,
-        );
-        _messages[index] = queued;
-        _bumpMessages();
-        if (!_commentsMode) {
-          unawaited(_persistOutgoing(queued));
-          unawaited(
-            chats.applyOutgoing(
-              _myId,
-              widget.chatId,
-              messageId: tempId,
-              time: now,
-              text: text,
-              status: status,
-              elements: elements,
-            ),
-          );
-        }
-      }
+          _syncOtherReadTime();
+        }),
+      );
     }
   }
 
@@ -296,7 +234,7 @@ extension _ChatSendPipeline on _ChatScreenState {
   }
 
   Future<List<({int id, String title})>> _loadReportReasons(int typeId) async {
-    final reasons = await ComplaintsModule.reasonsFor(api, typeId);
+    final reasons = await ComplaintsModule.reasonsFor(_deps.api, typeId);
     return reasons.map((r) => (id: r.reasonId, title: r.reasonTitle)).toList();
   }
 
@@ -371,7 +309,7 @@ extension _ChatSendPipeline on _ChatScreenState {
     _scrollToBottom();
     unawaited(_persistOutgoing(composed));
     unawaited(
-      chats.applyOutgoing(
+      _deps.chats.applyOutgoing(
         _myId,
         widget.chatId,
         messageId: tempId,
@@ -389,7 +327,7 @@ extension _ChatSendPipeline on _ChatScreenState {
         final sent = _replaceMessage(i, id: realId, status: 'sent');
         unawaited(_persistOutgoing(sent, removeId: tempId));
         unawaited(
-          chats.applyOutgoing(
+          _deps.chats.applyOutgoing(
             _myId,
             widget.chatId,
             messageId: realId,

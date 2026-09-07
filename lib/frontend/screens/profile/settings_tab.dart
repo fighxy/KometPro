@@ -16,7 +16,7 @@ import '../../../core/utils/format.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/utils/update_checker.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/avatar_history_screen.dart';
@@ -326,14 +326,14 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
   Future<void> _doLogout() async {
     final navState = KometApp.navigatorKey.currentState;
     try {
-      await accountModule.logout();
+      await AppScope.read(context).account.logout();
     } catch (e) {
       if (mounted) showCustomNotification(context, 'Не удалось выйти: $e');
       return;
     }
     await resetDigitalIdSession();
     try {
-      await api.connect();
+      await AppScope.read(context).api.connect();
     } catch (_) {}
     if (navState != null) {
       await navState.pushAndRemoveUntil(
@@ -435,7 +435,7 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
                                     builder: (context) => WebAppScreen(
                                       title: 'Сферум',
                                       entryPoint: WebAppEntryPoint.settings,
-                                      loader: () => webAppModule.fetchSferum(),
+                                      loader: () => AppScope.read(context).webApp.fetchSferum(),
                                     ),
                                   ),
                                 );

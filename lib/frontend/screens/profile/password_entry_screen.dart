@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../widgets/animated_slash_icon.dart';
@@ -53,9 +53,9 @@ class _PasswordEntryScreenState extends State<PasswordEntryScreen> {
     _isVerifying.value = true;
     setState(() => _errorMessage = null);
     try {
-      final trackId = await accountModule.enter2faPanel();
-      await accountModule.check2faPassword(trackId, _passwordController.text);
-      final details = await accountModule.get2faDetails(trackId);
+      final trackId = await AppScope.read(context).account.enter2faPanel();
+      await AppScope.read(context).account.check2faPassword(trackId, _passwordController.text);
+      final details = await AppScope.read(context).account.get2faDetails(trackId);
       if (!mounted) return;
       setState(() {
         _isAuthenticated = true;
@@ -125,7 +125,7 @@ class _PasswordEntryScreenState extends State<PasswordEntryScreen> {
     try {
       bool is2faEnabled;
       try {
-        is2faEnabled = (await accountModule.get2faStatus()).enabled;
+        is2faEnabled = (await AppScope.read(context).account.get2faStatus()).enabled;
       } catch (_) {
         final profile = await AppDatabase.loadActiveProfile();
         is2faEnabled = profile?.profileOptions?.contains(2) ?? false;
@@ -579,7 +579,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
             setState(() => _errorMessage = l10n.passwordEntryMinPasswordError);
             break;
           }
-          final trackId = await accountModule.create2faTrack();
+          final trackId = await AppScope.read(context).account.create2faTrack();
           if (!mounted) return;
           setState(() {
             _trackId = trackId;
@@ -591,7 +591,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
             setState(() => _errorMessage = l10n.passwordEntryMismatchError);
             break;
           }
-          await accountModule.set2faPassword(
+          await AppScope.read(context).account.set2faPassword(
             _trackId!,
             _passwordController.text,
           );
@@ -600,7 +600,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
           break;
         case 2:
           if (_hintController.text.isNotEmpty) {
-            await accountModule.set2faHint(_trackId!, _hintController.text);
+            await AppScope.read(context).account.set2faHint(_trackId!, _hintController.text);
           }
           if (!mounted) return;
           setState(() => _step = 3);
@@ -614,7 +614,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
             setState(() => _errorMessage = l10n.passwordEntryInvalidEmailError);
             break;
           }
-          await accountModule.verify2faEmail(_trackId!, _emailController.text);
+          await AppScope.read(context).account.verify2faEmail(_trackId!, _emailController.text);
           if (!mounted) return;
           setState(() => _step = 4);
           break;
@@ -623,7 +623,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
             setState(() => _errorMessage = l10n.passwordEntryInvalidCodeError);
             break;
           }
-          await accountModule.verify2faCode(_trackId!, _codeController.text);
+          await AppScope.read(context).account.verify2faCode(_trackId!, _codeController.text);
           await _finishSetup(withEmail: true);
           break;
       }
@@ -644,7 +644,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
   }
 
   Future<void> _finishSetup({required bool withEmail}) async {
-    await accountModule.confirm2fa(
+    await AppScope.read(context).account.confirm2fa(
       trackId: _trackId!,
       password: _passwordController.text,
       hint: _hintController.text.isEmpty ? null : _hintController.text,
@@ -1013,9 +1013,9 @@ class _TwoFactorPasswordChangeScreenState
     setState(() => _errorMessage = null);
 
     try {
-      final trackId = await accountModule.enter2faPanel();
-      await accountModule.check2faPassword(trackId, widget.currentPassword);
-      await accountModule.update2faPassword(
+      final trackId = await AppScope.read(context).account.enter2faPanel();
+      await AppScope.read(context).account.check2faPassword(trackId, widget.currentPassword);
+      await AppScope.read(context).account.update2faPassword(
         trackId: trackId,
         newPassword: _newPasswordController.text,
         hint: _hintController.text.isEmpty ? null : _hintController.text,
@@ -1163,8 +1163,8 @@ class _TwoFactorEmailChangeScreenState
 
   Future<String> _ensureTrack() async {
     if (_trackId != null) return _trackId!;
-    final trackId = await accountModule.enter2faPanel();
-    await accountModule.check2faPassword(trackId, widget.currentPassword);
+    final trackId = await AppScope.read(context).account.enter2faPanel();
+    await AppScope.read(context).account.check2faPassword(trackId, widget.currentPassword);
     _trackId = trackId;
     return trackId;
   }
@@ -1182,7 +1182,7 @@ class _TwoFactorEmailChangeScreenState
             break;
           }
           final trackId = await _ensureTrack();
-          await accountModule.verify2faEmail(trackId, _emailController.text);
+          await AppScope.read(context).account.verify2faEmail(trackId, _emailController.text);
           if (!mounted) return;
           setState(() => _step = 1);
           break;
@@ -1191,8 +1191,8 @@ class _TwoFactorEmailChangeScreenState
             setState(() => _errorMessage = l10n.passwordEntryInvalidCodeError);
             break;
           }
-          await accountModule.verify2faCode(_trackId!, _codeController.text);
-          await accountModule.commit2faEmailChange(_trackId!);
+          await AppScope.read(context).account.verify2faCode(_trackId!, _codeController.text);
+          await AppScope.read(context).account.commit2faEmailChange(_trackId!);
           if (mounted) {
             showCustomNotification(
               context,
@@ -1355,9 +1355,9 @@ class _TwoFactorRemoveScreenState extends State<TwoFactorRemoveScreen> {
     setState(() => _errorMessage = null);
 
     try {
-      final trackId = await accountModule.enter2faPanel();
-      await accountModule.check2faPassword(trackId, widget.currentPassword);
-      await accountModule.remove2fa(trackId);
+      final trackId = await AppScope.read(context).account.enter2faPanel();
+      await AppScope.read(context).account.check2faPassword(trackId, widget.currentPassword);
+      await AppScope.read(context).account.remove2fa(trackId);
       if (mounted) {
         showCustomNotification(context, l10n.passwordEntryRemovedNotif);
         Navigator.popUntil(context, ModalRoute.withName('SecurityScreen'));

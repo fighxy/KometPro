@@ -7,7 +7,7 @@ import 'package:komet/core/config/config.dart';
 import 'package:komet/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/labeled_settings_field.dart';
 import '../../widgets/sheet_helpers.dart';
@@ -58,9 +58,9 @@ class _ServerSettingsSheetState extends State<ServerSettingsSheet> {
       await prefs.setString(ServerConfig.prefHostKey, host);
       await prefs.setInt(ServerConfig.prefPortKey, port);
       await prefs.setBool(ServerConfig.prefTrustMincifryKey, _trustMincifryCa);
-      await api.disconnect();
-      unawaited(api.connect());
-      final online = await api.stateStream
+      await AppScope.read(context).api.disconnect();
+      unawaited(AppScope.read(context).api.connect());
+      final online = await AppScope.read(context).api.stateStream
           .firstWhere(
             (s) => s == SessionState.online || s == SessionState.disconnected,
           )
@@ -89,9 +89,9 @@ class _ServerSettingsSheetState extends State<ServerSettingsSheet> {
       _hostController.text = ServerConfig.defaultHost;
       _portController.text = '${ServerConfig.defaultPort}';
       _trustMincifryCa = ServerConfig.defaultTrustMincifryCa;
-      await api.disconnect();
-      api.connect();
-      final online = await api.stateStream
+      await AppScope.read(context).api.disconnect();
+      AppScope.read(context).api.connect();
+      final online = await AppScope.read(context).api.stateStream
           .firstWhere(
             (s) => s == SessionState.online || s == SessionState.disconnected,
           )

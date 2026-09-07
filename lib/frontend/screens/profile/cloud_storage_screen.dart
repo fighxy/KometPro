@@ -13,7 +13,7 @@ import '../../../backend/modules/upload_service.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/format.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/reload_on_reconnect.dart';
 import '../../widgets/custom_notification.dart';
@@ -117,7 +117,7 @@ class _CloudStorageScreenState extends State<CloudStorageScreen>
     if (event is! UploadJobDone) return;
 
     final newest = await CloudStorageModule.fetchLatestFile(
-      messagesModule,
+      AppScope.read(context).messages,
       accountId,
       chatId,
       expectedFileId: event.fileId,
@@ -211,7 +211,7 @@ class _CloudStorageScreenState extends State<CloudStorageScreen>
         forAll: true,
       );
     } else {
-      await chats.leaveChat(api, chatId: chat.id);
+      await chats.leaveChat(AppScope.read(context).api, chatId: chat.id);
     }
   }
 
@@ -228,7 +228,7 @@ class _CloudStorageScreenState extends State<CloudStorageScreen>
 
   Future<void> _loadFiles(int accountId, int chatId) async {
     final files = await CloudStorageModule.fetchFiles(
-      messagesModule,
+      AppScope.read(context).messages,
       accountId,
       chatId,
     );
@@ -265,7 +265,7 @@ class _CloudStorageScreenState extends State<CloudStorageScreen>
       return;
     }
     setState(() => _isCreatingEnv = true);
-    final result = await CloudStorageModule.setupEnv(api);
+    final result = await CloudStorageModule.setupEnv(AppScope.read(context).api);
     if (!mounted) return;
     if (result == null) {
       setState(() => _isCreatingEnv = false);
@@ -322,10 +322,10 @@ class _CloudStorageScreenState extends State<CloudStorageScreen>
       backgroundColor: Colors.transparent,
       builder: (_) => _SendByIdSheet(
         onSend: (id) async {
-          final sentId = await messagesModule.sendFileMessage(chatId, id);
+          final sentId = await AppScope.read(context).messages.sendFileMessage(chatId, id);
           if (sentId == null) return false;
           final newest = await CloudStorageModule.fetchLatestFile(
-            messagesModule,
+            AppScope.read(context).messages,
             accountId,
             chatId,
             expectedFileId: id,

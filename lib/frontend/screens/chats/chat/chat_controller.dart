@@ -8,8 +8,21 @@ import '../../../../backend/modules/chats.dart';
 import '../../../../backend/modules/messages.dart';
 import '../../../../core/cache/message_session_cache.dart';
 import '../../../../core/config/komet_settings.dart';
+import '../../../../core/protocol/packet.dart';
 import '../../../../core/storage/app_database.dart';
 import '../../../../core/utils/logger.dart';
+
+class OptimisticSendResult {
+  const OptimisticSendResult({
+    this.message,
+    this.error,
+    this.dropped = false,
+  });
+
+  final CachedMessage? message;
+  final Object? error;
+  final bool dropped;
+}
 
 class HistoryGap {
   HistoryGap({
@@ -475,6 +488,125 @@ class ChatController extends ChangeNotifier {
     );
     if (!_sameSession(gen)) return '';
     return id;
+  }
+
+  void appendMessage(CachedMessage msg) {
+    messages.add(msg);
+    messagesRev.value++;
+  }
+
+  void replaceMessage(String id, CachedMessage next) {
+    final i = messages.indexWhere((m) => m.id == id);
+    if (i == -1) return;
+    messages[i] = next;
+    messagesRev.value++;
+  }
+
+  void removeMessage(String id) {
+    final before = messages.length;
+    messages.removeWhere((m) => m.id == id);
+    if (messages.length != before) messagesRev.value++;
+  }
+
+  Future<void> persistOutgoing(CachedMessage msg, {String? removeId}) async {
+    try {
+      if (removeId != null && removeId != msg.id) {
+        await AppDatabase.deleteMessage(myId, chatId, removeId);
+      }
+      await AppDatabase.saveMessages([msg.toDbRow()]);
+    } catch (_) {}
+  }
+
+  Future<void> previewOutgoing(
+    CachedMessage msg, {
+    List<Map<String, dynamic>> elements = const [],
+  }) {
+    return chatsModule.applyOutgoing(
+      myId,
+      chatId,
+      messageId: msg.id,
+      time: msg.time,
+      text: msg.text,
+      status: msg.status ?? 'sending',
+      elements: elements,
+    );
+  }
+
+  /// Inserts [composed] immediately, then sends. Session change drops the result.
+  Future<OptimisticSendResult> dispatchOptimisticText({
+    required CachedMessage composed,
+    List<Map<String, dynamic>> elements = const [],
+    int? replyToMessageId,
+    int? replySourceChatId,
+    bool persist = true,
+  }) async {
+    final gen = _sessionGen;
+    final tempId = composed.id;
+    appendMessage(composed);
+    if (persist) {
+      unawaited(persistOutgoing(composed));
+      unawaited(previewOutgoing(composed, elements: elements));
+    }
+    if (!isOnline) {
+      return OptimisticSendResult(message: composed);
+    }
+    try {
+      final id = await messagesModule.sendMessage(
+        myId,
+        chatId,
+        composed.text ?? '',
+        replyToMessageId: replyToMessageId,
+        replySourceChatId: replySourceChatId,
+        elements: elements,
+      );
+      if (!_sameSession(gen)) return const OptimisticSendResult(dropped: true);
+      final realId = id.isNotEmpty ? id : tempId;
+      final sent = CachedMessage(
+        id: realId,
+        accountId: composed.accountId,
+        chatId: composed.chatId,
+        senderId: composed.senderId,
+        text: composed.text,
+        time: composed.time,
+        status: 'sent',
+        payload: composed.payload,
+        attachments: composed.attachments,
+      );
+      replaceMessage(tempId, sent);
+      if (persist) {
+        unawaited(persistOutgoing(sent, removeId: tempId));
+        unawaited(previewOutgoing(sent, elements: elements));
+      }
+      return OptimisticSendResult(message: sent);
+    } catch (e) {
+      if (!_sameSession(gen)) {
+        return OptimisticSendResult(dropped: true, error: e);
+      }
+      if (replySourceChatId != null) {
+        removeMessage(tempId);
+        unawaited(AppDatabase.deleteMessage(myId, chatId, tempId));
+        return OptimisticSendResult(error: e);
+      }
+      final status = isPermanentSendFailure(e) ? 'error' : 'pending';
+      if (status == 'error') logger.w('Отправка отклонена сервером: $e');
+      final queued = CachedMessage(
+        id: tempId,
+        accountId: composed.accountId,
+        chatId: composed.chatId,
+        senderId: composed.senderId,
+        text: composed.text,
+        time: composed.time,
+        status: status,
+        payload: composed.payload,
+        attachments: composed.attachments,
+      );
+      replaceMessage(tempId, queued);
+      if (persist) {
+        unawaited(persistOutgoing(queued));
+        unawaited(previewOutgoing(queued, elements: elements));
+      }
+      return OptimisticSendResult(message: queued, error: e);
+    }
   }
 
   Future<bool> editText(String messageId, String text) async {

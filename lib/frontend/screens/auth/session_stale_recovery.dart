@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import '../../../backend/api.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/custom_notification.dart';
 
 mixin SessionStaleRecovery<T extends StatefulWidget> on State<T> {
@@ -11,15 +11,15 @@ mixin SessionStaleRecovery<T extends StatefulWidget> on State<T> {
   StreamSubscription<SessionState>? _stateSub;
 
   bool get sessionStale =>
-      api.sessionEpoch != sessionEpoch || api.state != SessionState.online;
+      AppScope.read(context).api.sessionEpoch != sessionEpoch || AppScope.read(context).api.state != SessionState.online;
 
   String get connectionDroppedMessage;
 
   void recoverStaleSession();
 
   void startSessionRecovery() {
-    sessionEpoch = api.sessionEpoch;
-    _stateSub = api.stateStream.listen(_onSessionState);
+    sessionEpoch = AppScope.read(context).api.sessionEpoch;
+    _stateSub = AppScope.read(context).api.stateStream.listen(_onSessionState);
   }
 
   void stopSessionRecovery() {
@@ -35,6 +35,6 @@ mixin SessionStaleRecovery<T extends StatefulWidget> on State<T> {
       }
       return;
     }
-    if (api.sessionEpoch != sessionEpoch) recoverStaleSession();
+    if (AppScope.read(context).api.sessionEpoch != sessionEpoch) recoverStaleSession();
   }
 }

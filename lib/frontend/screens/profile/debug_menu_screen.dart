@@ -8,7 +8,7 @@ import '../../../core/protocol/packet.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/media_cache.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../debug/cache_section.dart';
 import '../../debug/feature_toggles_section.dart';
@@ -159,18 +159,18 @@ class _DebugMenuScreenState extends State<DebugMenuScreen> {
 
     await Future.wait([
       tryProbe('contactInfo', () async {
-        final p = await api.sendRequest(Opcode.contactInfo, {
+        final p = await AppScope.read(context).api.sendRequest(Opcode.contactInfo, {
           'contactIds': [id],
         });
         return p.payload;
       }),
       tryProbe('chatInfo', () async {
-        final p = await api.sendRequest(Opcode.chatInfo, {
+        final p = await AppScope.read(context).api.sendRequest(Opcode.chatInfo, {
           'chatIds': [id],
         });
         return p.payload;
       }),
-      tryProbe('publicSearch', () => chats.searchById(api, id)),
+      tryProbe('publicSearch', () => chats.searchById(AppScope.read(context).api, id)),
     ]);
 
     if (!mounted) return;

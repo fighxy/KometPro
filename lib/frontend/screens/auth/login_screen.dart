@@ -22,7 +22,7 @@ import '../../widgets/sheet_helpers.dart';
 import '../../widgets/small_spinner.dart';
 import '../../../backend/api.dart';
 import '../../../core/protocol/packet.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../../core/config/app_frost.dart';
 import '../../../core/config/build_profile.dart';
@@ -54,11 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _sessionState = api.state;
-    if (api.state == SessionState.disconnected) {
-      unawaited(api.connect());
+    _sessionState = AppScope.read(context).api.state;
+    if (AppScope.read(context).api.state == SessionState.disconnected) {
+      unawaited(AppScope.read(context).api.connect());
     }
-    _stateSub = api.stateStream.listen((state) {
+    _stateSub = AppScope.read(context).api.stateStream.listen((state) {
       if (mounted) setState(() => _sessionState = state);
     });
     _selectedCountry = countriesByCode['RU'] ?? allCountries.first;
@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (returnId != null) {
       await resetDigitalIdSession();
       try {
-        await accountModule.switchAccount(returnId);
+        await AppScope.read(context).account.switchAccount(returnId);
       } catch (_) {
         if (!mounted) return;
         showCustomNotification(context, 'Не удалось переключить аккаунт');
@@ -88,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _clampCountryToAllowed() {
-    final allowed = api.registrationCountries;
+    final allowed = AppScope.read(context).api.registrationCountries;
     if (allowed.any((c) => c.code == _selectedCountry.code)) return;
     _selectedCountry = allowed.firstWhere(
       (c) => c.code == 'RU',
@@ -147,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
       MaterialPageRoute(
         builder: (context) => SelectCountryScreen(
           selectedCountry: _selectedCountry,
-          countries: api.registrationCountries,
+          countries: AppScope.read(context).api.registrationCountries,
         ),
       ),
     );
@@ -485,7 +485,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
 
                           try {
-                            final result = await accountModule.requestCode(
+                            final result = await AppScope.read(context).account.requestCode(
                               fullPhone,
                             );
 
