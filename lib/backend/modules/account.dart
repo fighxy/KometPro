@@ -319,6 +319,9 @@ class AccountModule {
 
   Future<void> terminateOtherSessions() => _sessions.terminateOtherSessions();
 
+  Future<void> terminateSession(int sessionId) =>
+      _sessions.terminateSession(sessionId);
+
   Future<void> authorizeWebQrLogin(String qrLink) =>
       _sessions.authorizeWebQrLogin(qrLink);
 

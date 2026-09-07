@@ -108,6 +108,43 @@ class _DevicesScreenState extends State<DevicesScreen>
     if (success && mounted) _loadSessions();
   }
 
+  Future<void> _terminateSession(SessionInfo session) async {
+    if (session.current || session.id == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          title: const Text('Завершить сессию?'),
+          content: Text(
+            'Устройство «${session.client}» потеряет доступ к аккаунту.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Завершить', style: TextStyle(color: cs.error)),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await AppScope.read(context).account.terminateSession(session.id!);
+      if (!mounted) return;
+      showCustomNotification(context, 'Сессия завершена');
+      _loadSessions();
+    } catch (e) {
+      if (!mounted) return;
+      showCustomNotification(context, l10n.devicesGenericError(e.toString()));
+    }
+  }
+
   Future<void> _terminateOthers() async {
     try {
       await AppScope.read(context).account.terminateOtherSessions();
@@ -149,7 +186,7 @@ class _DevicesScreenState extends State<DevicesScreen>
       client.connectionTimeout = const Duration(seconds: 5);
       final request = await client.getUrl(
         Uri.parse(
-          'http://ip-AppScope.read(context).api.com/json/$ip?fields=status,message,country,city,isp,as,mobile,proxy,timezone',
+          'http://ip-api.com/json/$ip?fields=status,message,country,city,isp,as,mobile,proxy,timezone',
         ),
       );
       final response = await request.close();
@@ -325,6 +362,7 @@ class _DevicesScreenState extends State<DevicesScreen>
                 (session) => _buildDeviceItem(
                   context,
                   cs,
+                  session: session,
                   id: session.uniqueId,
                   title:
                       session.client +
@@ -436,6 +474,7 @@ class _DevicesScreenState extends State<DevicesScreen>
   Widget _buildDeviceItem(
     BuildContext context,
     ColorScheme cs, {
+    required SessionInfo session,
     required int id,
     required String title,
     required String platform,
@@ -532,28 +571,46 @@ class _DevicesScreenState extends State<DevicesScreen>
                       ),
                     ),
                   const SizedBox(height: 8),
-                  if (!isExpanded)
-                    InkWell(
-                      onTap: isLoading ? null : () => _lookupIp(id, location),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        child: isLoading
-                            ? SmallSpinner(
-                                size: 14,
-                                color: cs.onSurfaceVariant.withValues(
-                                  alpha: 0.5,
-                                ),
-                              )
-                            : Icon(
-                                Symbols.add_circle,
-                                size: 20,
-                                color: cs.onSurfaceVariant.withValues(
-                                  alpha: 0.4,
-                                ),
-                              ),
-                      ),
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!session.current && session.id != null)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Завершить сессию',
+                          onPressed: () => _terminateSession(session),
+                          icon: Icon(
+                            Symbols.logout,
+                            size: 20,
+                            color: cs.error.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      if (!isExpanded)
+                        InkWell(
+                          onTap: isLoading
+                              ? null
+                              : () => _lookupIp(id, location),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            child: isLoading
+                                ? SmallSpinner(
+                                    size: 14,
+                                    color: cs.onSurfaceVariant.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  )
+                                : Icon(
+                                    Symbols.add_circle,
+                                    size: 20,
+                                    color: cs.onSurfaceVariant.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ],

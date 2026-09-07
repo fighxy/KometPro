@@ -23,6 +23,14 @@ class SessionsModule extends AccountApiBase {
     checkPacketError(packet, 'terminateOtherSessions');
   }
 
+  Future<void> terminateSession(int sessionId) async {
+    ensureOnline();
+    final packet = await api.sendRequest(Opcode.sessionsClose, {
+      'sessionId': sessionId,
+    });
+    checkPacketError(packet, 'terminateSession');
+  }
+
   Future<void> authorizeWebQrLogin(String qrLink) async {
     ensureOnline();
     final link = qrLink.trim();
