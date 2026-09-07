@@ -12,18 +12,24 @@ extension _ChatTranscriptBuild on _ChatScreenState {
       key: key,
       padding: EdgeInsets.symmetric(vertical: floating ? 2 : 8),
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            _formatDateLabel(date),
-            style: TextStyle(
-              color: cs.onSurfaceVariant,
-              fontSize: 12,
-              fontStyle: floating ? FontStyle.normal : FontStyle.italic,
+        child: GestureDetector(
+          onTap: () => _pickSearchDate(date),
+          child: Tooltip(
+            message: 'Перейти к дате',
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _formatDateLabel(date),
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 12,
+                  fontStyle: floating ? FontStyle.normal : FontStyle.italic,
+                ),
+              ),
             ),
           ),
         ),

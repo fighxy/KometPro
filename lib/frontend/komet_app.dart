@@ -33,6 +33,7 @@ import 'package:komet/core/storage/chat_wallpaper_store.dart';
 import 'package:komet/core/storage/token_storage.dart';
 import 'package:komet/core/transport/tls_config.dart';
 import 'package:komet/core/transport/vpn_bypass.dart';
+import 'package:komet/core/desktop/desktop_tray.dart';
 import 'package:komet/core/utils/android_system_ui.dart';
 import 'package:komet/core/utils/debug_session_log.dart';
 import 'package:komet/core/utils/logger.dart';
@@ -154,6 +155,10 @@ class KometAppState extends State<KometApp>
     _lastAppliedThemeMode = _effectiveThemeMode;
     _rescheduleSwitch();
     unawaited(_refreshWallpaperSeed());
+    if (DesktopTray.isSupported) {
+      AppDeps.shared.chats.chatsChanged.addListener(_syncTrayUnread);
+      unawaited(_syncTrayUnread());
+    }
 
     api.setReconnectCallback(() async {
       try {
@@ -341,6 +346,9 @@ class KometAppState extends State<KometApp>
     ChatWallpaperStore.instance.revision.removeListener(
       _onWallpaperTintChanged,
     );
+    if (DesktopTray.isSupported) {
+      AppDeps.shared.chats.chatsChanged.removeListener(_syncTrayUnread);
+    }
     WidgetsBinding.instance.removeObserver(this);
     _profileUpdateController.close();
     fpsOverlayEnabled.dispose();
@@ -379,6 +387,24 @@ class KometAppState extends State<KometApp>
     if (next == _lastAppliedThemeMode) return;
     _lastAppliedThemeMode = next;
     if (mounted) setState(() {});
+  }
+
+  Future<void> _syncTrayUnread() async {
+    try {
+      final profile = await AppDatabase.loadActiveProfile();
+      if (profile == null) {
+        await DesktopTray.instance.setUnread(0);
+        return;
+      }
+      final chats = await AppDeps.shared.chats.getChats(profile.id);
+      var total = 0;
+      for (final chat in chats) {
+        total += chat.unreadCount;
+      }
+      await DesktopTray.instance.setUnread(total);
+    } catch (e) {
+      logger.w('tray unread sync failed: $e');
+    }
   }
 
   void _onThemeModeChanged() {

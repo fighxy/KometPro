@@ -350,11 +350,14 @@ extension _ChatNavigation on _ChatScreenState {
     _search.reset();
   }
 
-  Future<void> _pickSearchDate() async {
+  Future<void> _pickSearchDate([DateTime? initial]) async {
     final now = DateTime.now();
+    var seed = initial ?? now;
+    if (seed.isAfter(now)) seed = now;
+    if (seed.isBefore(DateTime(2018))) seed = DateTime(2018);
     final picked = await showDatePicker(
       context: context,
-      initialDate: now,
+      initialDate: seed,
       firstDate: DateTime(2018),
       lastDate: now,
       helpText: 'Перейти к дате',

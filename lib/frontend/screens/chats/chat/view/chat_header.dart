@@ -43,6 +43,7 @@ class ChatHeaderRow extends StatelessWidget {
   final VoidCallback onOpenScheduled;
   final VoidCallback onCall;
   final void Function(BuildContext) onMenu;
+  final VoidCallback? onJumpDate;
 
   const ChatHeaderRow({
     super.key,
@@ -70,6 +71,7 @@ class ChatHeaderRow extends StatelessWidget {
     required this.onOpenScheduled,
     required this.onCall,
     required this.onMenu,
+    this.onJumpDate,
   });
 
   @override
@@ -248,6 +250,16 @@ class ChatHeaderRow extends StatelessWidget {
                       ),
                       onPressed: onCall,
                     ),
+                  if (onJumpDate != null)
+                    IconButton(
+                      tooltip: 'Перейти к дате',
+                      icon: Icon(
+                        Symbols.calendar_month,
+                        weight: 500,
+                        color: cs.onSurface,
+                      ),
+                      onPressed: onJumpDate,
+                    ),
                   Builder(
                     builder: (btnContext) => IconButton(
                       icon: Icon(
@@ -397,6 +409,16 @@ class ChatHeaderRow extends StatelessWidget {
           IconButton(
             icon: Icon(Symbols.call, weight: 400, color: cs.onSurface),
             onPressed: onCall,
+          ),
+        if (onJumpDate != null)
+          IconButton(
+            tooltip: 'Перейти к дате',
+            icon: Icon(
+              Symbols.calendar_month,
+              weight: 400,
+              color: cs.onSurface,
+            ),
+            onPressed: onJumpDate,
           ),
         Builder(
           builder: (btnContext) => IconButton(

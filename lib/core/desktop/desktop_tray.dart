@@ -31,6 +31,28 @@ class DesktopTray with WindowListener, TrayListener {
   bool _started = false;
   bool _quitting = false;
   bool _hidden = false;
+  int _unread = 0;
+
+  Future<void> setUnread(int count) async {
+    if (!isSupported || !_started) return;
+    final next = count < 0 ? 0 : count;
+    if (next == _unread) return;
+    _unread = next;
+    try {
+      final tip = next == 0
+          ? 'Komet'
+          : (PlatformDispatcher.instance.locale.languageCode == 'ru'
+                ? 'Komet — $next непрочитанных'
+                : 'Komet — $next unread');
+      await trayManager.setToolTip(tip);
+      if (Platform.isMacOS) {
+        await trayManager.setTitle(next == 0 ? '' : '$next');
+      }
+      await _rebuildMenu();
+    } catch (e) {
+      logger.w('DesktopTray: badge failed: $e');
+    }
+  }
 
   Future<void> init() async {
     if (_started || !isSupported) return;
@@ -70,7 +92,14 @@ class DesktopTray with WindowListener, TrayListener {
     await trayManager.setContextMenu(
       Menu(
         items: [
-          MenuItem(key: 'show', label: ru ? 'Открыть Komet' : 'Open Komet'),
+          MenuItem(
+            key: 'show',
+            label: _unread > 0
+                ? (ru
+                      ? 'Открыть Komet ($_unread)'
+                      : 'Open Komet ($_unread)')
+                : (ru ? 'Открыть Komet' : 'Open Komet'),
+          ),
           MenuItem(key: 'hide', label: ru ? 'Скрыть' : 'Hide'),
           MenuItem.separator(),
           MenuItem(key: 'quit', label: ru ? 'Выйти' : 'Quit'),
