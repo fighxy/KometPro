@@ -152,6 +152,7 @@ flutter:
   assets:
     - assets/komet.png
     - assets/komet_icon.png
+    - assets/tray/komet.ico
     - assets/meteor_icon.png
     - assets/emoji_keywords.json
     - assets/lottie/
