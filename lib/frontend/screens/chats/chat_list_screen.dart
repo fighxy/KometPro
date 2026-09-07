@@ -2085,6 +2085,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                     final previewText = isPlaceholder
                         ? 'зайдите в чат для подгрузки'
                         : _localizedPreview(chat.lastMsgTextOneLine ?? '');
+                    var senderPrefix = '';
+                    if (!isPlaceholder && chat.lastMsgSenderId == _profile?.id) {
+                      senderPrefix = 'Вы: ';
+                    }
                     return _animateChatTile(
                       chat.id.toString(),
                       _buildChatItem(
@@ -2108,6 +2112,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                             ? const []
                             : chat.lastMsgFormatRanges,
                         previewMessageId: isPlaceholder ? null : chat.lastMsgId,
+                        previewPrefix: senderPrefix,
                         previewCipherText: isPlaceholder
                             ? null
                             : chat.lastMsgTextOneLine,
