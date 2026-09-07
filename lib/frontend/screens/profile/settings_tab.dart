@@ -4,7 +4,6 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/cache/self_presence.dart';
@@ -14,6 +13,7 @@ import '../../../core/config/komet_settings.dart';
 import '../../../core/config/app_show_extra_info.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/format.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../core/utils/update_checker.dart';
 import '../../../l10n/app_localizations.dart';
 import 'package:komet/backend/app_services.dart';
@@ -134,7 +134,7 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
         if (px < delta) {
           if (!_zoneHapticFired) {
             _zoneHapticFired = true;
-            HapticFeedback.lightImpact();
+            Haptics.tap();
           }
         } else {
           _zoneHapticFired = false;
@@ -142,7 +142,7 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
         final pastCommit = px < delta / 2;
         if (pastCommit != _pastCommitPoint) {
           _pastCommitPoint = pastCommit;
-          HapticFeedback.mediumImpact();
+          Haptics.medium();
         }
       }
     } else if (n is ScrollEndNotification) {
