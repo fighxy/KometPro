@@ -8,7 +8,7 @@ import '../../../core/config/app_theme_mode.dart';
 import '../../../core/config/app_theme_schedule.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/glossy_pill.dart';
 import '../../widgets/settings_radio_tile.dart';
 import '../../widgets/settings_card.dart';

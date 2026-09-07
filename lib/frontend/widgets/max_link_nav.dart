@@ -8,7 +8,7 @@ import '../../core/cache/info_cache.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/utils/webview_support.dart';
 import 'package:komet/backend/app_services.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../screens/chats/chat_list_screen.dart';
 import '../screens/chats/chat_screen.dart';
 import '../screens/contacts/open_contact_profile.dart';

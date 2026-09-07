@@ -9,7 +9,7 @@ import '../../../core/utils/format.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/media_cache.dart';
 import 'package:komet/backend/app_services.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../debug/cache_section.dart';
 import '../../debug/feature_toggles_section.dart';
 import '../../debug/header_section.dart';

@@ -16,7 +16,7 @@ import '../../../core/utils/device_locale.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/spoof_profile.dart';
 import 'package:komet/backend/app_services.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/info_action_sheet.dart';

@@ -5,7 +5,7 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/utils/image_utils.dart';
 import '../../../l10n/app_localizations.dart';
 import 'package:komet/backend/app_services.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/komet_avatar.dart';

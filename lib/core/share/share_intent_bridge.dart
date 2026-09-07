@@ -7,7 +7,7 @@ import '../../backend/api.dart';
 import '../../frontend/screens/chats/chat_list_screen.dart';
 import '../../frontend/widgets/swipe_route.dart';
 import 'package:komet/backend/app_services.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../models/shared_payload.dart';
 import '../utils/logger.dart';
 

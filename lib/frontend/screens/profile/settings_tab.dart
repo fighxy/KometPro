@@ -17,7 +17,7 @@ import '../../../core/utils/format.dart';
 import '../../../core/utils/update_checker.dart';
 import '../../../l10n/app_localizations.dart';
 import 'package:komet/backend/app_services.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/avatar_history_screen.dart';
 import '../../widgets/connection_status.dart';

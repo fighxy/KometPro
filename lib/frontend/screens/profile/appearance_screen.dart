@@ -18,7 +18,7 @@ import '../../../core/utils/bubble_radius.dart';
 import '../../../core/utils/debouncer.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/liquid_glass.dart';
 import '../../widgets/settings_card.dart';
 import '../../../core/config/app_shape.dart';

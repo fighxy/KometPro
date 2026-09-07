@@ -16,7 +16,7 @@ import '../storage/app_database.dart';
 import '../storage/token_storage.dart';
 import '../../frontend/widgets/swipe_route.dart';
 import 'package:komet/backend/app_services.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../webpush/max_web_socket.dart';
 import '../webpush/web_push_service.dart';
 import 'desktop_url_scheme.dart';

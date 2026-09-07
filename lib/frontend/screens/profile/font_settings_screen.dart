@@ -6,7 +6,7 @@ import '../../../core/config/app_fonts.dart';
 import '../../../core/config/custom_font_service.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../l10n/app_localizations.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/prompt_dialog.dart';

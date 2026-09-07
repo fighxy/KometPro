@@ -23,7 +23,7 @@ import '../../widgets/small_spinner.dart';
 import '../../../backend/api.dart';
 import '../../../core/protocol/packet.dart';
 import 'package:komet/backend/app_services.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../../core/config/app_frost.dart';
 import '../../../core/config/build_profile.dart';
 import '../../../core/config/app_shape.dart';

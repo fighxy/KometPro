@@ -14,7 +14,7 @@ import '../../core/config/app_fonts.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/haptics.dart';
 import '../../l10n/app_localizations.dart';
-import 'package:komet/main.dart' show KometApp;
+import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../screens/calls/call_screen.dart';
 import 'call_video_view.dart';
 import 'custom_notification.dart';
