@@ -448,10 +448,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   }
 
   void _rotate() {
-    final delta = _current.isVideo ? 3 : 1;
     setState(() {
-      _quarterTurns[_current.id] =
-          ((_quarterTurns[_current.id] ?? 0) + delta) % 4;
+      _quarterTurns[_current.id] = ((_quarterTurns[_current.id] ?? 0) + 1) % 4;
     });
     _syncHero();
   }
@@ -911,7 +909,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                 ),
               IconButton(
                 icon: const Icon(
-                  Symbols.rotate_90_degrees_ccw,
+                  Symbols.rotate_90_degrees_cw,
                   color: Colors.white,
                 ),
                 onPressed: _rotate,
