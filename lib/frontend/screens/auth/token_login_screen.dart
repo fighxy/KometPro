@@ -3,7 +3,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/storage/spoofing_service.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../../models/spoof_profile.dart';
 import '../../widgets/adaptive_shell.dart';
 import '../../widgets/custom_notification.dart';

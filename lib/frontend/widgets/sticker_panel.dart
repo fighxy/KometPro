@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/utils/debouncer.dart';
 import '../../core/utils/emoji_keyword_index.dart';
-import '../../main.dart' show stickersModule;
+import 'package:komet/backend/app_services.dart';
 import '../../models/animoji.dart';
 import '../../models/sticker.dart';
 import 'emoji_panel.dart';

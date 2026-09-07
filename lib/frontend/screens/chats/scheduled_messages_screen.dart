@@ -12,7 +12,7 @@ import '../../../core/protocol/packet.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/schedule_time_picker.dart';

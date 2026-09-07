@@ -7,7 +7,7 @@ import '../../../core/config/app_fonts.dart';
 import '../../../core/config/app_shape.dart';
 import '../../../core/utils/names.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/glossy_pill.dart';

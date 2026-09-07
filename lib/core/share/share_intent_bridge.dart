@@ -6,7 +6,8 @@ import 'package:flutter/services.dart';
 import '../../backend/api.dart';
 import '../../frontend/screens/chats/chat_list_screen.dart';
 import '../../frontend/widgets/swipe_route.dart';
-import '../../main.dart';
+import 'package:komet/backend/app_services.dart';
+import 'package:komet/main.dart' show KometApp;
 import '../../models/shared_payload.dart';
 import '../utils/logger.dart';
 

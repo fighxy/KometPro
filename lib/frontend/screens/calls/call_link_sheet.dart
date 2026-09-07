@@ -8,7 +8,7 @@ import 'package:komet/frontend/screens/contacts/contact_sheet_common.dart';
 import 'package:komet/frontend/widgets/custom_notification.dart';
 import 'package:komet/frontend/widgets/small_spinner.dart';
 import 'package:komet/l10n/app_localizations.dart';
-import 'package:komet/main.dart' show messagesModule;
+import 'package:komet/backend/app_services.dart';
 import '../../../core/config/app_shape.dart';
 
 Future<bool> showCreatedCallSheet(

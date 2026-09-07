@@ -5,8 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../../main.dart' show KometApp;
-
+import 'package:komet/main.dart' show KometApp;
 enum UploadKind { photo, video, videoNote, voice, file }
 
 class _NotificationJob {

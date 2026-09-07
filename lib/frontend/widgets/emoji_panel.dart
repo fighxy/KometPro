@@ -2,7 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../main.dart' show animojiModule;
+import 'package:komet/backend/app_services.dart';
 import '../../models/animoji.dart';
 import 'lottie_image.dart';
 import 'small_spinner.dart';

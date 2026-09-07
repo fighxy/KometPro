@@ -9,7 +9,7 @@ import '../../core/utils/logger.dart';
 import '../../models/attachment.dart';
 import '../../models/chat_preview_media.dart';
 import '../../models/shared_payload.dart';
-import '../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import 'chats.dart';
 import 'messages.dart';
 import 'upload_service.dart';

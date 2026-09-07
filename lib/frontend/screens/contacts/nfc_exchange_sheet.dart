@@ -12,7 +12,7 @@ import '../../../core/nfc/nfc_exchange_service.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/format.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../../models/contact_info.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/komet_avatar.dart';

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import '../../../backend/api.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/custom_notification.dart';
 
 mixin SessionStaleRecovery<T extends StatefulWidget> on State<T> {

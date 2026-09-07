@@ -11,7 +11,7 @@ import '../../../core/utils/haptics.dart';
 import '../../../core/utils/link_opener.dart';
 import '../../../core/utils/media_saver.dart';
 import '../../../core/utils/share_origin.dart';
-import '../../../main.dart' show api, messagesModule, webAppModule;
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../chats/chat_list_screen.dart' show openForwardScreen;
 import '../profile/web_qr_scan_screen.dart';

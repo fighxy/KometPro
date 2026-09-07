@@ -6,7 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/utils/haptics.dart';
-import '../../../main.dart' show fileUploader, messagesModule, storiesModule;
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/primary_loading_button.dart';
 import '../../../core/config/app_frost.dart';

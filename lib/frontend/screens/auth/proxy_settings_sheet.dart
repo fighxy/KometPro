@@ -4,7 +4,7 @@ import 'package:komet/backend/api.dart';
 import 'package:komet/core/config/proxy_config.dart';
 import 'package:komet/l10n/app_localizations.dart';
 
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/labeled_settings_field.dart';
 import '../../widgets/sheet_helpers.dart';

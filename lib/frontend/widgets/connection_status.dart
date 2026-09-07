@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:m3e_collection/m3e_collection.dart';
 
 import '../../backend/api.dart';
-import '../../main.dart' show api;
+import 'package:komet/backend/app_services.dart';
 import 'small_spinner.dart';
 
 final ValueNotifier<bool> debugForceOffline = ValueNotifier<bool>(false);

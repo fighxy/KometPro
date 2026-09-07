@@ -14,7 +14,7 @@ import 'package:komet/frontend/widgets/encryption_lock_badge.dart';
 import 'package:komet/frontend/widgets/glossy_pill.dart';
 import 'package:komet/frontend/widgets/online_dot.dart';
 import 'package:komet/frontend/widgets/profile_hero.dart';
-import 'package:komet/main.dart' show storiesModule;
+import 'package:komet/backend/app_services.dart';
 import 'package:komet/models/story.dart';
 import '../../../../../core/config/app_fonts.dart';
 

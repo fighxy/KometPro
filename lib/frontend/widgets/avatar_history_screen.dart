@@ -4,7 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../backend/modules/contacts.dart';
 import '../../core/utils/media_saver.dart';
-import '../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import 'custom_notification.dart';
 import 'small_spinner.dart';
 

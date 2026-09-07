@@ -8,7 +8,7 @@ import '../../../core/push/fkm_controller.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/config/build_profile.dart';
-import '../../../main.dart' show accountModule;
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/reload_on_reconnect.dart';

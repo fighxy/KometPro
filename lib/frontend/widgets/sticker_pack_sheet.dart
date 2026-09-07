@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/utils/format.dart';
-import '../../main.dart' show stickersModule, messagesModule;
+import 'package:komet/backend/app_services.dart';
 import '../../models/sticker.dart';
 import '../screens/chats/chat_list_screen.dart';
 import 'custom_notification.dart';

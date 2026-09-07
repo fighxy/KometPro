@@ -7,7 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../backend/modules/webapp.dart';
 import '../../../core/storage/spoofing_service.dart';
 import '../../../core/utils/link_opener.dart';
-import '../../../main.dart' show api;
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/error_view.dart';

@@ -4,7 +4,7 @@ import 'package:komet/l10n/app_localizations.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../backend/modules/account.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/auth_limits_sheet.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/login_success_screen.dart';

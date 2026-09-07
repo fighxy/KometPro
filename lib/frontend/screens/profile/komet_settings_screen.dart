@@ -5,7 +5,7 @@ import '../../widgets/connection_status.dart';
 
 import '../../../core/config/build_profile.dart';
 import '../../../core/config/komet_settings.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/settings_card.dart';
 

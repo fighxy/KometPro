@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../main.dart';
+import 'package:komet/main.dart' show KometAppState;
 import '../screens/profile/traffic_monitor_screen.dart';
 import '../widgets/connection_status.dart';
 import 'debug_toggle_tile.dart';

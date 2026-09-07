@@ -20,7 +20,7 @@ import '../../core/utils/media_saver.dart';
 import '../../core/utils/save_file_as.dart';
 import '../../l10n/app_localizations.dart';
 import '../../core/config/app_colors.dart';
-import '../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../models/attachment.dart';
 import 'attachment/photo_hero.dart';
 import 'animated_slash_icon.dart';

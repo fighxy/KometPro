@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../backend/api.dart';
-import '../../main.dart' show api;
-
+import 'package:komet/backend/app_services.dart';
 mixin ReloadOnReconnect<T extends StatefulWidget> on State<T> {
   StreamSubscription<SessionState>? _reconnectSub;
   int _reloadedEpoch = api.sessionEpoch;

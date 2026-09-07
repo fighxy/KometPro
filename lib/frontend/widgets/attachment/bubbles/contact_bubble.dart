@@ -6,7 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../../backend/modules/contacts.dart';
 import '../../../../core/utils/haptics.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../../../main.dart' show api;
+import 'package:komet/backend/app_services.dart';
 import '../../../../models/attachment.dart';
 import '../../../screens/contacts/open_contact_profile.dart';
 import '../../custom_notification.dart';

@@ -9,7 +9,7 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../backend/modules/contacts.dart';
 import '../../../backend/modules/messages.dart' show ContactCache;
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/contact_info.dart';
 import '../../widgets/komet_avatar.dart';

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/protocol/opcode_map.dart';
 import '../../core/protocol/packet.dart';
-import '../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../widgets/glossy_pill.dart';
 import '../widgets/small_spinner.dart';
 import '../../core/config/app_shape.dart';

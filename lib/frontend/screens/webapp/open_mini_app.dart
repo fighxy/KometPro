@@ -5,7 +5,7 @@ import '../../../core/utils/haptics.dart';
 import '../../../core/utils/link_opener.dart';
 import '../../../core/utils/webview_support.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart' show webAppModule;
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/custom_notification.dart';
 import 'web_app_bridge.dart';
 import 'web_app_screen.dart';

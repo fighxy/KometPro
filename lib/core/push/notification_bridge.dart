@@ -6,7 +6,8 @@ import 'package:flutter/services.dart';
 
 import '../../backend/api.dart';
 import '../../frontend/widgets/max_link_nav.dart';
-import '../../main.dart';
+import 'package:komet/backend/app_services.dart';
+import 'package:komet/main.dart' show KometApp;
 import '../desktop/desktop_tray.dart';
 import '../utils/logger.dart';
 

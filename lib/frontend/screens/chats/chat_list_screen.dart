@@ -79,15 +79,7 @@ import '../../../core/storage/archived_chats_store.dart';
 import '../../../core/storage/chat_encryption_store.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/storage/chat_activity_store.dart';
-import '../../../main.dart'
-    show
-        accountModule,
-        animojiModule,
-        api,
-        appRouteObserver,
-        bannersModule,
-        messagesModule,
-        storiesModule;
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/attachment/attachment_sheet.dart';
 import '../../widgets/spectrum_background.dart';
 import '../../widgets/spectrum_tint.dart';

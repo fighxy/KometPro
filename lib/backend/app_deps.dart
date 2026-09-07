@@ -1,6 +1,9 @@
+import 'package:flutter/widgets.dart';
+
 import 'api.dart';
 import 'modules/account.dart';
 import 'modules/animoji.dart';
+import 'modules/banners.dart';
 import 'modules/chats.dart';
 import 'modules/comments.dart';
 import 'modules/digital_id.dart';
@@ -27,6 +30,8 @@ class AppDeps {
     required this.fileUploader,
     required this.stories,
     required this.chats,
+    required this.banners,
+    required this.routes,
   });
 
   final Api api;
@@ -42,6 +47,8 @@ class AppDeps {
   final FileUploader fileUploader;
   final StoriesModule stories;
   final ChatsModule chats;
+  final BannersModule banners;
+  final RouteObserver<PageRoute<dynamic>> routes;
 
   static AppDeps? _shared;
 

@@ -6,7 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../backend/modules/share_sender.dart';
 import '../../../core/media/share_thumbnail.dart';
 import '../../../core/share/share_labels.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../../models/animoji.dart';
 import '../../../models/shared_payload.dart';
 import '../../widgets/emoji_panel.dart';

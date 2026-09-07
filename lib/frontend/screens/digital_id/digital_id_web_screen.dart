@@ -4,7 +4,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../backend/modules/webapp.dart' show WebAppLaunch;
 import '../../../core/utils/logger.dart';
-import '../../../main.dart' show digitalIdModule, webAppModule;
+import 'package:komet/backend/app_services.dart';
 import '../webapp/web_app_screen.dart';
 
 Future<void> resetDigitalIdWebData() async {

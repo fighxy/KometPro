@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../backend/modules/messages.dart' show ContactCache;
 import '../../../core/cache/info_cache.dart';
-import '../../../main.dart' show messagesModule;
+import 'package:komet/backend/app_services.dart';
 import '../../../models/story.dart';
 
 class StoryOwnerInfo {

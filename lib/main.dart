@@ -132,6 +132,8 @@ final AppDeps appDeps = AppDeps(
   fileUploader: fileUploader,
   stories: storiesModule,
   chats: chats,
+  banners: bannersModule,
+  routes: appRouteObserver,
 );
 
 const ProgressIndicatorThemeData _expressiveProgressTheme =

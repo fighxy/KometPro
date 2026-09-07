@@ -9,7 +9,7 @@ import '../../core/links/max_link.dart';
 import '../../core/links/profile_link.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/utils/share_origin.dart';
-import '../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../screens/chats/chat_screen.dart';
 import '../screens/contacts/open_contact_profile.dart';
 import 'call_link_handler.dart';

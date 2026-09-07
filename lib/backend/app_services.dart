@@ -1,0 +1,31 @@
+import 'package:flutter/widgets.dart';
+
+import 'api.dart';
+import 'app_deps.dart';
+import 'modules/account.dart';
+import 'modules/animoji.dart';
+import 'modules/banners.dart';
+import 'modules/comments.dart';
+import 'modules/digital_id.dart';
+import 'modules/file_uploader.dart';
+import 'modules/messages.dart';
+import 'modules/polls.dart';
+import 'modules/shared_content.dart';
+import 'modules/stickers.dart';
+import 'modules/stories.dart';
+import 'modules/webapp.dart';
+
+Api get api => AppDeps.shared.api;
+AccountModule get accountModule => AppDeps.shared.account;
+MessagesModule get messagesModule => AppDeps.shared.messages;
+CommentsModule get commentsModule => AppDeps.shared.comments;
+SharedContentModule get sharedContentModule => AppDeps.shared.sharedContent;
+PollsModule get pollsModule => AppDeps.shared.polls;
+StickersModule get stickersModule => AppDeps.shared.stickers;
+AnimojiModule get animojiModule => AppDeps.shared.animoji;
+WebAppModule get webAppModule => AppDeps.shared.webApp;
+DigitalIdModule get digitalIdModule => AppDeps.shared.digitalId;
+FileUploader get fileUploader => AppDeps.shared.fileUploader;
+StoriesModule get storiesModule => AppDeps.shared.stories;
+BannersModule get bannersModule => AppDeps.shared.banners;
+RouteObserver<PageRoute<dynamic>> get appRouteObserver => AppDeps.shared.routes;

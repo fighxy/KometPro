@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/haptics.dart';
 import '../../models/poll.dart';

@@ -8,7 +8,7 @@ import '../../core/media/gallery_source.dart';
 import '../../core/media/image_optimizer.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/utils/logger.dart';
-import '../../main.dart' show fileUploader, messagesModule;
+import 'package:komet/backend/app_services.dart';
 import '../../models/attachment.dart';
 import 'file_uploader.dart';
 import 'messages.dart';

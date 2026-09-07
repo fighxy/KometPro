@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../../../core/utils/logger.dart';
-import '../../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import 'message_search_result.dart';
 
 class ChatSearchController {

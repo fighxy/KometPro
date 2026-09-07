@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import 'package:komet/main.dart';
+import 'package:komet/backend/app_services.dart';
 import 'package:komet/backend/modules/chats.dart';
 import 'package:komet/backend/modules/contacts.dart';
 import 'package:komet/backend/modules/messages.dart' show ContactCache;

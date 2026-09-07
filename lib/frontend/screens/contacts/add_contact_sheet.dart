@@ -9,7 +9,7 @@ import 'package:komet/frontend/screens/contacts/contact_sheet_common.dart';
 import 'package:komet/frontend/screens/contacts/open_contact_profile.dart';
 import 'package:komet/frontend/widgets/custom_notification.dart';
 import 'package:komet/l10n/app_localizations.dart';
-import 'package:komet/main.dart';
+import 'package:komet/backend/app_services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 Future<void> showAddContactSheet(BuildContext context) {

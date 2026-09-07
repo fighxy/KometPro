@@ -9,7 +9,7 @@ import '../../../core/utils/link_opener.dart';
 import '../../../core/webpush/max_web_socket.dart';
 import '../../../core/webpush/web_push_service.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart' show accountModule, api;
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../main.dart' show accountModule;
+import 'package:komet/backend/app_services.dart';
 import 'custom_notification.dart';
 import 'sheet_helpers.dart';
 import 'small_spinner.dart';

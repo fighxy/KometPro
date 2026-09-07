@@ -10,7 +10,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/utils/haptics.dart';
-import '../../../main.dart' show storiesModule;
+import 'package:komet/backend/app_services.dart';
 import '../../../models/story.dart';
 import '../../widgets/komet_avatar.dart';
 import '../../widgets/small_spinner.dart';

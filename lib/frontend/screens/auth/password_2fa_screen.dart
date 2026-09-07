@@ -3,7 +3,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../backend/modules/account/account_models.dart';
 import '../../../core/protocol/packet.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart';
+import 'package:komet/backend/app_services.dart';
 import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/auth_limits_sheet.dart';
 import '../../widgets/custom_notification.dart';

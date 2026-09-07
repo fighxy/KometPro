@@ -8,7 +8,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/config/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart' show accountModule;
+import 'package:komet/backend/app_services.dart';
 import '../../../backend/modules/account.dart' show SessionInfo;
 import '../../widgets/custom_notification.dart';
 import '../../widgets/connection_status.dart';

@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../backend/modules/digital_id.dart';
 import '../../../core/utils/webview_support.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart' show digitalIdModule;
+import 'package:komet/backend/app_services.dart';
 import '../../../models/digital_id.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/reload_on_reconnect.dart';

@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../backend/modules/contacts.dart';
 import '../../core/utils/text_entities.dart';
-import '../../main.dart' show api;
+import 'package:komet/backend/app_services.dart';
 import 'chat_menu_overlay.dart';
 import 'custom_notification.dart';
 import 'komet_avatar.dart';
