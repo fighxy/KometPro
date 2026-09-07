@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../../backend/modules/chats.dart';
 import '../../../backend/modules/contacts.dart';
 import '../../../backend/modules/messages.dart' show ContactCache;
@@ -87,6 +87,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final accountId = _accountId;
     final phoneQuery = _phoneCandidate(query);
+    final deps = AppScope.read(context);
     final results = await Future.wait([
       accountId == null
           ? Future.value(const <Map<String, dynamic>>[])
@@ -94,11 +95,11 @@ class _SearchScreenState extends State<SearchScreen> {
       accountId == null
           ? Future.value(const <Map<String, dynamic>>[])
           : AppDatabase.searchChatsByTitle(accountId, query),
-      chats.searchMessages(api, query),
-      chats.searchPublic(api, query),
+      deps.chats.searchMessages(deps.api, query),
+      deps.chats.searchPublic(deps.api, query),
       phoneQuery == null
           ? Future<PhoneLookupResult?>.value(null)
-          : ContactsModule.findByPhone(api, phoneQuery),
+          : ContactsModule.findByPhone(deps.api, phoneQuery),
     ]);
 
     if (!mounted || token != _seq) return;

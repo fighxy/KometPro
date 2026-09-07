@@ -79,7 +79,8 @@ import '../../../core/storage/archived_chats_store.dart';
 import '../../../core/storage/chat_encryption_store.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/storage/chat_activity_store.dart';
-import 'package:komet/backend/app_services.dart';
+import 'package:komet/backend/app_deps.dart';
+import '../../widgets/app_scope.dart';
 import '../../widgets/attachment/attachment_sheet.dart';
 import '../../widgets/spectrum_background.dart';
 import '../../widgets/spectrum_tint.dart';
@@ -214,6 +215,7 @@ enum _DeleteKind { personalLike, ownerGroup, blocked }
 
 class _ChatListScreenState extends State<ChatListScreen>
     with TickerProviderStateMixin, RouteAware, SpectrumSurface {
+  late final AppDeps _deps;
   String? _selectedFolderId;
 
   List<ChatFolder> _folders = [];
@@ -317,7 +319,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       _storiesDockedOpen,
       _storiesAnimClosing,
       _storiesOverscrollRevealArmed,
-      storiesModule.storiesChanged.value,
+      _deps.stories.storiesChanged.value,
       _sessionState,
       identityHashCode(_profile),
     ]);
@@ -480,8 +482,8 @@ class _ChatListScreenState extends State<ChatListScreen>
     final selected = _selectedChatObjects();
     if (selected.isEmpty) return;
     final anyPinned = selected.any((c) => (c.favIndex ?? 0) > 0);
-    final err = await chats.togglePin(
-      api,
+    final err = await _deps.chats.togglePin(
+      _deps.api,
       chatIds: selected.map((c) => c.id).toList(),
       pin: !anyPinned,
     );
@@ -498,8 +500,8 @@ class _ChatListScreenState extends State<ChatListScreen>
 
     final errors = <String>[];
     for (final c in selected) {
-      final err = await chats.setChatMute(
-        api,
+      final err = await _deps.chats.setChatMute(
+        _deps.api,
         chatId: c.id,
         dontDisturbUntil: targetDDU,
       );
@@ -543,7 +545,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     final myId = _profile?.id;
     if (myId == null) return;
 
-    await chats.refreshChats(api, selectedBefore.map((c) => c.id).toList());
+    await _deps.chats.refreshChats(_deps.api, selectedBefore.map((c) => c.id).toList());
     if (!mounted) return;
 
     final selectedAfter = _selectedChatObjects();
@@ -564,8 +566,8 @@ class _ChatListScreenState extends State<ChatListScreen>
     final errors = <String>[];
     for (final c in selectedAfter) {
       final forAll = kind == _DeleteKind.ownerGroup;
-      final err = await chats.deleteChat(
-        api,
+      final err = await _deps.chats.deleteChat(
+        _deps.api,
         chatId: c.id,
         lastEventTime: c.lastEventTime,
         forAll: forAll,
@@ -714,6 +716,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   @override
   void initState() {
     super.initState();
+    _deps = AppScope.read(context);
     if (!widget.forwardMode && !widget.archiveMode && !_shareMode) {
       ChatListScreen._root = this;
     }
@@ -746,8 +749,8 @@ class _ChatListScreenState extends State<ChatListScreen>
     _folderPageController = PageController();
     _syncFolderChatScrollControllers();
 
-    _sessionState = api.state;
-    _stateSub = api.stateStream.listen((state) {
+    _sessionState = _deps.api.state;
+    _stateSub = _deps.api.stateStream.listen((state) {
       if (mounted) {
         setState(() {
           _sessionState = state;
@@ -760,30 +763,30 @@ class _ChatListScreenState extends State<ChatListScreen>
       }
     });
 
-    _loginSub = accountModule.loginStatusStream.listen((status) {
+    _loginSub = _deps.account.loginStatusStream.listen((status) {
       if (status == LoginStatus.success) {
         _requestReload();
         _maybeLoadStories();
       }
     });
-    chats.chatsChanged.addListener(_onChatsChanged);
+    _deps.chats.chatsChanged.addListener(_onChatsChanged);
     ArchivedChatsStore.instance.revision.addListener(_onArchivedChanged);
     ChatEncryptionStore.instance.revision.addListener(_onEncryptionChanged);
     DraftStore.instance.revision.addListener(_onDraftsChanged);
     AppStories.current.addListener(_onStoriesEnabledChanged);
     AppThemeModeConfig.current.addListener(_onAppThemeChanged);
     AppAmoled.current.addListener(_onAppThemeChanged);
-    storiesModule.storiesChanged.addListener(_onStoriesDataChanged);
+    _deps.stories.storiesChanged.addListener(_onStoriesDataChanged);
     KometSettings.hideAllChatsFolder.addListener(_requestReload);
     KometSettings.showHiddenChats.addListener(_requestReload);
     ContactsModule.revision.addListener(_requestReload);
     FoldersModule.revision.addListener(_requestReload);
-    bannersModule.activeBanner.addListener(_onActiveInformerChanged);
+    _deps.banners.activeBanner.addListener(_onActiveInformerChanged);
     _maybeLoadStories();
-    _typingSub = api.pushStream
+    _typingSub = _deps.api.pushStream
         .where((p) => p.opcode == Opcode.notifTyping)
         .listen(_onTypingPush);
-    _typingMsgSub = chats.messageEvents.listen(_onTypingMessageEvent);
+    _typingMsgSub = _deps.chats.messageEvents.listen(_onTypingMessageEvent);
     unawaited(_runReload());
   }
 
@@ -842,8 +845,8 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   void _maybeLoadStories() {
     if (!AppStories.current.value) return;
-    if (api.state != SessionState.online) return;
-    unawaited(storiesModule.loadFeed());
+    if (_deps.api.state != SessionState.online) return;
+    unawaited(_deps.stories.loadFeed());
   }
 
   StoryOwnerInfo? _selfOwnerInfo() {
@@ -871,7 +874,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   StoryPreview? _storyPreviewFor(int ownerId) {
     if (!AppStories.current.value || ownerId == 0) return null;
     if (HiddenStoryAuthors.isHidden(ownerId)) return null;
-    final preview = storiesModule.previewFor(ownerId);
+    final preview = _deps.stories.previewFor(ownerId);
     return (preview == null || preview.isEmpty) ? null : preview;
   }
 
@@ -880,7 +883,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   void _openStoriesForOwner(int ownerId, [Offset? origin]) {
-    final index = storiesModule.previews.indexWhere(
+    final index = _deps.stories.previews.indexWhere(
       (p) => p.owner.ownerId == ownerId,
     );
     if (index < 0) return;
@@ -889,7 +892,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   void _openStories(int index, [Offset? origin]) {
-    final previews = storiesModule.previews;
+    final previews = _deps.stories.previews;
     if (previews.isEmpty) return;
     openStoryViewer(
       context,
@@ -905,7 +908,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     super.didChangeDependencies();
     final route = ModalRoute.of(context);
     if (route is PageRoute) {
-      appRouteObserver.subscribe(this, route);
+      _deps.routes.subscribe(this, route);
     }
   }
 
@@ -971,7 +974,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     }
 
     try {
-      final loadedChats = await chats.getChats(
+      final loadedChats = await _deps.chats.getChats(
         p.id,
         includeHidden:
             widget.archiveMode || KometSettings.showHiddenChats.value,
@@ -1181,7 +1184,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     if (ids.isEmpty) return;
     _inflightContactIds.addAll(ids);
     try {
-      await messagesModule.ensureContactNames(ids);
+      await _deps.messages.ensureContactNames(ids);
     } finally {
       _inflightContactIds.removeAll(ids);
       _scheduleContactRebuild();
@@ -1498,22 +1501,22 @@ class _ChatListScreenState extends State<ChatListScreen>
   void dispose() {
     if (ChatListScreen._root == this) ChatListScreen._root = null;
     _shareCaption?.dispose();
-    appRouteObserver.unsubscribe(this);
+    _deps.routes.unsubscribe(this);
     _settleTimer?.cancel();
-    chats.chatsChanged.removeListener(_onChatsChanged);
+    _deps.chats.chatsChanged.removeListener(_onChatsChanged);
     ArchivedChatsStore.instance.revision.removeListener(_onArchivedChanged);
     ChatEncryptionStore.instance.revision.removeListener(_onEncryptionChanged);
     DraftStore.instance.revision.removeListener(_onDraftsChanged);
     AppStories.current.removeListener(_onStoriesEnabledChanged);
     AppThemeModeConfig.current.removeListener(_onAppThemeChanged);
     AppAmoled.current.removeListener(_onAppThemeChanged);
-    storiesModule.storiesChanged.removeListener(_onStoriesDataChanged);
+    _deps.stories.storiesChanged.removeListener(_onStoriesDataChanged);
     HiddenStoryAuthors.ids.removeListener(_onHiddenStoriesChanged);
     KometSettings.hideAllChatsFolder.removeListener(_requestReload);
     KometSettings.showHiddenChats.removeListener(_requestReload);
     ContactsModule.revision.removeListener(_requestReload);
     FoldersModule.revision.removeListener(_requestReload);
-    bannersModule.activeBanner.removeListener(_onActiveInformerChanged);
+    _deps.banners.activeBanner.removeListener(_onActiveInformerChanged);
     _loginSub?.cancel();
     _stateSub?.cancel();
     _typingSub?.cancel();
@@ -1599,19 +1602,19 @@ class _ChatListScreenState extends State<ChatListScreen>
     final route = ModalRoute.of(context);
     if (route != null && !route.isCurrent) return;
     if (_presentedInformerId == banner.id) return;
-    if (bannersModule.activeBanner.value?.id != banner.id) return;
+    if (_deps.banners.activeBanner.value?.id != banner.id) return;
     _presentedInformerId = banner.id;
     unawaited(_persistInformerPresentation(banner));
   }
 
   Future<void> _persistInformerPresentation(InformerBanner banner) async {
     try {
-      await bannersModule.markShown(banner);
+      await _deps.banners.markShown(banner);
     } catch (_) {}
   }
 
   void _onActiveInformerChanged() {
-    if (bannersModule.activeBanner.value == null) {
+    if (_deps.banners.activeBanner.value == null) {
       _presentedInformerId = null;
       return;
     }
@@ -1621,7 +1624,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   void _scheduleInformerPresentation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final banner = bannersModule.activeBanner.value;
+      final banner = _deps.banners.activeBanner.value;
       if (banner != null) _markInformerPresented(banner);
     });
   }
@@ -1629,18 +1632,18 @@ class _ChatListScreenState extends State<ChatListScreen>
   Future<void> _closeInformer(InformerBanner banner) async {
     Haptics.tap();
     try {
-      await bannersModule.close(banner);
+      await _deps.banners.close(banner);
     } catch (_) {
-      bannersModule.refresh();
+      _deps.banners.refresh();
     }
   }
 
   Future<void> _openInformer(InformerBanner banner) async {
     Haptics.tap();
     try {
-      await bannersModule.markClicked(banner);
+      await _deps.banners.markClicked(banner);
     } catch (_) {
-      bannersModule.refresh();
+      _deps.banners.refresh();
     }
     if (!mounted) return;
 
@@ -1674,7 +1677,7 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   Widget _buildInformerBanner() {
     return ValueListenableBuilder<InformerBanner?>(
-      valueListenable: bannersModule.activeBanner,
+      valueListenable: _deps.banners.activeBanner,
       builder: (context, banner, _) {
         return ClipRect(
           child: AnimatedSize(
@@ -1686,7 +1689,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 : InformerBannerTile(
                     key: ValueKey(banner.id),
                     banner: banner,
-                    animojiLoader: animojiModule.fetchById,
+                    animojiLoader: _deps.animoji.fetchById,
                     onPresented: _markInformerPresented,
                     onTap: banner.isClickable
                         ? () => unawaited(_openInformer(banner))
@@ -1731,7 +1734,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                     if (AppStories.current.value &&
                         !_shareMode &&
                         _pullRatio < 0.8 &&
-                        storiesModule.hasAny)
+                        _deps.stories.hasAny)
                       Opacity(
                         opacity: 1.0 - _pullRatio,
                         child: GestureDetector(
@@ -1740,7 +1743,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                           child: SizedBox(
                             width:
                                 (FoldedStoryStack.widthFor(
-                                      storiesModule.previews.length,
+                                      _deps.stories.previews.length,
                                     ) +
                                     8) *
                                 (1.0 - _pullRatio),
@@ -1748,10 +1751,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                             child: OverflowBox(
                               alignment: Alignment.centerLeft,
                               maxWidth: FoldedStoryStack.widthFor(
-                                storiesModule.previews.length,
+                                _deps.stories.previews.length,
                               ),
                               child: FoldedStoryStack(
-                                previews: storiesModule.previews,
+                                previews: _deps.stories.previews,
                                 opacity: 1.0 - _pullRatio,
                               ),
                             ),
@@ -2743,7 +2746,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Widget _buildStoriesRow() {
-    final previews = storiesModule.previews;
+    final previews = _deps.stories.previews;
     final me = _profile?.id;
     final selfInfo = _selfOwnerInfo();
     final myIndex = me == null
@@ -3632,7 +3635,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       DateTime.now().add(Duration(hours: hours)).millisecondsSinceEpoch;
 
   Future<void> _pinSingleChat(CachedChat chat, {required bool pin}) async {
-    final err = await chats.togglePin(api, chatIds: [chat.id], pin: pin);
+    final err = await _deps.chats.togglePin(_deps.api, chatIds: [chat.id], pin: pin);
     if (!mounted) return;
     showCustomNotification(
       context,
@@ -3643,8 +3646,8 @@ class _ChatListScreenState extends State<ChatListScreen>
   Future<void> _markChatUnread(CachedChat chat) async {
     final myId = _profile?.id;
     if (myId == null) return;
-    final unread = await chats.markUnread(
-      api,
+    final unread = await _deps.chats.markUnread(
+      _deps.api,
       myId,
       chat.id,
       (chat.lastMsgTime ?? 0) + 1,
@@ -3657,8 +3660,8 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Future<void> _muteSingleChat(CachedChat chat, int until) async {
-    final err = await chats.setChatMute(
-      api,
+    final err = await _deps.chats.setChatMute(
+      _deps.api,
       chatId: chat.id,
       dontDisturbUntil: until,
     );
@@ -3683,7 +3686,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       include.remove(chat.id);
     }
     try {
-      await FoldersModule.updateFolder(api, myId, folder, include: include);
+      await FoldersModule.updateFolder(_deps.api, myId, folder, include: include);
       if (!mounted) return;
       showCustomNotification(
         context,
@@ -3708,8 +3711,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       destructive: true,
     );
     if (!mounted || !choice.confirmed) return;
-    final err = await chats.clearHistory(
-      api,
+    final err = await _deps.chats.clearHistory(
+      _deps.api,
       chatId: chat.id,
       lastEventTime: chat.lastEventTime,
       forAll: false,
@@ -3740,7 +3743,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       destructive: true,
     );
     if (!mounted || !choice.confirmed) return;
-    final ok = await ContactsModule.setBlocked(api, peerId, true);
+    final ok = await ContactsModule.setBlocked(_deps.api, peerId, true);
     if (!mounted) return;
     showCustomNotification(
       context,
@@ -3757,8 +3760,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       destructive: true,
     );
     if (!mounted || !confirmed) return;
-    final err = await chats.deleteChat(
-      api,
+    final err = await _deps.chats.deleteChat(
+      _deps.api,
       chatId: chat.id,
       lastEventTime: chat.lastEventTime,
       forAll: false,
@@ -3777,7 +3780,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       destructive: true,
     );
     if (!mounted || !choice.confirmed) return;
-    final ok = await chats.leaveChat(api, chatId: chat.id);
+    final ok = await _deps.chats.leaveChat(_deps.api, chatId: chat.id);
     if (!mounted) return;
     showCustomNotification(
       context,
@@ -3807,14 +3810,14 @@ class _ChatListScreenState extends State<ChatListScreen>
       closeLabel: l10n.chatInfoComplaintClose,
       emptyLabel: l10n.chatInfoComplaintEmpty,
       loadReasons: () async {
-        final reasons = await ComplaintsModule.reasonsFor(api, typeId);
+        final reasons = await ComplaintsModule.reasonsFor(_deps.api, typeId);
         return reasons
             .map((r) => (id: r.reasonId, title: r.reasonTitle))
             .toList();
       },
       onSend: (reasonId) async {
         final ok = await ComplaintsModule.sendComplaint(
-          api,
+          _deps.api,
           reasonId: reasonId,
           typeId: typeId,
           ids: [chat.id],
@@ -3887,7 +3890,7 @@ class _ChatListScreenState extends State<ChatListScreen>
           final previousId = await TokenStorage.getActiveAccountId();
           await resetDigitalIdSession();
           try {
-            await accountModule.beginAddAccount();
+            await _deps.account.beginAddAccount();
           } catch (_) {}
           if (!mounted) return;
           await Navigator.of(context).pushAndRemoveUntil(
@@ -3900,7 +3903,7 @@ class _ChatListScreenState extends State<ChatListScreen>
         }
         await resetDigitalIdSession();
         try {
-          await accountModule.switchAccount(accountId);
+          await _deps.account.switchAccount(accountId);
         } catch (e) {
           if (!mounted) return;
           showCustomNotification(context, 'Не удалось переключить аккаунт');
@@ -4020,8 +4023,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       }
     }
     if (chat == null) {
-      await chats.ensureChatCached(api, profile.id, chatId);
-      final cached = await chats.getChat(profile.id, chatId);
+      await _deps.chats.ensureChatCached(_deps.api, profile.id, chatId);
+      final cached = await _deps.chats.getChat(profile.id, chatId);
       if (cached.isNotEmpty) chat = cached.first;
     }
     if (!mounted) return;
@@ -4078,7 +4081,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   Future<void> _markAllChatsRead() async {
     final p = _profile ?? await AppDatabase.loadActiveProfile();
     if (p == null) return;
-    final all = await chats.getChats(
+    final all = await _deps.chats.getChats(
       p.id,
       includeHidden: KometSettings.showHiddenChats.value,
     );
@@ -4092,8 +4095,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       return;
     }
     for (final c in targets) {
-      await chats.markRead(
-        api,
+      await _deps.chats.markRead(
+        _deps.api,
         p.id,
         c.id,
         c.lastMsgId!.toString(),
