@@ -60,6 +60,8 @@ import '../../../core/utils/chat_layout.dart';
 import '../../../core/utils/emoji_keyword_index.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/route_settle.dart';
+import '../../widgets/animated_text_swap.dart';
+import '../../widgets/swipe_route.dart';
 import '../../../core/config/app_cache_extent.dart';
 import '../../../core/config/app_colors.dart';
 import '../../../core/config/app_message_actions_style.dart';
@@ -499,6 +501,10 @@ class _ChatScreenState extends State<ChatScreen>
   String? _channelLink;
   late final AppDeps _deps;
   late final ChatController _chatController;
+  late final PhotoViewerActions _photoActions;
+  final Map<String, GlobalKey> _messageKeys = {};
+  bool _badgeRefreshing = false;
+  bool _badgeRefreshQueued = false;
 
   List<CachedMessage> get _messages => _chatController.messages;
   set _messages(List<CachedMessage> v) => _chatController.messages = v;
@@ -638,6 +644,13 @@ class _ChatScreenState extends State<ChatScreen>
     _previewChat = widget.channelSubscribed == false;
     _chatController.attach(chatId: widget.chatId);
     _chatController.isMounted = () => mounted;
+    _photoActions = PhotoViewerActions(
+      goToMessage: _requestGoToMessage,
+      forward: _forwardMessageById,
+      delete: (messageId, senderId) =>
+          _confirmDeleteMessage(messageId, senderId == _myId),
+      viewAllMedia: () => _openChatInfo(initialTab: ChatInfoTab.media),
+    );
     if (!_commentsMode) ChatScreen._open.add(this);
     unawaited(PushService.clearChatNotification(widget.chatId));
     if (!_commentsMode) {
@@ -1328,7 +1341,7 @@ class _ChatScreenState extends State<ChatScreen>
     final muted = current.isMuted;
     final target = muted ? ChatsModule.muteOff : ChatsModule.muteForever;
     final error = await _deps.chats.setChatMute(
-      api,
+      _deps.api,
       chatId: widget.chatId,
       dontDisturbUntil: target,
     );
@@ -1476,7 +1489,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
     if (!mounted || !choice.confirmed) return;
     final err = await _deps.chats.clearHistory(
-      api,
+      _deps.api,
       chatId: widget.chatId,
       lastEventTime: current?.lastEventTime ?? 0,
       forAll: canClearForAll && choice.checked,
@@ -1505,7 +1518,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
     if (!mounted || !confirmed) return;
     final err = await _deps.chats.deleteChat(
-      api,
+      _deps.api,
       chatId: widget.chatId,
       lastEventTime: chat?.lastEventTime ?? 0,
       forAll: false,

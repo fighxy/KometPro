@@ -10,6 +10,7 @@ import 'package:komet/backend/app_deps.dart';
 import 'package:komet/backend/app_services.dart';
 import 'package:komet/backend/modules/account.dart';
 import 'package:komet/backend/modules/contacts.dart';
+import 'package:komet/backend/modules/messages.dart' show ContactCache;
 import 'package:komet/backend/modules/outbox.dart';
 import 'package:komet/backend/modules/self_check.dart';
 import 'package:komet/core/calls/call_bridge.dart';

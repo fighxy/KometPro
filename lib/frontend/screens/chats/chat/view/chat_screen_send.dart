@@ -251,7 +251,7 @@ extension _ChatSendPipeline on _ChatScreenState {
       return false;
     }
     final ok = await ComplaintsModule.sendComplaint(
-      api,
+      _deps.api,
       reasonId: reasonId,
       typeId: typeId,
       ids: [messageIdNum],

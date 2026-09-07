@@ -21,7 +21,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
     unawaited(_refreshBadge());
 
     try {
-      final chatRows = await _deps.chats.getChat(_myId, widget.chatId);
+      final chatRows = await _deps._deps.chats.getChat(_myId, widget.chatId);
       if (!mounted) return;
       if (chatRows.isNotEmpty) {
         final channelSubscribed =
@@ -376,14 +376,6 @@ extension _ChatHistoryLoad on _ChatScreenState {
     );
   }
 
-  late final PhotoViewerActions _photoActions = PhotoViewerActions(
-    goToMessage: _requestGoToMessage,
-    forward: _forwardMessageById,
-    delete: (messageId, senderId) =>
-        _confirmDeleteMessage(messageId, senderId == _myId),
-    viewAllMedia: () => _openChatInfo(initialTab: ChatInfoTab.media),
-  );
-
   void _forwardMessageById(String messageId) {
     final message = _messages.where((m) => m.id == messageId).firstOrNull;
     if (message == null) {
@@ -477,7 +469,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
         .length;
     unawaited(
       _deps.chats.markReadUpTo(
-        api,
+        _deps.api,
         _myId,
         widget.chatId,
         candidate.id,
@@ -510,7 +502,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
 
   Future<void> _markMessageUnread(CachedMessage message) async {
     final unread = await _deps.chats.markUnread(
-      api,
+      _deps.api,
       _myId,
       widget.chatId,
       message.time,
@@ -607,7 +599,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
       );
     }
     final error = await _deps.chats.setPinnedMessage(
-      api,
+      _deps.api,
       chatId: widget.chatId,
       messageId: willUnpin ? null : messageId,
       notify: !willUnpin,
@@ -628,7 +620,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
     final previousChat = chat;
     _applyPinnedMessageLocally();
     final error = await _deps.chats.setPinnedMessage(
-      api,
+      _deps.api,
       chatId: widget.chatId,
       messageId: null,
       notify: false,
@@ -682,9 +674,6 @@ extension _ChatHistoryLoad on _ChatScreenState {
     unawaited(_runGoToMessage(messageId, chat?.pinnedMsgTime ?? 0));
   }
 
-  bool _badgeRefreshing = false;
-  bool _badgeRefreshQueued = false;
-
   void _onChatsBump() {
     unawaited(_reloadChatMeta());
     if (_badgeRefreshing) {
@@ -696,7 +685,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
 
   Future<void> _reloadChatMeta() async {
     if (_myId == 0) return;
-    final rows = await _deps.chats.getChat(_myId, widget.chatId);
+    final rows = await _deps._deps.chats.getChat(_myId, widget.chatId);
     if (!mounted || rows.isEmpty) return;
     final fresh = rows.first;
     final current = chat;

@@ -205,7 +205,7 @@ extension _ChatNavigation on _ChatScreenState {
       return;
     }
 
-    await chats.ensureChatCached(api, _myId, target.chatId);
+    await _deps.chats.ensureChatCached(_deps.api, _myId, target.chatId);
     if (!mounted) return;
     pushSwipeable(
       context,
@@ -268,9 +268,9 @@ extension _ChatNavigation on _ChatScreenState {
       return;
     }
 
-    await chats.ensureChatCached(api, _myId, sourceChatId);
+    await _deps.chats.ensureChatCached(_deps.api, _myId, sourceChatId);
     if (!mounted) return;
-    final cached = await chats.getChat(_myId, sourceChatId);
+    final cached = await _deps.chats.getChat(_myId, sourceChatId);
     if (!mounted) return;
     final channel = cached.isEmpty ? null : cached.first;
     pushSwipeable(
@@ -330,8 +330,6 @@ extension _ChatNavigation on _ChatScreenState {
       }
     });
   }
-
-  final Map<String, GlobalKey> _messageKeys = {};
 
   GlobalKey _keyForMessage(String messageId) =>
       _messageKeys.putIfAbsent(messageId, () => GlobalKey());
@@ -577,7 +575,7 @@ extension _ChatNavigation on _ChatScreenState {
     final away = index < visible.oldest
         ? visible.oldest - index
         : index - visible.newest;
-    return (away / perScreen).clamp(1.0, _jumpStepMaxScreens);
+    return (away / perScreen).clamp(1.0, _jumpStepMaxScreens).toDouble();
   }
 
   bool _jumpNearMessage(String messageId) {
