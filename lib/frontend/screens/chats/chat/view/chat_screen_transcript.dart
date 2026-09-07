@@ -434,7 +434,11 @@ extension _ChatTranscriptBuild on _ChatScreenState {
                                 return ValueListenableBuilder<double>(
                                   valueListenable: _composerHeight,
                                   builder: (context, height, _) => SizedBox(
-                                    height: _composerUnderlap ? height : 0,
+                                    height: (_composerUnderlap ? height : 0) +
+                                        (height < 8
+                                            ? MediaQuery.paddingOf(context)
+                                                .bottom
+                                            : 0),
                                   ),
                                 );
                               }
@@ -716,7 +720,9 @@ extension _ChatTranscriptBuild on _ChatScreenState {
         right: _materialComposer
             ? (_materialIconSlot - _scrollDownSize) / 2
             : 16,
-        bottom: (_composerUnderlap ? height : 0) + 12,
+        bottom: (_composerUnderlap ? height : 0) +
+            12 +
+            (height < 8 ? MediaQuery.paddingOf(context).bottom : 0),
         child: child!,
       ),
       child: AnimatedBuilder(
