@@ -923,20 +923,19 @@ class MessageBubble extends StatelessWidget {
   EdgeInsets _paddingFor(MessageType contentType, BubbleShape shape) {
     switch (contentType) {
       case MessageType.text:
-        if (shape == BubbleShape.groupedMiddle) {
-          return const EdgeInsets.symmetric(horizontal: 14, vertical: 6);
-        }
-        return const EdgeInsets.symmetric(horizontal: 14, vertical: 10);
+        return shape == BubbleShape.groupedMiddle
+            ? BubbleCss.textGroupedPad
+            : BubbleCss.textPad;
       case MessageType.attachment:
         return EdgeInsets.zero;
       case MessageType.voice:
         if (shape == BubbleShape.singleTop ||
             shape == BubbleShape.singleBottom) {
-          return const EdgeInsets.symmetric(horizontal: 14, vertical: 6);
+          return BubbleCss.voiceLoosePad;
         }
-        return const EdgeInsets.symmetric(horizontal: 14, vertical: 4);
+        return BubbleCss.voicePad;
       case MessageType.control:
-        return const EdgeInsets.symmetric(horizontal: 14, vertical: 4);
+        return BubbleCss.controlPad;
     }
   }
 
@@ -1274,10 +1273,7 @@ class MessageBubble extends StatelessWidget {
           );
 
     final Widget bubbleBox = ListenableBuilder(
-      listenable: Listenable.merge([
-        AppBubbleShape.current,
-        AppBubbleBehavior.current,
-      ]),
+      listenable: BubbleCss.styleTick,
       builder: (context, child) => Container(
         constraints: BoxConstraints(maxWidth: maxBubbleWidth),
         decoration: BoxDecoration(

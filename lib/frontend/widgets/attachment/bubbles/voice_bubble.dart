@@ -8,6 +8,7 @@ import '../../../../core/config/komet_settings.dart';
 import '../../../../core/media/media_playback.dart';
 import '../../../../core/media/voice_audio_controller.dart';
 import '../../../../core/utils/format.dart';
+import '../../../../core/utils/bubble_radius.dart';
 import '../../../../core/utils/chat_layout.dart';
 import '../../../../core/utils/logger.dart';
 import '../../custom_notification.dart';
@@ -219,8 +220,8 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     return GestureDetector(
       onTap: uploading == null ? _toggle : null,
       child: Container(
-        width: 32,
-        height: 32,
+        width: BubbleCss.playSize,
+        height: BubbleCss.playSize,
         decoration: BoxDecoration(
           color: widget.isMe
               ? widget.cs.onPrimaryContainer.withValues(alpha: 0.12)
@@ -331,12 +332,10 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
         final width = !_transcriptionVisible
-            ? 240.0
+            ? BubbleCss.voiceCompactWidth
             : maxW.isFinite
             ? maxW
             : ChatLayout.maxBubbleWidth(MediaQuery.sizeOf(context).width);
-        const playSize = 32.0;
-        const playWaveGap = 10.0;
         return SizedBox(
           width: width,
           child: Column(
@@ -347,7 +346,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _buildPlayButton(),
-                  const SizedBox(width: playWaveGap),
+                  const SizedBox(width: BubbleCss.playWaveGap),
                   Expanded(
                     child: _SeekableWaveform(
                       onClaim: _claimPlayback,
@@ -358,14 +357,14 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                       inactive: waveInactiveColor,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: BubbleCss.waveTranscribeGap),
                   _buildTranscribeButton(),
                 ],
               ),
               Padding(
                 padding: const EdgeInsets.only(
-                  left: playSize + playWaveGap,
-                  top: 1,
+                  left: BubbleCss.playSize + BubbleCss.playWaveGap,
+                  top: BubbleCss.durationLift,
                 ),
                 child: Row(
                   children: [
@@ -400,7 +399,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                 ),
               ),
               if (_transcriptionVisible) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: BubbleCss.transcriptGap),
                 Text(
                   _transcriptionText ?? '',
                   style: TextStyle(
