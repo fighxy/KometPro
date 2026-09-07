@@ -323,6 +323,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       _deps.stories.storiesChanged.value,
       _sessionState,
       identityHashCode(_profile),
+      widget.activeChatId,
     ]);
     if (_cachedChatsBody == null || _chatsBodyCacheKey != key) {
       _chatsBodyCacheKey = key;
