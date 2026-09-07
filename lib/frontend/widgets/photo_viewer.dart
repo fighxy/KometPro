@@ -218,6 +218,15 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     _syncSwipe();
   }
 
+  void _resetZoom() {
+    final transform = _transformFor(_current.id);
+    if (transform.value.getMaxScaleOnAxis() <= 1.01) return;
+    transform.value = Matrix4.identity();
+    _syncZoom();
+    _syncHero();
+    if (mounted) setState(() {});
+  }
+
   void _syncSwipe() {
     final enabled = _pointers < 2 && !_zoomed;
     if (enabled == _swipeEnabled) return;
@@ -710,7 +719,13 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     final padding = MediaQuery.of(context).padding;
     final hasMenu = _current.isVideo || !(widget.actions?.isEmpty ?? true);
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_zoomed,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _resetZoom();
+      },
+      child: Scaffold(
       backgroundColor: Colors.black,
       body: CallbackShortcuts(
         bindings: {
@@ -787,6 +802,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

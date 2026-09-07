@@ -38,7 +38,8 @@ class SwipeToReplyState extends State<SwipeToReply>
       _edgeBlocked = false;
       return;
     }
-    final edge = MediaQuery.paddingOf(context).left + 28;
+    final inset = MediaQuery.viewPaddingOf(context).left;
+    final edge = (inset > 0 ? inset : MediaQuery.paddingOf(context).left) + 48;
     _edgeBlocked = d.globalPosition.dx <= edge;
   }
 
