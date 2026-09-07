@@ -27,11 +27,13 @@ class ProfileModule extends AccountApiBase {
 
   Future<ProfileData> updateProfileName(
     String firstName,
-    String? lastName,
-  ) async {
+    String? lastName, {
+    String? description,
+  }) async {
     ensureOnline();
     final payload = <dynamic, dynamic>{'firstName': firstName};
     if (lastName != null) payload['lastName'] = lastName;
+    if (description != null) payload['description'] = description;
     final packet = await api.sendRequest(Opcode.profile, payload);
     return _applyProfileResponse(packet);
   }

@@ -94,8 +94,15 @@ class AccountModule {
   Future<void> unregisterPushToken(String pushToken) =>
       _privacy.unregisterPushToken(pushToken);
 
-  Future<ProfileData> updateProfileName(String firstName, String? lastName) =>
-      _profile.updateProfileName(firstName, lastName);
+  Future<ProfileData> updateProfileName(
+    String firstName,
+    String? lastName, {
+    String? description,
+  }) => _profile.updateProfileName(
+    firstName,
+    lastName,
+    description: description,
+  );
 
   Future<ProfileData> updateProfileAvatar(
     String photoToken, {

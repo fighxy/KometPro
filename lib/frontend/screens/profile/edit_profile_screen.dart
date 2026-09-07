@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import '../../../backend/modules/contacts.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/image_utils.dart';
 import '../../../l10n/app_localizations.dart';
@@ -21,6 +24,7 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
+  final _descriptionController = TextEditingController();
   bool _isLoading = true;
   bool _isSaving = false;
   String? _avatarUrl;
@@ -36,6 +40,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -45,12 +50,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (profile != null) {
       _firstNameController.text = profile.firstName;
       _lastNameController.text = profile.lastName ?? '';
+      _descriptionController.text = profile.description ?? '';
       _avatarUrl = profile.baseUrl;
       _photoId = profile.photoId;
       setState(() => _isLoading = false);
+      unawaited(_hydrateDescription(profile.id));
     } else {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _hydrateDescription(int accountId) async {
+    try {
+      final live = await ContactsModule.fetchSelfProfile(
+        AppScope.read(context).api,
+        accountId,
+      );
+      final text = live?.description;
+      if (!mounted || text == null || text == _descriptionController.text) {
+        return;
+      }
+      _descriptionController.text = text;
+    } catch (_) {}
   }
 
   Future<void> _saveName() async {
@@ -67,13 +88,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _lastNameController.text.trim().isEmpty
             ? null
             : _lastNameController.text.trim(),
+        description: _descriptionController.text.trim(),
       );
       _avatarUrl = newProfile.baseUrl;
       _photoId = newProfile.photoId;
       if (!mounted) return;
       KometApp.stateOf(context)?.notifyProfileUpdate();
       if (mounted) {
-        showCustomNotification(context, 'Имя сохранено');
+        showCustomNotification(context, 'Профиль сохранён');
         setState(() => _isSaving = false);
       }
     } catch (e) {
@@ -265,6 +287,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   cs,
                   enabled: !_isSaving,
                 ),
+                const SizedBox(height: 12),
+                _buildTextField(
+                  l10n?.chatInfoBio ?? 'О себе',
+                  _descriptionController,
+                  cs,
+                  enabled: !_isSaving,
+                  maxLines: 4,
+                ),
                 const SizedBox(height: 120),
               ],
             ),
@@ -276,6 +306,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     TextEditingController controller,
     ColorScheme cs, {
     bool enabled = true,
+    int maxLines = 1,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,6 +321,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextField(
           controller: controller,
           enabled: enabled,
+          maxLines: maxLines,
+          minLines: maxLines > 1 ? 3 : 1,
           decoration: InputDecoration(
             filled: true,
             fillColor: cs.surfaceContainerHigh,

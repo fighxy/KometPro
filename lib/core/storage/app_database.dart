@@ -21,6 +21,7 @@ class ProfileData {
   final int accountStatus;
   final int updateTime;
   final List<int>? profileOptions;
+  final String? description;
 
   ProfileData({
     required this.id,
@@ -34,6 +35,7 @@ class ProfileData {
     required this.accountStatus,
     required this.updateTime,
     this.profileOptions,
+    this.description,
   });
 
   factory ProfileData.stub(int id) => ProfileData(
@@ -88,6 +90,9 @@ class ProfileData {
       updateTime: (contact['updateTime'] as int?) ?? 0,
       profileOptions:
           profileOptions ?? _parseProfileOptions(contact['profileOptions']),
+      description:
+          (contact['description'] as String?) ??
+          (contact['about'] as String?),
     );
   }
 
@@ -126,6 +131,7 @@ class ProfileData {
       accountStatus: (row['account_status'] as int?) ?? 0,
       updateTime: (row['update_time'] as int?) ?? 0,
       profileOptions: profileOptions,
+      description: row['description'] as String?,
     );
   }
 
