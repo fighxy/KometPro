@@ -974,6 +974,7 @@ class _ChatScreenState extends State<ChatScreen>
     _jumpCacheExtent.dispose();
     _routeSettle.dispose();
     _messageKeys.clear();
+    _itemExtentCache.clear();
     super.dispose();
   }
 

@@ -45,9 +45,6 @@ class DesktopTray with WindowListener, TrayListener {
                 ? 'Komet — $next непрочитанных'
                 : 'Komet — $next unread');
       await trayManager.setToolTip(tip);
-      if (Platform.isMacOS) {
-        await trayManager.setTitle(next == 0 ? '' : '$next');
-      }
       await _rebuildMenu();
     } catch (e) {
       logger.w('DesktopTray: badge failed: $e');

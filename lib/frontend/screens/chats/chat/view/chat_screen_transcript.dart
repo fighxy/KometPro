@@ -659,7 +659,7 @@ extension _ChatTranscriptBuild on _ChatScreenState {
                                 key: ValueKey('msg_${message.id}'),
                                 child: _ExtentRecorder(
                                   cacheKey:
-                                      '${message.id}:${message.time}:${message.text?.length ?? 0}',
+                                      '${message.id}:${message.time}:${message.status}:${message.text?.length ?? 0}',
                                   cache: _itemExtentCache,
                                   child: KeyedSubtree(
                                     key: _keyForMessage(message.id),
@@ -698,7 +698,7 @@ extension _ChatTranscriptBuild on _ChatScreenState {
                               if (item is UnreadSeparatorItem) return null;
                               if (item is ChatListMessageItem) {
                                 final message = item.message;
-                                return _itemExtentCache['${message.id}:${message.time}:${message.text?.length ?? 0}'];
+                                return _itemExtentCache['${message.id}:${message.time}:${message.status}:${message.text?.length ?? 0}'];
                               }
                               return null;
                             },

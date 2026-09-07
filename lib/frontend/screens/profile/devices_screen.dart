@@ -17,6 +17,7 @@ import '../../widgets/reload_on_reconnect.dart';
 import '../../widgets/glossy_pill.dart';
 import '../../widgets/prompt_dialog.dart';
 import '../../widgets/small_spinner.dart';
+import '../../widgets/swipe_to_pop.dart';
 import '../../widgets/web_qr_login.dart';
 import 'web_qr_scan_screen.dart';
 import '../../../core/config/app_fonts.dart';
@@ -238,7 +239,8 @@ class _DevicesScreenState extends State<DevicesScreen>
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
+    return SwipeToPop(
+      child: Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
         backgroundColor: cs.surface,
@@ -270,6 +272,7 @@ class _DevicesScreenState extends State<DevicesScreen>
             _buildDevicesList(context, cs),
           ],
         ),
+      ),
       ),
     );
   }

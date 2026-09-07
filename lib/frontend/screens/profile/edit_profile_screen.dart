@@ -14,6 +14,7 @@ import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/komet_avatar.dart';
 import '../../widgets/small_spinner.dart';
+import '../../widgets/swipe_to_pop.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -188,7 +189,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
 
-    return Scaffold(
+    return SwipeToPop(
+      child: Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
         backgroundColor: cs.surface,
@@ -304,6 +306,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 120),
               ],
             ),
+      ),
     );
   }
 
