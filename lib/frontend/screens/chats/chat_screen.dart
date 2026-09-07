@@ -696,7 +696,7 @@ class _ChatScreenState extends State<ChatScreen>
   void initState() {
     super.initState();
     _previewChat = widget.channelSubscribed == false;
-    _chatController.chatId = widget.chatId;
+    _chatController.attach(chatId: widget.chatId);
     _chatController.isMounted = () => mounted;
     if (!_commentsMode) ChatScreen._open.add(this);
     unawaited(PushService.clearChatNotification(widget.chatId));

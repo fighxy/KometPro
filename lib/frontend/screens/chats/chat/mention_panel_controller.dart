@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../../../backend/app_deps.dart';
 import '../../../../backend/modules/chats.dart' show chats;
-import '../../../../main.dart' show api;
 
 class MentionCandidate {
   final int id;
@@ -168,7 +168,7 @@ class MentionPanelController {
     loadingMore.value = true;
     try {
       final page = await chats.getChatMembers(
-        api,
+        AppDeps.shared.api,
         chatId,
         marker: _marker,
         count: _pageSize,

@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/config/app_breakpoints.dart';
 import '../../core/config/build_profile.dart';
 import '../../core/config/debug_test.dart';
 import '../../core/utils/update_checker.dart';
+import '../../l10n/app_localizations.dart';
 import '../screens/chats/chat_list_screen.dart';
 import '../screens/chats/chat_screen.dart';
 import 'auth_limits_sheet.dart';
+import 'desktop_shortcuts.dart';
 import 'update_dialog.dart';
 
 class AdaptiveShell extends StatefulWidget {
@@ -39,7 +42,6 @@ class DesktopChatSelection {
 }
 
 class _AdaptiveShellState extends State<AdaptiveShell> {
-  static const double _breakpoint = 900;
   static const double _defaultListWidth = 380;
   static const double _minListWidth = 280;
   static const double _maxListWidth = 560;
@@ -48,14 +50,21 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   static const double _dividerLineWidth = 1;
   static const String _prefsKey = 'desktop_list_width';
 
-  double _listWidth = _defaultListWidth;
-  DesktopChatSelection? _selected;
+  final ValueNotifier<double> _listWidth = ValueNotifier(_defaultListWidth);
+  final ValueNotifier<DesktopChatSelection?> _selected = ValueNotifier(null);
 
   @override
   void initState() {
     super.initState();
     _loadListWidth();
     WidgetsBinding.instance.addPostFrameCallback((_) => _runStartupPrompts());
+  }
+
+  @override
+  void dispose() {
+    _listWidth.dispose();
+    _selected.dispose();
+    super.dispose();
   }
 
   Future<void> _runStartupPrompts() async {
@@ -76,14 +85,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getDouble(_prefsKey);
     if (saved == null || !mounted) return;
-    setState(() {
-      _listWidth = saved.clamp(_minListWidth, _maxListWidth);
-    });
+    _listWidth.value = saved.clamp(_minListWidth, _maxListWidth);
   }
 
   Future<void> _persistListWidth() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_prefsKey, _listWidth);
+    await prefs.setDouble(_prefsKey, _listWidth.value);
   }
 
   void _onChatSelected(DesktopChatSelection chat) {
@@ -99,11 +106,11 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         ),
       );
     }
-    setState(() => _selected = chat);
+    _selected.value = chat;
   }
 
   void _closeChat() {
-    setState(() => _selected = null);
+    _selected.value = null;
   }
 
   void _onDrag(double dx, double totalWidth) {
@@ -111,84 +118,111 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     final upperBound = maxAllowedByPane < _maxListWidth
         ? maxAllowedByPane
         : _maxListWidth;
-    final lower = _minListWidth;
-    final next = (_listWidth + dx).clamp(lower, upperBound);
-    if (next == _listWidth) return;
-    setState(() => _listWidth = next);
+    final next = (_listWidth.value + dx).clamp(_minListWidth, upperBound);
+    if (next == _listWidth.value) return;
+    _listWidth.value = next;
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < _breakpoint) {
-          return const ChatListScreen();
-        }
-        final totalWidth = constraints.maxWidth;
-        final effectiveListWidth = _listWidth.clamp(
-          _minListWidth,
-          (totalWidth - _minChatPaneWidth - _dividerHitWidth).clamp(
-            _minListWidth,
-            _maxListWidth,
-          ),
-        );
-        final cs = Theme.of(context).colorScheme;
-        return Scaffold(
-          backgroundColor: cs.surface,
-          body: Row(
-            children: [
-              SizedBox(
-                width: effectiveListWidth,
-                child: ChatListScreen(
-                  onChatSelected: _onChatSelected,
-                  activeChatId: _selected?.chatId,
-                ),
-              ),
-              _ResizeDivider(
-                hitWidth: _dividerHitWidth,
-                lineWidth: _dividerLineWidth,
-                color: cs.outlineVariant.withValues(alpha: 0.35),
-                onDrag: (dx) => _onDrag(dx, totalWidth),
-                onDragEnd: _persistListWidth,
-              ),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 160),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeOut,
-                  layoutBuilder: (current, previous) {
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ...previous,
-                        if (current != null) current,
-                      ],
-                    );
-                  },
-                  child: _selected == null
-                      ? _EmptyChatPane(
-                          key: const ValueKey('empty'),
-                          colorScheme: cs,
-                        )
-                      : ChatScreen(
-                          key: ValueKey(
-                            '${_selected!.chatId}:${_selected!.initialMessageId ?? ''}',
-                          ),
-                          chatId: _selected!.chatId,
-                          name: _selected!.name,
-                          imageUrl: _selected!.imageUrl,
-                          chatType: _selected!.chatType,
-                          initialMessageId: _selected!.initialMessageId,
-                          initialMessageTime: _selected!.initialMessageTime,
-                          embedded: true,
-                          onClose: _closeChat,
+    return DesktopShortcuts(
+      onClosePane: _closeChat,
+      child: ValueListenableBuilder<DesktopChatSelection?>(
+        valueListenable: _selected,
+        builder: (context, selected, _) {
+          return PopScope(
+            canPop: selected == null,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              if (_selected.value != null) _closeChat();
+            },
+            child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (!AppBreakpoints.useSplitView(constraints.maxWidth)) {
+              return const ChatListScreen();
+            }
+            final totalWidth = constraints.maxWidth;
+            final cs = Theme.of(context).colorScheme;
+            return Scaffold(
+              backgroundColor: cs.surface,
+              body: Row(
+                children: [
+                  ValueListenableBuilder<double>(
+                    valueListenable: _listWidth,
+                    builder: (context, width, _) {
+                      final effectiveListWidth = width.clamp(
+                        _minListWidth,
+                        (totalWidth - _minChatPaneWidth - _dividerHitWidth)
+                            .clamp(_minListWidth, _maxListWidth),
+                      );
+                      return SizedBox(
+                        width: effectiveListWidth,
+                        child: ValueListenableBuilder<DesktopChatSelection?>(
+                          valueListenable: _selected,
+                          builder: (context, selected, _) {
+                            return ChatListScreen(
+                              onChatSelected: _onChatSelected,
+                              activeChatId: selected?.chatId,
+                            );
+                          },
                         ),
-                ),
+                      );
+                    },
+                  ),
+                  _ResizeDivider(
+                    hitWidth: _dividerHitWidth,
+                    lineWidth: _dividerLineWidth,
+                    color: cs.outlineVariant.withValues(alpha: 0.35),
+                    onDrag: (dx) => _onDrag(dx, totalWidth),
+                    onDragEnd: _persistListWidth,
+                  ),
+                  Expanded(
+                    child: ValueListenableBuilder<DesktopChatSelection?>(
+                      valueListenable: _selected,
+                      builder: (context, selected, _) {
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 160),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeOut,
+                          layoutBuilder: (current, previous) {
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                ...previous,
+                                if (current != null) current,
+                              ],
+                            );
+                          },
+                          child: selected == null
+                              ? _EmptyChatPane(
+                                  key: const ValueKey('empty'),
+                                  colorScheme: cs,
+                                )
+                              : ChatScreen(
+                                  key: ValueKey(
+                                    '${selected.chatId}:${selected.initialMessageId ?? ''}',
+                                  ),
+                                  chatId: selected.chatId,
+                                  name: selected.name,
+                                  imageUrl: selected.imageUrl,
+                                  chatType: selected.chatType,
+                                  initialMessageId: selected.initialMessageId,
+                                  initialMessageTime: selected.initialMessageTime,
+                                  embedded: true,
+                                  onClose: _closeChat,
+                                ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      },
+            );
+          },
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -257,6 +291,7 @@ class _EmptyChatPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ColoredBox(
       color: colorScheme.surfaceContainerLow,
       child: Center(
@@ -271,7 +306,7 @@ class _EmptyChatPane extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              'Выберите чат',
+              l10n?.shellSelectChat ?? 'Select a chat',
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
                 fontSize: 15,

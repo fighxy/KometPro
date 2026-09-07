@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../backend/api.dart';
+import '../../../../backend/app_deps.dart';
 import '../../../../backend/modules/chats.dart';
 import '../../../../backend/modules/messages.dart';
 import '../../../../core/cache/message_session_cache.dart';
 import '../../../../core/config/komet_settings.dart';
 import '../../../../core/storage/app_database.dart';
 import '../../../../core/utils/logger.dart';
-import '../../../../main.dart';
 
 class HistoryGap {
   HistoryGap({
@@ -23,6 +24,18 @@ class HistoryGap {
 }
 
 class ChatController extends ChangeNotifier {
+  ChatController({
+    Api? api,
+    MessagesModule? messages,
+    ChatsModule? chats,
+  }) : api = api ?? AppDeps.shared.api,
+       messagesModule = messages ?? AppDeps.shared.messages,
+       chatsModule = chats ?? AppDeps.shared.chats;
+
+  final Api api;
+  final MessagesModule messagesModule;
+  final ChatsModule chatsModule;
+
   static const int historyPageSize = 30;
   static const int historyInitialLimit = 50;
   static const int jumpWindowBefore = 40;
@@ -32,6 +45,7 @@ class ChatController extends ChangeNotifier {
 
   int chatId = 0;
   int myId = 0;
+  int _sessionGen = 0;
 
   List<CachedMessage> messages = [];
   final ValueNotifier<int> messagesRev = ValueNotifier(0);
@@ -51,6 +65,15 @@ class ChatController extends ChangeNotifier {
   ) => oldestRenderedTime != null && oldestRenderedTime >= gap.tailTime;
 
   bool Function() isMounted = () => true;
+
+  bool _sameSession(int gen) => isMounted() && gen == _sessionGen;
+
+  int attach({required int chatId, int? myId}) {
+    _sessionGen++;
+    this.chatId = chatId;
+    if (myId != null) this.myId = myId;
+    return _sessionGen;
+  }
 
   void bump() {
     messagesRev.value++;
@@ -167,11 +190,12 @@ class ChatController extends ChangeNotifier {
     required String targetId,
     required int targetTime,
   }) async {
+    final gen = _sessionGen;
     if (myId == 0 || targetTime <= 0) return false;
     final onlyVisible = !KometSettings.viewDeleted.value;
 
     var window = await loadWindowFromDb(targetTime, onlyVisible);
-    if (!isMounted()) return false;
+    if (!_sameSession(gen)) return false;
 
     if (!window.any((m) => m.id == targetId)) {
       final fetched = await messagesModule.fetchHistory(
@@ -181,12 +205,12 @@ class ChatController extends ChangeNotifier {
         forward: jumpWindowAfter,
         backward: jumpWindowBefore + 1,
       );
-      if (!isMounted()) return false;
+      if (!_sameSession(gen)) return false;
       if (fetched.isNotEmpty && KometSettings.viewDeleted.value) {
-        await chats.reconcileDeletedFromFetch(myId, chatId, fetched);
+        await chatsModule.reconcileDeletedFromFetch(myId, chatId, fetched);
       }
       window = await loadWindowFromDb(targetTime, onlyVisible);
-      if (!isMounted()) return false;
+      if (!_sameSession(gen)) return false;
     }
 
     if (window.isEmpty) return false;
@@ -228,6 +252,7 @@ class ChatController extends ChangeNotifier {
     HistoryGap gap, {
     void Function()? beforeApply,
   }) async {
+    final gen = _sessionGen;
     if (loadingGap || myId == 0 || !gaps.contains(gap)) return 0;
     if (gap.edgeTime <= 0 || gap.tailTime <= gap.edgeTime) {
       _closeGap(gap);
@@ -242,7 +267,7 @@ class ChatController extends ChangeNotifier {
         gap.tailTime,
         onlyVisible,
       );
-      if (!isMounted()) return 0;
+      if (!_sameSession(gen)) return 0;
 
       if (slice.length < gapPageSize) {
         final fetched = await messagesModule.fetchHistory(
@@ -252,16 +277,16 @@ class ChatController extends ChangeNotifier {
           forward: gapPageSize,
           backward: 0,
         );
-        if (!isMounted()) return 0;
+        if (!_sameSession(gen)) return 0;
         if (fetched.isNotEmpty && KometSettings.viewDeleted.value) {
-          await chats.reconcileDeletedFromFetch(myId, chatId, fetched);
+          await chatsModule.reconcileDeletedFromFetch(myId, chatId, fetched);
         }
         final refreshed = await loadGapSliceFromDb(
           gap.edgeTime,
           gap.tailTime,
           onlyVisible,
         );
-        if (!isMounted()) return 0;
+        if (!_sameSession(gen)) return 0;
         if (refreshed.length <= slice.length) {
           if (refreshed.isNotEmpty) {
             beforeApply?.call();
@@ -314,6 +339,7 @@ class ChatController extends ChangeNotifier {
     int? pageSize,
     bool persist = true,
   }) async {
+    final gen = _sessionGen;
     if (isLoadingMore || !hasMoreHistory || messages.isEmpty) return;
     isLoadingMore = true;
     onLoadingStarted();
@@ -334,13 +360,13 @@ class ChatController extends ChangeNotifier {
         );
         if (fetched.isNotEmpty) {
           if (KometSettings.viewDeleted.value) {
-            await chats.reconcileDeletedFromFetch(myId, chatId, fetched);
+            await chatsModule.reconcileDeletedFromFetch(myId, chatId, fetched);
           }
           older = await loadOlderFromDb(oldest.time, onlyVisible, limit: size);
         }
       }
 
-      if (!isMounted()) return;
+      if (!_sameSession(gen)) return;
       final added = prependOlder(older);
       isLoadingMore = false;
       if (added == 0) hasMoreHistory = false;
@@ -359,6 +385,7 @@ class ChatController extends ChangeNotifier {
     required void Function() onPreview,
     required void Function() onSenderNames,
   }) async {
+    final gen = _sessionGen;
     final onlyVisible = !KometSettings.viewDeleted.value;
     final cachedRows = await AppDatabase.loadChat(myId, chatId);
     final preview =
@@ -366,18 +393,18 @@ class ChatController extends ChangeNotifier {
     if (preview) {
       onPreview();
       if (cachedRows.isEmpty) {
-        await chats.ensureChatCached(api, myId, chatId);
+        await chatsModule.ensureChatCached(api, myId, chatId);
       }
-      await chats.subscribeChat(api, chatId);
+      await chatsModule.subscribeChat(api, chatId);
     }
 
     final fullDecoded = await loadInitialFromDb(onlyVisible: onlyVisible);
-    if (isMounted()) {
+    if (_sameSession(gen)) {
       onApplyMerged(fullDecoded);
     }
 
-    if (fullDecoded.isNotEmpty && chats.wasHistoryFetched(chatId)) {
-      if (isMounted()) {
+    if (fullDecoded.isNotEmpty && chatsModule.wasHistoryFetched(chatId)) {
+      if (_sameSession(gen)) {
         onLoadingFinished();
       }
       onSenderNames();
@@ -386,19 +413,19 @@ class ChatController extends ChangeNotifier {
 
     try {
       final serverMessages = await messagesModule.fetchHistory(myId, chatId);
-      chats.markHistoryFetched(chatId);
+      chatsModule.markHistoryFetched(chatId);
       if (KometSettings.viewDeleted.value) {
-        await chats.reconcileDeletedFromFetch(myId, chatId, serverMessages);
+        await chatsModule.reconcileDeletedFromFetch(myId, chatId, serverMessages);
       }
       final updatedDecoded = await loadInitialFromDb(onlyVisible: onlyVisible);
-      if (isMounted()) {
+      if (_sameSession(gen)) {
         onApplyMerged(updatedDecoded, markLoaded: true);
       }
-      unawaited(chats.reconcileLastMessageIfPlaceholder(myId, chatId));
+      unawaited(chatsModule.reconcileLastMessageIfPlaceholder(myId, chatId));
       onSenderNames();
     } catch (e) {
       logger.e('Error fetching history: $e');
-      if (isMounted()) {
+      if (_sameSession(gen)) {
         onLoadingFinished();
       }
     }
@@ -406,6 +433,8 @@ class ChatController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _sessionGen++;
+    isMounted = () => false;
     messagesRev.dispose();
     super.dispose();
   }

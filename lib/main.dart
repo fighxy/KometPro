@@ -13,6 +13,7 @@ import 'package:m3e_collection/m3e_collection.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'backend/api.dart';
+import 'backend/app_deps.dart';
 import 'core/cache/info_cache.dart';
 import 'core/config/build_profile.dart';
 import 'core/utils/logger.dart';
@@ -93,6 +94,7 @@ import 'core/protocol/packet.dart';
 import 'frontend/debug/fps_overlay_layer.dart';
 import 'frontend/screens/auth/login_screen.dart';
 import 'frontend/widgets/adaptive_shell.dart';
+import 'frontend/widgets/app_scope.dart';
 import 'frontend/widgets/custom_notification.dart';
 import 'frontend/widgets/liquid_glass.dart';
 import 'frontend/widgets/small_spinner.dart';
@@ -116,6 +118,22 @@ final bannersModule = accountModule.banners;
 final RouteObserver<PageRoute<dynamic>> appRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
 
+final AppDeps appDeps = AppDeps(
+  api: api,
+  account: accountModule,
+  messages: messagesModule,
+  comments: commentsModule,
+  sharedContent: sharedContentModule,
+  polls: pollsModule,
+  stickers: stickersModule,
+  animoji: animojiModule,
+  webApp: webAppModule,
+  digitalId: digitalIdModule,
+  fileUploader: fileUploader,
+  stories: storiesModule,
+  chats: chats,
+);
+
 const ProgressIndicatorThemeData _expressiveProgressTheme =
     // ignore: deprecated_member_use
     ProgressIndicatorThemeData(year2023: false);
@@ -125,8 +143,8 @@ const PageTransitionsTheme _appPageTransitions = PageTransitionsTheme(
     TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
     TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
     TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-    TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-    TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+    TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+    TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
   },
 );
 
@@ -183,6 +201,7 @@ void _installLogCapture() {
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppDeps.bind(appDeps);
   await initKolibri();
   DebugTest.parse(args);
   CallNoMute.parse(args);
@@ -980,7 +999,9 @@ class KometAppState extends State<KometApp>
 
   @override
   Widget build(BuildContext context) {
-    return DynamicColorBuilder(
+    return AppScope(
+      deps: appDeps,
+      child: DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return ListenableBuilder(
           listenable: Listenable.merge([
@@ -1070,6 +1091,7 @@ class KometAppState extends State<KometApp>
           },
         );
       },
+      ),
     );
   }
 }

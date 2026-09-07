@@ -5593,6 +5593,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Got it'**
   String get authLimitsConfirm;
+
+  /// Empty desktop chat pane title.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a chat'**
+  String get shellSelectChat;
+
+  /// Tray menu item that shows the main window.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Komet'**
+  String get trayOpenKomet;
+
+  /// Tray menu item that quits the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit'**
+  String get trayQuit;
 }
 
 class _AppLocalizationsDelegate

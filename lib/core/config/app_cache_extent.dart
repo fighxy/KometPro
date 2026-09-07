@@ -4,11 +4,11 @@ import 'persisted_setting.dart';
 
 class AppCacheExtent {
   static const prefKey = 'app_cache_extent';
-  static const double defaultValue = 5000;
-  static const double min = 1000;
+  static const double defaultValue = 800;
+  static const double min = 400;
   static const double max = 10000;
-  static const double lowWarnThreshold = 2500;
-  static const double highWarnThreshold = 7000;
+  static const double lowWarnThreshold = 500;
+  static const double highWarnThreshold = 2500;
 
   static final _setting = PersistedSetting<double>(
     prefKey: prefKey,

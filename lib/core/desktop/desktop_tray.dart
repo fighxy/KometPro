@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:ui' show Size;
 
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -12,7 +13,7 @@ class DesktopTray with WindowListener, TrayListener {
 
   static bool get isSupported {
     try {
-      return Platform.isWindows;
+      return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
     } catch (_) {
       return false;
     }
@@ -26,27 +27,29 @@ class DesktopTray with WindowListener, TrayListener {
     _started = true;
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
+    await windowManager.setMinimumSize(const Size(420, 520));
     windowManager.addListener(this);
     trayManager.addListener(this);
     try {
-      try {
-        await trayManager.setIcon('windows/runner/resources/app_icon.ico');
-      } catch (_) {
-        await trayManager.setIcon('assets/komet_icon.png');
-      }
+      await trayManager.setIcon(_iconPath());
       await trayManager.setToolTip('Komet');
       await trayManager.setContextMenu(
         Menu(
           items: [
-            MenuItem(key: 'show', label: 'Открыть Komet'),
+            MenuItem(key: 'show', label: 'Open Komet'),
             MenuItem.separator(),
-            MenuItem(key: 'quit', label: 'Выйти'),
+            MenuItem(key: 'quit', label: 'Quit'),
           ],
         ),
       );
     } catch (e) {
       logger.w('DesktopTray: иконка трея не встала: $e');
     }
+  }
+
+  String _iconPath() {
+    if (Platform.isWindows) return 'windows/runner/resources/app_icon.ico';
+    return 'assets/komet_icon.png';
   }
 
   Future<void> reveal() async {

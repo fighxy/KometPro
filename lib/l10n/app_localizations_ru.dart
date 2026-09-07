@@ -2990,4 +2990,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get authLimitsConfirm => 'Понятно';
+
+  @override
+  String get shellSelectChat => 'Выберите чат';
+
+  @override
+  String get trayOpenKomet => 'Открыть Komet';
+
+  @override
+  String get trayQuit => 'Выйти';
 }

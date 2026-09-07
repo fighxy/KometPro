@@ -1029,5 +1029,8 @@
   "authLimitsSignupGroupsBody": "Вступление в группы может быть недоступно.",
   "authLimitsSignupMoreTitle": "Возможны и другие ограничения",
   "authLimitsSignupMoreBody": "Полного списка сервер не сообщает — если действие не сработало, попробуйте позже.",
-  "authLimitsConfirm": "Понятно"
+  "authLimitsConfirm": "Понятно",
+  "shellSelectChat": "Выберите чат",
+  "trayOpenKomet": "Открыть Komet",
+  "trayQuit": "Выйти"
 }

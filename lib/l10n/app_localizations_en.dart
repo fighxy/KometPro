@@ -2974,4 +2974,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authLimitsConfirm => 'Got it';
+
+  @override
+  String get shellSelectChat => 'Select a chat';
+
+  @override
+  String get trayOpenKomet => 'Open Komet';
+
+  @override
+  String get trayQuit => 'Quit';
 }
