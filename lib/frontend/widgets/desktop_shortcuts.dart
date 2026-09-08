@@ -14,6 +14,14 @@ class FindInChatIntent extends Intent {
   const FindInChatIntent();
 }
 
+class OpenSettingsIntent extends Intent {
+  const OpenSettingsIntent();
+}
+
+class NewChatIntent extends Intent {
+  const NewChatIntent();
+}
+
 class DesktopShortcuts extends StatelessWidget {
   const DesktopShortcuts({
     super.key,
@@ -21,12 +29,16 @@ class DesktopShortcuts extends StatelessWidget {
     this.onSearchChats,
     this.onClosePane,
     this.onFindInChat,
+    this.onOpenSettings,
+    this.onNewChat,
   });
 
   final Widget child;
   final VoidCallback? onSearchChats;
   final VoidCallback? onClosePane;
   final VoidCallback? onFindInChat;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onNewChat;
 
   static bool get _meta => defaultTargetPlatform == TargetPlatform.macOS;
 
@@ -50,6 +62,10 @@ class DesktopShortcuts extends StatelessWidget {
             const FindInChatIntent(),
         SingleActivator(LogicalKeyboardKey.keyW, control: !_meta, meta: _meta):
             const ClosePaneIntent(),
+        SingleActivator(LogicalKeyboardKey.comma, control: !_meta, meta: _meta):
+            const OpenSettingsIntent(),
+        SingleActivator(LogicalKeyboardKey.keyN, control: !_meta, meta: _meta):
+            const NewChatIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -68,6 +84,18 @@ class DesktopShortcuts extends StatelessWidget {
           FindInChatIntent: CallbackAction<FindInChatIntent>(
             onInvoke: (_) {
               onFindInChat?.call();
+              return null;
+            },
+          ),
+          OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
+            onInvoke: (_) {
+              onOpenSettings?.call();
+              return null;
+            },
+          ),
+          NewChatIntent: CallbackAction<NewChatIntent>(
+            onInvoke: (_) {
+              onNewChat?.call();
               return null;
             },
           ),

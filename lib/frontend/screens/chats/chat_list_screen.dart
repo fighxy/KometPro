@@ -31,6 +31,7 @@ import '../../widgets/informer_banner_tile.dart';
 import '../../../backend/modules/share_sender.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/format.dart';
+import '../../../core/config/desktop_density.dart';
 import '../../../models/shared_payload.dart';
 import '../../widgets/rich_message_controller.dart';
 import 'share_composer_bar.dart';
@@ -2441,7 +2442,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                     ),
                   ),
                 ),
-                _buildDockedBottomNav(cs, navInnerW, bottomInset),
+                if (!DesktopDensity.enabled)
+                  _buildDockedBottomNav(cs, navInnerW, bottomInset),
                 AnimatedBuilder(
                   animation: Listenable.merge([
                     _fabController,
@@ -3170,9 +3172,9 @@ class _ChatListScreenState extends State<ChatListScreen>
     final story = (_isSelectionMode || widget.forwardMode)
         ? null
         : _storyPreviewFor(storyOwnerId);
-    final desktopPane = widget.onChatSelected != null;
+    final desktopPane = widget.onChatSelected != null || DesktopDensity.enabled;
     final avatarRadius = desktopPane
-        ? (story == null ? 22.0 : 20.0)
+        ? DesktopDensity.avatarRadius
         : (story == null ? 30.0 : 26.0);
 
     final CircleAvatar rawAvatar = CircleAvatar(
@@ -3353,7 +3355,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: SizedBox(
-                    height: desktopPane ? 44 : 54,
+                    height: desktopPane ? DesktopDensity.rowInnerHeight : 54,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -3381,8 +3383,12 @@ class _ChatListScreenState extends State<ChatListScreen>
                                         name,
                                         style: TextStyle(
                                           color: cs.onSurface,
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w700,
+                                          fontSize: desktopPane
+                                              ? DesktopDensity.titleSize
+                                              : 17,
+                                          fontWeight: desktopPane
+                                              ? DesktopDensity.titleWeight
+                                              : FontWeight.w700,
                                           height: 1.1,
                                           letterSpacing: -0.2,
                                         ),
@@ -3417,7 +3423,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 time,
                                 style: TextStyle(
                                   color: cs.outline,
-                                  fontSize: 14,
+                                  fontSize: desktopPane
+                                      ? DesktopDensity.timeSize
+                                      : 14,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),

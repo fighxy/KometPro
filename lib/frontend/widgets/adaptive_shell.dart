@@ -3,17 +3,22 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../backend/modules/chats.dart';
 import '../../core/config/app_breakpoints.dart';
 import '../../core/config/build_profile.dart';
 import '../../core/config/debug_test.dart';
+import '../../core/config/desktop_density.dart';
+import '../../core/storage/app_database.dart';
+import '../../core/utils/format.dart';
 import '../../core/utils/update_checker.dart';
-import '../../l10n/app_localizations.dart';
 import '../screens/chats/chat_list_screen.dart';
 import '../screens/chats/chat_screen.dart';
+import '../screens/profile/settings_tab.dart';
+import 'app_scope.dart';
 import 'auth_limits_sheet.dart';
+import 'desktop_nav_rail.dart';
 import 'desktop_shortcuts.dart';
 import 'swipe_to_pop.dart';
 import 'update_dialog.dart';
@@ -55,6 +60,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
 
   final ValueNotifier<double> _listWidth = ValueNotifier(_defaultListWidth);
   final ValueNotifier<DesktopChatSelection?> _selected = ValueNotifier(null);
+  int _railIndex = 0;
   bool _hadHinge = false;
 
   @override
@@ -137,6 +143,21 @@ class _AdaptiveShellState extends State<AdaptiveShell>
     _selected.value = null;
   }
 
+  void _onRailSelect(int index) {
+    setState(() => _railIndex = index);
+    ChatListScreen.selectTab(index);
+  }
+
+  Future<void> _openSettings() async {
+    setState(() => _railIndex = 3);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const SettingsTab(),
+      ),
+    );
+    if (mounted) setState(() => _railIndex = 0);
+  }
+
   void _onDrag(double dx, double totalWidth) {
     final maxAllowedByPane = totalWidth - _minChatPaneWidth - _dividerHitWidth;
     final upperBound = maxAllowedByPane < _maxListWidth
@@ -157,6 +178,8 @@ class _AdaptiveShellState extends State<AdaptiveShell>
           ChatListScreen.openSearch();
         }
       },
+      onOpenSettings: _openSettings,
+      onNewChat: () => _onRailSelect(2),
       child: ValueListenableBuilder<DesktopChatSelection?>(
         valueListenable: _selected,
         builder: (context, selected, _) {
@@ -173,14 +196,15 @@ class _AdaptiveShellState extends State<AdaptiveShell>
               constraints.maxWidth,
               hinge: hinge,
             )) {
-              return const ChatListScreen();
+              return _withRail(const ChatListScreen());
             }
             final totalWidth = constraints.maxWidth;
             final hingeWidth = hinge == null
                 ? null
                 : AppBreakpoints.hingeListWidth(hinge, totalWidth);
             final cs = Theme.of(context).colorScheme;
-            return Scaffold(
+            return _withRail(
+              Scaffold(
               backgroundColor: cs.surface,
               body: Row(
                 children: [
@@ -261,12 +285,27 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                   ),
                 ],
               ),
+            ),
             );
           },
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _withRail(Widget child) {
+    if (!DesktopDensity.enabled) return child;
+    return Row(
+      children: [
+        DesktopNavRail(
+          index: _railIndex,
+          onSelect: _onRailSelect,
+          onSettings: _openSettings,
+        ),
+        Expanded(child: child),
+      ],
     );
   }
 }
@@ -328,38 +367,196 @@ class _ResizeDividerState extends State<_ResizeDivider> {
   }
 }
 
-class _EmptyChatPane extends StatelessWidget {
+class _EmptyChatPane extends StatefulWidget {
   final ColorScheme colorScheme;
 
   const _EmptyChatPane({super.key, required this.colorScheme});
 
   @override
+  State<_EmptyChatPane> createState() => _EmptyChatPaneState();
+}
+
+class _EmptyChatPaneState extends State<_EmptyChatPane> {
+  ProfileData? _profile;
+  List<CachedChat> _recents = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final profile = await AppDatabase.loadActiveProfile();
+      var recents = <CachedChat>[];
+      if (profile != null) {
+        recents = await AppScope.read(context).chats.getChats(profile.id);
+        recents = recents.take(6).toList();
+      }
+      if (!mounted) return;
+      setState(() {
+        _profile = profile;
+        _recents = recents;
+      });
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final cs = widget.colorScheme;
+    final name = _profile == null
+        ? 'Komet'
+        : [
+            _profile!.firstName,
+            _profile!.lastName ?? '',
+          ].where((s) => s.trim().isNotEmpty).join(' ');
     return ColoredBox(
-      color: colorScheme.surfaceContainerLow,
+      color: cs.surfaceContainerLow,
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Symbols.chat_bubble,
-              size: 56,
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              weight: 300,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: cs.surfaceContainerHighest,
+                  backgroundImage: (_profile?.baseUrl ?? '').isNotEmpty
+                      ? CachedNetworkImageProvider(_profile!.baseUrl!)
+                      : null,
+                  child: (_profile?.baseUrl ?? '').isEmpty
+                      ? Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'K',
+                          style: TextStyle(
+                            color: cs.onSurfaceVariant,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  name.isEmpty ? 'Komet' : name,
+                  style: TextStyle(
+                    color: cs.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Ctrl+K поиск · Ctrl+N контакты · Ctrl+, настройки',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                ),
+                if (_recents.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Недавние',
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final chat in _recents)
+                    _RecentRow(
+                      chat: chat,
+                      colorScheme: cs,
+                      onTap: () {
+                        final shell = context
+                            .findAncestorStateOfType<_AdaptiveShellState>();
+                        shell?._onChatSelected(
+                          DesktopChatSelection(
+                            chatId: chat.id,
+                            name: chat.title ?? '',
+                            imageUrl: chat.iconUrl ?? '',
+                            chatType: chat.type,
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ],
             ),
-            const SizedBox(height: 14),
-            Text(
-              l10n?.shellSelectChat ?? 'Select a chat',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+class _RecentRow extends StatelessWidget {
+  const _RecentRow({
+    required this.chat,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  final CachedChat chat;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = colorScheme;
+    final title = chat.title ?? '';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: cs.surfaceContainerHighest,
+                backgroundImage: (chat.iconUrl ?? '').isNotEmpty
+                    ? CachedNetworkImageProvider(chat.iconUrl!)
+                    : null,
+                child: (chat.iconUrl ?? '').isEmpty
+                    ? Text(
+                        title.isNotEmpty ? title[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: cs.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (chat.lastMsgTime != null)
+                Text(
+                  formatChatListTime(chat.lastMsgTime),
+                  style: TextStyle(color: cs.outline, fontSize: 11),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
