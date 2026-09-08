@@ -6,6 +6,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/build_profile.dart';
+import '../../../core/config/desktop_density.dart';
+import '../../../core/config/desktop_ui_scale.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/utils/update_checker.dart';
@@ -644,6 +646,8 @@ class _AppearancePane extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
       children: [
+        const _InterfaceScaleCard(),
+        const SizedBox(height: 16),
         SettingsCard(
           children: [
             SettingsNavTile(
@@ -679,6 +683,170 @@ class _AppearancePane extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _InterfaceScaleCard extends StatelessWidget {
+  const _InterfaceScaleCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ValueListenableBuilder<double>(
+      valueListenable: DesktopUiScale.value,
+      builder: (context, scale, _) {
+        final percent = DesktopUiScale.percent;
+        return SettingsCard(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Icon(Symbols.zoom_in, size: 20, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Масштаб интерфейса',
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$percent%',
+                    style: TextStyle(
+                      color: cs.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+              child: Slider(
+                value: scale,
+                min: DesktopUiScale.min,
+                max: DesktopUiScale.max,
+                divisions: ((DesktopUiScale.max - DesktopUiScale.min) /
+                        DesktopUiScale.step)
+                    .round(),
+                label: '$percent%',
+                onChanged: (v) => DesktopUiScale.set(v),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Row(
+                children: [
+                  Text(
+                    '${(DesktopUiScale.min * 100).round()}%',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: percent == 100
+                        ? null
+                        : () => DesktopUiScale.set(DesktopUiScale.def),
+                    child: const Text('100%'),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${(DesktopUiScale.max * 100).round()}%',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: _ScalePreview(scale: scale),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ScalePreview extends StatelessWidget {
+  const _ScalePreview({required this.scale});
+
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final avatar = DesktopDensity.avatarRadius;
+    final title = DesktopDensity.titleSize;
+    final time = DesktopDensity.timeSize;
+    final row = DesktopDensity.rowInnerHeight;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: avatar,
+              backgroundColor: cs.primary.withValues(alpha: 0.18),
+              child: Icon(Symbols.person, size: avatar, color: cs.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: row,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Пример чата',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: cs.onSurface,
+                              fontSize: title,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '12:04',
+                          style: TextStyle(
+                            color: cs.onSurfaceVariant,
+                            fontSize: time,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Так растут строка, аватар и кегль',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: DesktopDensity.previewSize,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

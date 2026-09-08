@@ -27,6 +27,7 @@ import 'core/config/debug_test.dart';
 import 'core/config/app_bubble_shape.dart';
 import 'core/config/app_cache_extent.dart';
 import 'core/config/app_fonts.dart';
+import 'core/config/desktop_ui_scale.dart';
 import 'core/config/custom_font_service.dart';
 import 'core/config/app_message_actions_style.dart';
 import 'core/config/app_microphone.dart';
@@ -243,6 +244,7 @@ void main(List<String> args) async {
   await ArchivedChatsStore.instance.load();
   await ChatEncryptionStore.instance.load();
   await KometSettings.load();
+  await DesktopUiScale.load();
   if (KometSettings.ghostMode.value) SelfPresence.markOffline();
   await ContactCache.load();
   final initialFpsOverlay = prefs.getBool('dev_fps_overlay') ?? false;

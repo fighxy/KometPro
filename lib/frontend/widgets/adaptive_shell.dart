@@ -10,6 +10,7 @@ import '../../core/config/app_breakpoints.dart';
 import '../../core/config/build_profile.dart';
 import '../../core/config/debug_test.dart';
 import '../../core/config/desktop_density.dart';
+import '../../core/config/desktop_ui_scale.dart';
 import '../../core/desktop/desktop_tray.dart';
 import '../../core/desktop/desktop_window.dart';
 import '../../core/storage/app_database.dart';
@@ -227,24 +228,10 @@ class _AdaptiveShellState extends State<AdaptiveShell>
         if (next != null) _onChatSelected(next);
       },
       onCopyMessage: ChatScreen.copyVisibleSelection,
-      onSearchChats: ChatListScreen.openSearch,
-      onFindInChat: () {
-        if (_selected.value == null || !ChatScreen.openSearchInVisibleChat()) {
-          ChatListScreen.openSearch();
-        }
-      },
-      onOpenSettings: _openSettings,
-      onNewChat: () => _onRailSelect(2),
-      onQuit: () {
-        if (DesktopTray.isSupported) {
-          unawaited(DesktopTray.instance.quit());
-        }
-      },
-      onAdjacentChat: (delta) {
-        final next = ChatListScreen.adjacentChat(_selected.value?.chatId, delta);
-        if (next != null) _onChatSelected(next);
-      },
-      child: ValueListenableBuilder<DesktopChatSelection?>(
+      child: ValueListenableBuilder<double>(
+        valueListenable: DesktopUiScale.value,
+        builder: (context, _, __) {
+          return ValueListenableBuilder<DesktopChatSelection?>(
         valueListenable: _selected,
         builder: (context, selected, _) {
           return PopScope(
@@ -386,6 +373,8 @@ class _AdaptiveShellState extends State<AdaptiveShell>
             ),
           );
         },
+      ),
+      },
       ),
     );
   }
