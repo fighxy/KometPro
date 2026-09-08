@@ -579,15 +579,19 @@ class _DevicesScreenState extends State<DevicesScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (!session.current && session.id != null)
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          tooltip: 'Завершить сессию',
-                          onPressed: () => _terminateSession(session),
-                          icon: Icon(
-                            Symbols.logout,
-                            size: 20,
-                            color: cs.error.withValues(alpha: 0.8),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: cs.error,
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
+                          onPressed: () => _terminateSession(session),
+                          icon: Icon(Symbols.logout, size: 16, color: cs.error),
+                          label: const Text('Завершить'),
                         ),
                       if (!isExpanded)
                         InkWell(
