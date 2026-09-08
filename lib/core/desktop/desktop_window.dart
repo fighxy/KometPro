@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show Brightness, Size;
+import 'dart:ui' show Brightness, Offset, Size;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +12,7 @@ class DesktopWindow {
   DesktopWindow._();
 
   static const defaultSize = Size(1280, 720);
-  static const minSize = Size(720, 560);
+  static const minSize = Size(480, 400);
   static const _hideOnCloseKey = 'desktop_hide_on_close';
   static const _micaKey = 'desktop_mica';
   static const _autoStartKey = 'desktop_auto_start';
@@ -129,6 +129,40 @@ class DesktopWindow {
     if (!isSupported) return;
     try {
       await _channel.invokeMethod<void>('stopFlash');
+    } catch (_) {}
+  }
+
+  static bool isPlausibleOffset(Offset? offset) {
+    if (offset == null) return false;
+    return offset.dx > -2000 &&
+        offset.dy > -2000 &&
+        offset.dx < 8000 &&
+        offset.dy < 8000;
+  }
+
+  static Future<void> forceShow() async {
+    if (!isSupported) return;
+    try {
+      await windowManager.setSkipTaskbar(false);
+    } catch (_) {}
+    try {
+      if (await windowManager.isMinimized()) {
+        await windowManager.restore();
+      }
+    } catch (_) {}
+    try {
+      await windowManager.show();
+      await windowManager.focus();
+    } catch (_) {}
+    try {
+      final size = await windowManager.getSize();
+      final pos = await windowManager.getPosition();
+      if (size.width < 200 ||
+          size.height < 160 ||
+          !isPlausibleOffset(pos)) {
+        await windowManager.setSize(defaultSize);
+        await windowManager.center();
+      }
     } catch (_) {}
   }
 }

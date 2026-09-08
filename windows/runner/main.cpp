@@ -29,7 +29,12 @@ BOOL CALLBACK RestoreExistingWindow(HWND hwnd, LPARAM) {
     return TRUE;
   }
   g_existing = hwnd;
-  ShowWindow(hwnd, SW_RESTORE);
+  if (IsIconic(hwnd) || !IsWindowVisible(hwnd)) {
+    ShowWindow(hwnd, SW_RESTORE);
+  }
+  ShowWindow(hwnd, SW_SHOW);
+  SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
   SetForegroundWindow(hwnd);
   return FALSE;
 }

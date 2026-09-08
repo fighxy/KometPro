@@ -150,6 +150,10 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
+  if (!window_handle_) {
+    return false;
+  }
+  ShowWindow(window_handle_, SW_RESTORE);
   return ShowWindow(window_handle_, SW_SHOWNORMAL);
 }
 

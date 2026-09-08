@@ -65,16 +65,15 @@ class DesktopTray with WindowListener, TrayListener {
       WindowOptions(
         size: bounds.size,
         minimumSize: DesktopWindow.minSize,
-        center: bounds.offset == null,
+        center: !DesktopWindow.isPlausibleOffset(bounds.offset),
         title: 'Komet',
       ),
       () async {
-        if (bounds.offset != null) {
+        if (DesktopWindow.isPlausibleOffset(bounds.offset)) {
           await windowManager.setPosition(bounds.offset!);
         }
         await windowManager.setPreventClose(true);
-        await windowManager.show();
-        await windowManager.focus();
+        await DesktopWindow.forceShow();
       },
     );
     windowManager.addListener(this);
@@ -218,9 +217,16 @@ class DesktopTray with WindowListener, TrayListener {
   }
 
   Future<void> _persistBounds() async {
+    if (_hidden) return;
     try {
+      if (!await windowManager.isVisible()) return;
       final size = await windowManager.getSize();
       final pos = await windowManager.getPosition();
+      if (size.width < 200 ||
+          size.height < 160 ||
+          !DesktopWindow.isPlausibleOffset(pos)) {
+        return;
+      }
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble(_widthKey, size.width);
       await prefs.setDouble(_heightKey, size.height);
@@ -232,18 +238,14 @@ class DesktopTray with WindowListener, TrayListener {
   Future<void> reveal() async {
     if (!isSupported) return;
     _hidden = false;
-    try {
-      await windowManager.setSkipTaskbar(false);
-    } catch (_) {}
-    await windowManager.show();
-    await windowManager.focus();
+    await DesktopWindow.forceShow();
     unawaited(DesktopWindow.stopFlash());
   }
 
   Future<void> hideToTray() async {
     if (!isSupported) return;
-    _hidden = true;
     await _persistBounds();
+    _hidden = true;
     await windowManager.hide();
     try {
       await windowManager.setSkipTaskbar(true);
