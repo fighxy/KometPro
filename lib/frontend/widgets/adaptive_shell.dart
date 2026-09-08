@@ -16,6 +16,7 @@ import '../../core/utils/update_checker.dart';
 import '../screens/chats/chat_list_screen.dart';
 import '../screens/chats/chat_screen.dart';
 import '../screens/chats/chat_info_screen.dart';
+import '../screens/profile/desktop_settings_page.dart';
 import '../screens/profile/settings_tab.dart';
 import 'app_scope.dart';
 import 'auth_limits_sheet.dart';
@@ -162,11 +163,15 @@ class _AdaptiveShellState extends State<AdaptiveShell>
 
   Future<void> _openSettings() async {
     setState(() => _railIndex = 3);
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const SettingsTab(),
-      ),
-    );
+    if (DesktopDensity.enabled) {
+      await DesktopSettingsPage.open(context);
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const SettingsTab(),
+        ),
+      );
+    }
     if (mounted) setState(() => _railIndex = 0);
   }
 
