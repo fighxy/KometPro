@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/utils/text_format.dart';
+import '../../core/emoji/emoji_fonts.dart';
 import '../../models/animoji.dart';
 import 'formatted_message_text.dart';
 import 'lottie_image.dart';
@@ -54,7 +55,10 @@ class RichMessageController extends TextEditingController {
 
   void insertAnimoji(Animoji animoji) {
     final lottie = animoji.lottieUrl ?? animoji.lottiePlayUrl;
-    if (lottie == null || lottie.isEmpty) return;
+    if (lottie == null || lottie.isEmpty) {
+      insertPlain(animoji.emoji);
+      return;
+    }
 
     final selection = value.selection;
     final oldText = value.text;
@@ -80,6 +84,18 @@ class RichMessageController extends TextEditingController {
     );
     _animoji.sort((a, b) => a.offset.compareTo(b.offset));
     notifyListeners();
+  }
+
+  void insertPlain(String text) {
+    if (text.isEmpty) return;
+    final selection = value.selection;
+    final oldText = value.text;
+    final start = selection.isValid ? selection.start : oldText.length;
+    final end = selection.isValid ? selection.end : oldText.length;
+    value = TextEditingValue(
+      text: oldText.replaceRange(start, end, text),
+      selection: TextSelection.collapsed(offset: start + text.length),
+    );
   }
 
   void insertMention({
@@ -378,7 +394,7 @@ class RichMessageController extends TextEditingController {
     TextStyle? style,
     required bool withComposing,
   }) {
-    final baseStyle = style ?? const TextStyle();
+    final baseStyle = (style ?? const TextStyle()).withEmojiFallback();
     final content = text;
     if ((!hasFormatting && _animoji.isEmpty) || content.isEmpty) {
       return TextSpan(style: baseStyle, text: content);

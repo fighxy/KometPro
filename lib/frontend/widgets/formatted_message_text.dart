@@ -8,6 +8,7 @@ import '../../backend/modules/messages.dart' show ContactCache;
 import '../../core/utils/link_opener.dart';
 import '../../core/utils/text_entities.dart';
 import '../../core/utils/text_format.dart';
+import '../../core/emoji/emoji_fonts.dart';
 import '../screens/contacts/open_contact_profile.dart';
 import 'link_text.dart';
 import 'lottie_image.dart';
@@ -378,7 +379,7 @@ class _FormattedMessageTextState extends State<FormattedMessageText> {
   }
 
   Widget _paragraph(List<InlineSpan> spans) => Text.rich(
-    TextSpan(style: widget.style, children: spans),
+    TextSpan(style: widget.style.withEmojiFallback(), children: spans),
     textAlign: widget.textAlign,
     maxLines: widget.maxLines,
     overflow: widget.overflow ?? TextOverflow.clip,

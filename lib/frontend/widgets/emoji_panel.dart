@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import 'package:komet/backend/app_services.dart';
+import '../../core/emoji/emoji_fonts.dart';
+import '../../core/emoji/unicode_emoji_catalog.dart';
+import '../../core/utils/emoji_keyword_index.dart';
 import '../../models/animoji.dart';
 import 'lottie_image.dart';
 import 'small_spinner.dart';
@@ -22,12 +25,14 @@ class _DragScrollBehavior extends MaterialScrollBehavior {
 
 class _EmojiSection {
   final String title;
-  final IconData icon;
+  final IconData? icon;
+  final String? glyph;
   final List<Animoji> items;
 
   const _EmojiSection({
     required this.title,
-    required this.icon,
+    this.icon,
+    this.glyph,
     required this.items,
   });
 }
@@ -71,6 +76,7 @@ class _EmojiPanelState extends State<EmojiPanel> {
 
   Future<void> _load() async {
     try {
+      await EmojiKeywordIndex.instance.ensureLoaded();
       await animojiModule.ensureRecentsLoaded();
       await animojiModule.ensureLoaded();
       if (!mounted) return;
@@ -97,11 +103,22 @@ class _EmojiPanelState extends State<EmojiPanel> {
         ),
       );
     }
+    for (final group in UnicodeEmojiCatalog.groups()) {
+      sections.add(
+        _EmojiSection(
+          title: group.title,
+          glyph: group.iconHint,
+          items: [
+            for (final emoji in group.emojis) Animoji(id: 0, emoji: emoji),
+          ],
+        ),
+      );
+    }
     final all = animojiModule.animojis;
     if (all.isNotEmpty) {
       sections.add(
         _EmojiSection(
-          title: 'Animated',
+          title: 'Анимированные',
           icon: Symbols.animation,
           items: all,
         ),
@@ -213,11 +230,21 @@ class _EmojiPanelState extends State<EmojiPanel> {
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                s.icon,
-                size: 22,
-                color: selected ? cs.primary : cs.onSurfaceVariant,
-              ),
+              child: s.glyph != null
+                  ? Text(
+                      s.glyph!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        height: 1,
+                        fontFamilyFallback: kEmojiFontFallback,
+                      ),
+                    )
+                  : Icon(
+                      s.icon ?? Symbols.mood,
+                      size: 22,
+                      color: selected ? cs.primary : cs.onSurfaceVariant,
+                    ),
             ),
           );
         },
@@ -316,16 +343,29 @@ class _EmojiSectionView extends StatelessWidget {
   }
 
   Widget _cell(Animoji animoji) {
+    final animated =
+        (animoji.lottieUrl ?? '').isNotEmpty || (animoji.iconUrl ?? '').isNotEmpty;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => onTap(animoji),
       child: Padding(
         padding: const EdgeInsets.all(5),
-        child: LottieImage(
-          url: animoji.iconUrl,
-          lottieUrl: animoji.lottieUrl,
-          memCacheWidth: 120,
-        ),
+        child: animated
+            ? LottieImage(
+                url: animoji.iconUrl,
+                lottieUrl: animoji.lottieUrl,
+                memCacheWidth: 120,
+              )
+            : Center(
+                child: Text(
+                  animoji.emoji,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    height: 1,
+                    fontFamilyFallback: kEmojiFontFallback,
+                  ),
+                ),
+              ),
       ),
     );
   }

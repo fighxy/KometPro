@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../emoji/emoji_fonts.dart';
 import 'custom_font_service.dart';
 
 const String kDisplayFontFamily = 'Outfit';
@@ -92,13 +93,17 @@ class AppFonts {
 
   static TextTheme textTheme(String id, TextTheme base) {
     final family = resolve(id).fontFamily;
-    if (family == null) return base;
-    return base.apply(fontFamily: family);
+    final themed = family == null ? base : base.apply(fontFamily: family);
+    return themed.apply(fontFamilyFallback: kEmojiFontFallback);
   }
 
   static TextStyle sample(String id, {required double fontSize}) {
     final family = resolve(id).fontFamily;
-    return TextStyle(fontFamily: family, fontSize: fontSize);
+    return TextStyle(
+      fontFamily: family,
+      fontSize: fontSize,
+      fontFamilyFallback: kEmojiFontFallback,
+    );
   }
 
   static double clampScale(double scale) =>

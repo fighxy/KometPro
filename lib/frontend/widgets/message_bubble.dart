@@ -16,6 +16,7 @@ import '../../core/crypto/message_decryption_cache.dart';
 import 'decrypted_text.dart';
 import '../../core/utils/bubble_radius.dart';
 import '../../core/utils/chat_layout.dart';
+import '../../core/emoji/emoji_fonts.dart';
 import '../../core/utils/emoji_keyword_index.dart';
 import '../../core/utils/link_opener.dart';
 import '../../core/utils/text_format.dart';
@@ -1943,6 +1944,7 @@ class MessageBubble extends StatelessWidget {
       fontSize: 16,
       height: 1.3,
       fontFamily: activeFontFamily,
+      fontFamilyFallback: kEmojiFontFallback,
       fontVariations: activeFontFamily == 'Inter'
           ? const [FontVariation('wght', 300)]
           : null,
