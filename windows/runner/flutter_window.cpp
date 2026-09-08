@@ -1,5 +1,6 @@
 #include "flutter_window.h"
 
+#include <dwmapi.h>
 #include <flutter/encodable_value.h>
 #include <optional>
 #include <propkey.h>
@@ -103,6 +104,44 @@ void SetJumpList(const flutter::EncodableList& chats) {
 
 void SetPendingLaunchChat(int id) { SetLaunchChatId(id); }
 
+bool GetAutoStart() {
+  HKEY key = nullptr;
+  if (RegOpenKeyExW(HKEY_CURRENT_USER,
+                    L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0,
+                    KEY_READ, &key) != ERROR_SUCCESS) {
+    return false;
+  }
+  wchar_t value[MAX_PATH] = {};
+  DWORD size = sizeof(value);
+  const auto status =
+      RegQueryValueExW(key, L"Komet", nullptr, nullptr,
+                       reinterpret_cast<LPBYTE>(value), &size);
+  RegCloseKey(key);
+  return status == ERROR_SUCCESS && value[0] != 0;
+}
+
+void SetAutoStart(bool enabled) {
+  HKEY key = nullptr;
+  if (RegOpenKeyExW(HKEY_CURRENT_USER,
+                    L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0,
+                    KEY_SET_VALUE, &key) != ERROR_SUCCESS) {
+    return;
+  }
+  if (!enabled) {
+    RegDeleteValueW(key, L"Komet");
+    RegCloseKey(key);
+    return;
+  }
+  wchar_t exe[MAX_PATH] = {};
+  GetModuleFileNameW(nullptr, exe, MAX_PATH);
+  wchar_t command[MAX_PATH + 4] = {};
+  swprintf_s(command, L"\"%s\"", exe);
+  RegSetValueExW(key, L"Komet", 0, REG_SZ,
+                 reinterpret_cast<const BYTE*>(command),
+                 static_cast<DWORD>((wcslen(command) + 1) * sizeof(wchar_t)));
+  RegCloseKey(key);
+}
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -175,6 +214,32 @@ void FlutterWindow::RegisterDesktopChannel() {
         }
         if (call.method_name() == "takeLaunchChat") {
           result->Success(flutter::EncodableValue(TakeLaunchChatId()));
+          return;
+        }
+        if (call.method_name() == "setMica") {
+          const auto* enabled = std::get_if<bool>(call.arguments());
+          HWND hwnd = GetHandle();
+          if (hwnd && enabled) {
+#ifndef DWMWA_SYSTEMBACKDROP_TYPE
+#define DWMWA_SYSTEMBACKDROP_TYPE 38
+#endif
+            const int type = *enabled ? 2 : 1;
+            DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &type,
+                                  sizeof(type));
+          }
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "setAutoStart") {
+          const auto* enabled = std::get_if<bool>(call.arguments());
+          if (enabled) {
+            SetAutoStart(*enabled);
+          }
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "getAutoStart") {
+          result->Success(flutter::EncodableValue(GetAutoStart()));
           return;
         }
         result->NotImplemented();

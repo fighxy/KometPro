@@ -504,7 +504,10 @@ class KometAppState extends State<KometApp>
       apply();
       return;
     }
-    if (MediaQuery.disableAnimationsOf(ctx)) {
+    if (MediaQuery.disableAnimationsOf(ctx) ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
       apply();
       return;
     }

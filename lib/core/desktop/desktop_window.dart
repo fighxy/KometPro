@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show Brightness, Size;
 
@@ -13,9 +14,13 @@ class DesktopWindow {
   static const defaultSize = Size(1280, 720);
   static const minSize = Size(720, 560);
   static const _hideOnCloseKey = 'desktop_hide_on_close';
+  static const _micaKey = 'desktop_mica';
+  static const _autoStartKey = 'desktop_auto_start';
   static const _channelName = 'ru.komet/desktop_window';
 
   static final hideOnClose = ValueNotifier<bool>(true);
+  static final micaEnabled = ValueNotifier<bool>(false);
+  static final autoStart = ValueNotifier<bool>(false);
   static const _channel = MethodChannel(_channelName);
   static final openChatId = ValueNotifier<int?>(null);
 
@@ -39,11 +44,19 @@ class DesktopWindow {
     try {
       final prefs = await SharedPreferences.getInstance();
       hideOnClose.value = prefs.getBool(_hideOnCloseKey) ?? true;
+      micaEnabled.value = prefs.getBool(_micaKey) ?? false;
     } catch (_) {}
     try {
       final pending = await _channel.invokeMethod<int>('takeLaunchChat');
       if (pending != null && pending != 0) openChatId.value = pending;
     } catch (_) {}
+    try {
+      final enabled = await _channel.invokeMethod<bool>('getAutoStart');
+      if (enabled != null) autoStart.value = enabled;
+    } catch (_) {}
+    if (micaEnabled.value) {
+      unawaited(applyMica(micaEnabled.value));
+    }
   }
 
   static Future<void> setJumpList(List<({int id, String title})> chats) async {
@@ -64,6 +77,34 @@ class DesktopWindow {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_hideOnCloseKey, value);
     } catch (_) {}
+  }
+
+  static Future<void> setMica(bool value) async {
+    micaEnabled.value = value;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_micaKey, value);
+    } catch (_) {}
+    await applyMica(value);
+  }
+
+  static Future<void> applyMica(bool value) async {
+    if (!isSupported) return;
+    try {
+      await _channel.invokeMethod<void>('setMica', value);
+    } catch (_) {}
+    try {
+      await windowManager.setHasShadow(true);
+    } catch (_) {}
+  }
+
+  static Future<void> setAutoStart(bool value) async {
+    autoStart.value = value;
+    try {
+      await _channel.invokeMethod<void>('setAutoStart', value);
+    } catch (_) {
+      autoStart.value = !value;
+    }
   }
 
   static Future<void> syncTitleBar(Brightness brightness) async {

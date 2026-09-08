@@ -91,6 +91,26 @@ class KometSettingsScreen extends StatelessWidget {
                       onChanged: DesktopWindow.setHideOnClose,
                     ),
                   ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: DesktopWindow.autoStart,
+                    builder: (context, value, _) => SettingsToggleTile(
+                      icon: Symbols.rocket_launch,
+                      label: 'Запускать с Windows',
+                      subtitle: 'Komet стартует вместе с системой',
+                      value: value,
+                      onChanged: DesktopWindow.setAutoStart,
+                    ),
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: DesktopWindow.micaEnabled,
+                    builder: (context, value, _) => SettingsToggleTile(
+                      icon: Symbols.blur_on,
+                      label: 'Mica под списком',
+                      subtitle: 'Полупрозрачный фон окна на Windows 11',
+                      value: value,
+                      onChanged: DesktopWindow.setMica,
+                    ),
+                  ),
                 ],
               ),
             ],

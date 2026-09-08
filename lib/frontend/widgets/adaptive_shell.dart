@@ -228,9 +228,12 @@ class _AdaptiveShellState extends State<AdaptiveShell>
         if (next != null) _onChatSelected(next);
       },
       onCopyMessage: ChatScreen.copyVisibleSelection,
-      child: ValueListenableBuilder<double>(
-        valueListenable: DesktopUiScale.value,
-        builder: (context, _, __) {
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          DesktopUiScale.value,
+          DesktopWindow.micaEnabled,
+        ]),
+        builder: (context, _) {
           return ValueListenableBuilder<DesktopChatSelection?>(
         valueListenable: _selected,
         builder: (context, selected, _) {
@@ -254,9 +257,13 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                 ? null
                 : AppBreakpoints.hingeListWidth(hinge, totalWidth);
             final cs = Theme.of(context).colorScheme;
+            final highContrast = MediaQuery.highContrastOf(context);
+            final mica = DesktopWindow.micaEnabled.value;
             return _withRail(
               Scaffold(
-              backgroundColor: cs.surface,
+              backgroundColor: mica
+                  ? cs.surface.withValues(alpha: highContrast ? 0.92 : 0.72)
+                  : cs.surface,
               body: Row(
                 children: [
                   ValueListenableBuilder<double>(

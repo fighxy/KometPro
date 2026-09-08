@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show Offset, PlatformDispatcher, Size;
+import 'dart:ui' as ui;
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -37,7 +39,7 @@ class DesktopTray with WindowListener, TrayListener {
     try {
       final tip = next == 0
           ? 'Komet'
-          : (PlatformDispatcher.instance.locale.languageCode == 'ru'
+          : (ui.PlatformDispatcher.instance.locale.languageCode == 'ru'
                 ? 'Komet — $next непрочитанных'
                 : 'Komet — $next unread');
       await trayManager.setToolTip(tip);
@@ -50,6 +52,7 @@ class DesktopTray with WindowListener, TrayListener {
     } else if (next == 0) {
       unawaited(DesktopWindow.stopFlash());
     }
+    unawaited(_refreshIcon());
   }
 
   Future<void> init() async {
@@ -87,7 +90,7 @@ class DesktopTray with WindowListener, TrayListener {
   }
 
   Future<void> _rebuildMenu() async {
-    final ru = PlatformDispatcher.instance.locale.languageCode == 'ru';
+    final ru = ui.PlatformDispatcher.instance.locale.languageCode == 'ru';
     await trayManager.setContextMenu(
       Menu(
         items: [
@@ -127,6 +130,60 @@ class DesktopTray with WindowListener, TrayListener {
       if (File(bundled).existsSync()) return bundled;
     }
     return _assetPng;
+  }
+
+  Future<void> _refreshIcon() async {
+    if (!isSupported || !_started) return;
+    try {
+      final icon = _unread > 0 ? await _paintBadgeIcon(_unread) : await _resolveIcon();
+      await trayManager.setIcon(icon);
+    } catch (e) {
+      logger.w('DesktopTray: icon refresh failed: $e');
+    }
+  }
+
+  Future<String> _paintBadgeIcon(int count) async {
+    const dim = 64;
+    final data = await rootBundle.load(_assetPng);
+    final codec = await ui.instantiateImageCodec(
+      data.buffer.asUint8List(),
+      targetWidth: dim,
+      targetHeight: dim,
+    );
+    final frame = await codec.getNextFrame();
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawImage(frame.image, Offset.zero, Paint());
+    final badge = Paint()..color = const Color(0xFFE53935);
+    canvas.drawCircle(const Offset(50, 14), 13, badge);
+    canvas.drawCircle(
+      const Offset(50, 14),
+      13,
+      Paint()
+        ..color = const Color(0xFFFFFFFF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    final label = count > 9 ? '9+' : '$count';
+    final tp = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: const TextStyle(
+          color: Color(0xFFFFFFFF),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(50 - tp.width / 2, 14 - tp.height / 2));
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(dim, dim);
+    final png = await image.toByteData(format: ui.ImageByteFormat.png);
+    final dir = await getApplicationSupportDirectory();
+    final file = File('${dir.path}${Platform.pathSeparator}komet_tray_badge.png');
+    await file.writeAsBytes(png!.buffer.asUint8List(), flush: true);
+    return file.path;
   }
 
   Future<String> _extractAsset(String asset, String fileName) async {
