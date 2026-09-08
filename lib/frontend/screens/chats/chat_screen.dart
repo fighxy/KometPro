@@ -1123,8 +1123,22 @@ class _ChatScreenState extends State<ChatScreen>
     if (_commentsMode) return;
     switch (event) {
       case MessageAddedEvent(:final message):
-        if (message.senderId == _myId && !message.isControl) return;
         if (_messages.any((m) => m.id == message.id)) return;
+        if (message.senderId == _myId && !message.isControl) {
+          final pendingIdx = _messages.indexWhere(
+            (m) =>
+                m.senderId == _myId &&
+                (m.id.startsWith('temp_') ||
+                    m.status == 'sending' ||
+                    m.status == 'pending'),
+          );
+          if (pendingIdx != -1) {
+            _lastSentId = message.id;
+            _messages[pendingIdx] = message;
+            _bumpMessages();
+            return;
+          }
+        }
         final nearBottom = _isNearBottom();
         if (!nearBottom) _deferredIds.add(message.id);
         _lastSentId = message.id;
