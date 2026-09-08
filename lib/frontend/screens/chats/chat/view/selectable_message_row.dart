@@ -4,13 +4,16 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/backend/modules/animoji.dart';
 import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/core/config/app_colors.dart';
 import 'package:komet/core/config/app_message_actions_style.dart';
+import 'package:komet/core/config/desktop_density.dart';
 import 'package:komet/core/utils/haptics.dart';
+import 'package:komet/frontend/widgets/chat_menu_overlay.dart';
 import 'package:komet/frontend/widgets/message_actions_overlay.dart';
 import 'package:komet/models/animoji.dart';
 
@@ -181,7 +184,68 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
     staticUrl: a.iconUrl,
   );
 
+  void _openDesktopMessageMenu(Offset globalPosition) {
+    final items = <ChatMenuItem>[
+      if (widget.onReply != null)
+        ChatMenuItem(
+          icon: Symbols.reply,
+          label: 'Ответить',
+          onTap: widget.onReply,
+        ),
+      if (widget.allowCopy && (widget.message.selectableText ?? '').isNotEmpty)
+        ChatMenuItem(
+          icon: Symbols.content_copy,
+          label: 'Копировать',
+          onTap: () {
+            Clipboard.setData(
+              ClipboardData(text: widget.message.selectableText ?? ''),
+            );
+          },
+        ),
+      if (widget.onForward != null)
+        ChatMenuItem(
+          icon: Symbols.forward,
+          label: 'Переслать',
+          onTap: widget.onForward,
+        ),
+      if (widget.onEdit != null)
+        ChatMenuItem(
+          icon: Symbols.edit,
+          label: 'Изменить',
+          onTap: widget.onEdit,
+        ),
+      if (widget.onPin != null)
+        ChatMenuItem(
+          icon: Symbols.push_pin,
+          label: widget.isPinned() ? 'Открепить' : 'Закрепить',
+          onTap: widget.onPin,
+        ),
+      if (widget.onMarkUnread != null)
+        ChatMenuItem(
+          icon: Symbols.mark_chat_unread,
+          label: 'Пометить непрочитанным',
+          onTap: widget.onMarkUnread,
+        ),
+      ChatMenuItem(
+        icon: Symbols.delete,
+        label: 'Удалить',
+        destructive: true,
+        onTap: widget.onDelete,
+      ),
+    ];
+    showChatMenu(
+      context: context,
+      compact: true,
+      anchorRect: Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 1, 1),
+      items: items,
+    );
+  }
+
   void _onSecondaryTapDown(TapDownDetails details) {
+    if (DesktopDensity.enabled) {
+      _openDesktopMessageMenu(details.globalPosition);
+      return;
+    }
     final ctx = _boundaryKey.currentContext;
     if (ctx == null) return;
     final renderObject = ctx.findRenderObject();

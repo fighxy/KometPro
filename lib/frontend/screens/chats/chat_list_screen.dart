@@ -209,6 +209,12 @@ class ChatListScreen extends StatefulWidget {
     return true;
   }
 
+  static DesktopChatSelection? adjacentChat(int? currentId, int delta) {
+    final root = _root;
+    if (root == null || !root.mounted || delta == 0) return null;
+    return root._adjacentSelection(currentId, delta);
+  }
+
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
 }
@@ -1130,6 +1136,26 @@ class _ChatListScreenState extends State<ChatListScreen>
     final i = _folders.indexWhere((f) => f.id == _selectedFolderId);
     if (i >= 0) return i;
     return 0;
+  }
+
+  DesktopChatSelection? _adjacentSelection(int? currentId, int delta) {
+    final list = _chatsForPageIndex(_selectedFolderIndex);
+    if (list.isEmpty) return null;
+    var index = currentId == null
+        ? (delta > 0 ? -1 : list.length)
+        : list.indexWhere((c) => c.id == currentId);
+    if (index < 0 && currentId != null) {
+      index = delta > 0 ? -1 : list.length;
+    }
+    final next = index + delta;
+    if (next < 0 || next >= list.length) return null;
+    final chat = list[next];
+    return DesktopChatSelection(
+      chatId: chat.id,
+      name: chat.title ?? 'Чат',
+      imageUrl: chat.iconUrl ?? '',
+      chatType: chat.type,
+    );
   }
 
   int _folderIndexForId(String? id) {
@@ -3224,7 +3250,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       active: isActive,
       selected: isSelected,
       enableHover: desktopPane && !widget.forwardMode && !_shareMode,
-      onSecondaryTapDown: (!desktopPane ||
+      onSecondaryTapDown: (!DesktopDensity.enabled ||
               widget.forwardMode ||
               _shareMode ||
               chat == null)
@@ -3300,7 +3326,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             );
           }
         },
-        onLongPress: (widget.forwardMode || _shareMode)
+        onLongPress: (widget.forwardMode || _shareMode || DesktopDensity.enabled)
             ? null
             : () => _toggleSelection(id),
         child: Column(

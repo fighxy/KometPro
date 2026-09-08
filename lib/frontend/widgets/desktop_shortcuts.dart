@@ -22,6 +22,15 @@ class NewChatIntent extends Intent {
   const NewChatIntent();
 }
 
+class QuitAppIntent extends Intent {
+  const QuitAppIntent();
+}
+
+class AdjacentChatIntent extends Intent {
+  const AdjacentChatIntent(this.delta);
+  final int delta;
+}
+
 class DesktopShortcuts extends StatelessWidget {
   const DesktopShortcuts({
     super.key,
@@ -31,6 +40,8 @@ class DesktopShortcuts extends StatelessWidget {
     this.onFindInChat,
     this.onOpenSettings,
     this.onNewChat,
+    this.onQuit,
+    this.onAdjacentChat,
   });
 
   final Widget child;
@@ -39,6 +50,8 @@ class DesktopShortcuts extends StatelessWidget {
   final VoidCallback? onFindInChat;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onNewChat;
+  final VoidCallback? onQuit;
+  final void Function(int delta)? onAdjacentChat;
 
   static bool get _meta => defaultTargetPlatform == TargetPlatform.macOS;
 
@@ -66,6 +79,12 @@ class DesktopShortcuts extends StatelessWidget {
             const OpenSettingsIntent(),
         SingleActivator(LogicalKeyboardKey.keyN, control: !_meta, meta: _meta):
             const NewChatIntent(),
+        SingleActivator(LogicalKeyboardKey.keyQ, control: !_meta, meta: _meta):
+            const QuitAppIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowUp, alt: true):
+            AdjacentChatIntent(-1),
+        const SingleActivator(LogicalKeyboardKey.arrowDown, alt: true):
+            AdjacentChatIntent(1),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -96,6 +115,18 @@ class DesktopShortcuts extends StatelessWidget {
           NewChatIntent: CallbackAction<NewChatIntent>(
             onInvoke: (_) {
               onNewChat?.call();
+              return null;
+            },
+          ),
+          QuitAppIntent: CallbackAction<QuitAppIntent>(
+            onInvoke: (_) {
+              onQuit?.call();
+              return null;
+            },
+          ),
+          AdjacentChatIntent: CallbackAction<AdjacentChatIntent>(
+            onInvoke: (intent) {
+              onAdjacentChat?.call(intent.delta);
               return null;
             },
           ),

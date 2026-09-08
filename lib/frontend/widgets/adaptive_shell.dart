@@ -10,6 +10,7 @@ import '../../core/config/app_breakpoints.dart';
 import '../../core/config/build_profile.dart';
 import '../../core/config/debug_test.dart';
 import '../../core/config/desktop_density.dart';
+import '../../core/desktop/desktop_tray.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/update_checker.dart';
@@ -203,6 +204,15 @@ class _AdaptiveShellState extends State<AdaptiveShell>
       },
       onOpenSettings: _openSettings,
       onNewChat: () => _onRailSelect(2),
+      onQuit: () {
+        if (DesktopTray.isSupported) {
+          unawaited(DesktopTray.instance.quit());
+        }
+      },
+      onAdjacentChat: (delta) {
+        final next = ChatListScreen.adjacentChat(_selected.value?.chatId, delta);
+        if (next != null) _onChatSelected(next);
+      },
       child: ValueListenableBuilder<DesktopChatSelection?>(
         valueListenable: _selected,
         builder: (context, selected, _) {

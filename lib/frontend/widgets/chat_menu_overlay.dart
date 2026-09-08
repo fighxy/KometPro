@@ -211,7 +211,7 @@ class _ChatMenuLayerState extends State<_ChatMenuLayer>
       },
       child: Material(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(widget.compact ? 10 : 20),
         clipBehavior: Clip.antiAlias,
         elevation: 12,
         shadowColor: Colors.black.withValues(alpha: 0.45),
@@ -285,15 +285,19 @@ class _ChatMenuRow extends StatelessWidget {
     final fg = item.destructive ? cs.error : cs.onSurface;
     return InkWell(
       onTap: onTap,
+      splashFactory: compact ? NoSplash.splashFactory : InkSparkle.splashFactory,
+      overlayColor: compact
+          ? WidgetStatePropertyAll(cs.onSurface.withValues(alpha: 0.06))
+          : null,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: compact ? 14 : 18,
-          vertical: compact ? 10 : 15,
+          horizontal: compact ? 12 : 18,
+          vertical: compact ? 7 : 15,
         ),
         child: Row(
           children: [
-            Icon(item.icon, size: compact ? 20 : 24, weight: 350, color: fg),
-            SizedBox(width: compact ? 12 : 18),
+            Icon(item.icon, size: compact ? 16 : 24, weight: 400, color: fg),
+            SizedBox(width: compact ? 10 : 18),
             Expanded(
               child: Text(
                 item.label,
@@ -301,15 +305,16 @@ class _ChatMenuRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: fg,
-                  fontSize: compact ? 14 : 16,
+                  fontSize: compact ? 13 : 16,
                   fontWeight: FontWeight.w500,
+                  height: 1.15,
                 ),
               ),
             ),
             if (item.showChevron || item.hasSubmenu)
               Icon(
                 Symbols.chevron_right,
-                size: 22,
+                size: compact ? 16 : 22,
                 weight: 400,
                 color: cs.onSurface.withValues(alpha: 0.7),
               ),
