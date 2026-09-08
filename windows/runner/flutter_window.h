@@ -10,6 +10,8 @@
 
 #include "win32_window.h"
 
+void SetPendingLaunchChat(int id);
+
 // A window that does nothing but host a Flutter view.
 class FlutterWindow : public Win32Window {
  public:

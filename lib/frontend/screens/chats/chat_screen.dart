@@ -256,6 +256,22 @@ class ChatScreen extends StatefulWidget {
     return false;
   }
 
+  static bool consumeEscapeInVisibleChat() {
+    for (final screen in _open.reversed) {
+      if (!screen.mounted || !screen._isRouteCurrent) continue;
+      return screen._consumeEscape();
+    }
+    return false;
+  }
+
+  static bool copyVisibleSelection() {
+    for (final screen in _open.reversed) {
+      if (!screen.mounted || !screen._isRouteCurrent) continue;
+      return screen._copyFromShortcut();
+    }
+    return false;
+  }
+
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }

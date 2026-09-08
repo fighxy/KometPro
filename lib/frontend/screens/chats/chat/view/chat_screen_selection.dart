@@ -26,6 +26,46 @@ extension _ChatSelectionActions on _ChatScreenState {
     _syncSelectionAnim();
   }
 
+  bool _consumeEscape() {
+    if (_search.searchMode.value) {
+      _closeSearch();
+      return true;
+    }
+    if (_textSelection.value != null) {
+      _exitTextSelection();
+      return true;
+    }
+    if (_showAttachmentPanel.value) {
+      _showAttachmentPanel.value = false;
+      return true;
+    }
+    if (_stickers.showPanel.value) {
+      _stickers.hide();
+      return true;
+    }
+    if (_selectedIds.value.isNotEmpty) {
+      _clearSelection();
+      return true;
+    }
+    return false;
+  }
+
+  bool _copyFromShortcut() {
+    final selected = _selectedMessages(_selectedIds.value);
+    if (selected.isNotEmpty) {
+      _copySelected(selected);
+      return true;
+    }
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      final text = _messages[i].selectableText;
+      if (text == null || text.isEmpty) continue;
+      Clipboard.setData(ClipboardData(text: text));
+      showCustomNotification(context, 'Скопировано');
+      return true;
+    }
+    return false;
+  }
+
   void _startTextSelection(CachedMessage message, Offset globalPosition) {
     if (message.isControl || message.selectableText == null) return;
     _textSelectionDrag.value = null;

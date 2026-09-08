@@ -31,6 +31,10 @@ class AdjacentChatIntent extends Intent {
   final int delta;
 }
 
+class CopyMessageIntent extends Intent {
+  const CopyMessageIntent();
+}
+
 class DesktopShortcuts extends StatelessWidget {
   const DesktopShortcuts({
     super.key,
@@ -42,6 +46,7 @@ class DesktopShortcuts extends StatelessWidget {
     this.onNewChat,
     this.onQuit,
     this.onAdjacentChat,
+    this.onCopyMessage,
   });
 
   final Widget child;
@@ -52,6 +57,7 @@ class DesktopShortcuts extends StatelessWidget {
   final VoidCallback? onNewChat;
   final VoidCallback? onQuit;
   final void Function(int delta)? onAdjacentChat;
+  final VoidCallback? onCopyMessage;
 
   static bool get _meta => defaultTargetPlatform == TargetPlatform.macOS;
 
@@ -70,6 +76,12 @@ class DesktopShortcuts extends StatelessWidget {
       shortcuts: <ShortcutActivator, Intent>{
         SingleActivator(LogicalKeyboardKey.keyK, control: !_meta, meta: _meta):
             const SearchChatsIntent(),
+        SingleActivator(
+          LogicalKeyboardKey.keyF,
+          control: !_meta,
+          meta: _meta,
+          shift: true,
+        ): const SearchChatsIntent(),
         const SingleActivator(LogicalKeyboardKey.escape): const ClosePaneIntent(),
         SingleActivator(LogicalKeyboardKey.keyF, control: !_meta, meta: _meta):
             const FindInChatIntent(),
@@ -85,6 +97,12 @@ class DesktopShortcuts extends StatelessWidget {
             AdjacentChatIntent(-1),
         const SingleActivator(LogicalKeyboardKey.arrowDown, alt: true):
             AdjacentChatIntent(1),
+        SingleActivator(
+          LogicalKeyboardKey.keyC,
+          control: !_meta,
+          meta: _meta,
+          shift: true,
+        ): const CopyMessageIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -127,6 +145,12 @@ class DesktopShortcuts extends StatelessWidget {
           AdjacentChatIntent: CallbackAction<AdjacentChatIntent>(
             onInvoke: (intent) {
               onAdjacentChat?.call(intent.delta);
+              return null;
+            },
+          ),
+          CopyMessageIntent: CallbackAction<CopyMessageIntent>(
+            onInvoke: (_) {
+              onCopyMessage?.call();
               return null;
             },
           ),

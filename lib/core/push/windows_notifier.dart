@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../backend/api.dart';
 import '../../core/protocol/opcode_map.dart';
 import '../../core/protocol/packet.dart';
+import '../storage/token_storage.dart';
 import '../utils/logger.dart';
 import 'fkm_controller.dart';
 import 'notification_bridge.dart';
@@ -78,15 +79,47 @@ class WindowsNotifier {
     );
     if (data == null) return;
 
+    final accountId = await TokenStorage.getActiveAccountId();
+    final payload = jsonEncode({
+      'chat': chatId,
+      if (accountId != null) 'c': accountId,
+      if (msgId != null) 'mid': int.tryParse(msgId) ?? msgId,
+      if (msg['time'] is int) 't': msg['time'],
+    });
+
     final plugin = FlutterLocalNotificationsPlugin();
     await plugin.show(
       id: chatId & 0x7fffffff,
       title: data['title'] ?? 'Komet',
       body: data['msg'] ?? 'Новое сообщение',
-      notificationDetails: const NotificationDetails(
-        windows: WindowsNotificationDetails(),
+      notificationDetails: NotificationDetails(
+        windows: WindowsNotificationDetails(
+          header: WindowsHeader(
+            id: 'chat-$chatId',
+            title: data['title']?.toString() ?? 'Komet',
+            arguments: 'chat:$chatId',
+          ),
+          inputs: const [
+            WindowsTextInput(
+              id: 'reply_text',
+              title: 'Ответ',
+              placeHolderContent: 'Написать ответ…',
+            ),
+          ],
+          actions: const [
+            WindowsAction(
+              content: 'Ответить',
+              arguments: 'reply',
+              inputId: 'reply_text',
+            ),
+            WindowsAction(
+              content: 'Прочитать',
+              arguments: 'mark_read',
+            ),
+          ],
+        ),
       ),
-      payload: jsonEncode({'chat': chatId}),
+      payload: payload,
     );
   }
 

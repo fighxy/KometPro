@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../backend/api.dart';
 import '../../backend/modules/account.dart';
+import '../../backend/modules/chats.dart';
 import '../../backend/modules/messages.dart';
 import '../calls/conversation_params.dart';
 import '../calls/ws2_signaling.dart';
@@ -41,6 +42,11 @@ void _onNotificationResponse(NotificationResponse response) {
     final payload = response.payload;
     if (text == null || text.isEmpty || payload == null) return;
     unawaited(_handleReply(payload, text));
+    return;
+  }
+  if (response.actionId == 'mark_read') {
+    final payload = response.payload;
+    if (payload != null) unawaited(_handleMarkRead(payload));
     return;
   }
   unawaited(NotificationBridge.instance.openFromPayload(response.payload));
@@ -150,6 +156,67 @@ Future<void> _handleReply(String payloadJson, String text) async {
       ),
     );
   }
+}
+
+Future<void> _handleMarkRead(String payloadJson) async {
+  int account;
+  int chatId;
+  String messageId = '';
+  int mark = 0;
+  try {
+    final decoded = jsonDecode(payloadJson);
+    if (decoded is! Map) return;
+    account = (decoded['c'] as num?)?.toInt() ?? 0;
+    chatId = (decoded['chat'] as num?)?.toInt() ?? 0;
+    final mid = decoded['mid'];
+    messageId = mid?.toString() ?? '';
+    mark = (decoded['t'] as num?)?.toInt() ?? 0;
+  } catch (_) {
+    return;
+  }
+  if (account == 0 || chatId == 0 || messageId.isEmpty) return;
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await initKolibri();
+  if (AppInstance.isNamed) {
+    try {
+      SharedPreferences.setPrefix('flutter.${AppInstance.id}.');
+    } catch (_) {}
+  }
+  await TlsConfig.applyMincifryTrust();
+
+  final plugin = FlutterLocalNotificationsPlugin();
+  Api? api;
+  try {
+    final token = await TokenStorage.readToken(account);
+    if (token != null && token.isNotEmpty) {
+      api = Api()..spoofScope = '$account';
+      await api.connect();
+      if (api.state != SessionState.online) {
+        await api.stateStream
+            .firstWhere((s) => s == SessionState.online)
+            .timeout(const Duration(seconds: 20));
+      }
+      final login = await api.sendRequest(
+        Opcode.login,
+        AccountModule(api).buildLoginPayload(token, interactive: false),
+      );
+      if (login.isOk) {
+        await chats.markRead(
+          api,
+          account,
+          chatId,
+          messageId,
+          mark,
+        );
+      }
+    }
+  } catch (_) {
+  } finally {
+    await api?.disconnect();
+  }
+  await plugin.cancel(id: chatId & 0x7fffffff);
+  await _clearHistory(chatId);
 }
 
 bool _localActionsReady = false;

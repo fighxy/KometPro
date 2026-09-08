@@ -11,6 +11,7 @@ import '../../core/config/build_profile.dart';
 import '../../core/config/debug_test.dart';
 import '../../core/config/desktop_density.dart';
 import '../../core/desktop/desktop_tray.dart';
+import '../../core/desktop/desktop_window.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/update_checker.dart';
@@ -23,6 +24,7 @@ import 'app_scope.dart';
 import 'auth_limits_sheet.dart';
 import 'desktop_nav_rail.dart';
 import 'desktop_shortcuts.dart';
+import 'max_link_nav.dart';
 import 'swipe_to_pop.dart';
 import 'update_dialog.dart';
 
@@ -72,15 +74,18 @@ class _AdaptiveShellState extends State<AdaptiveShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadListWidth();
+    DesktopWindow.openChatId.addListener(_onJumpChat);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _hadHinge = AppBreakpoints.hingeOf(MediaQuery.of(context)) != null;
       _runStartupPrompts();
+      _onJumpChat();
     });
   }
 
   @override
   void dispose() {
+    DesktopWindow.openChatId.removeListener(_onJumpChat);
     WidgetsBinding.instance.removeObserver(this);
     _listWidth.dispose();
     _selected.dispose();
@@ -125,6 +130,13 @@ class _AdaptiveShellState extends State<AdaptiveShell>
     if (_hadHinge) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_prefsKey, _listWidth.value);
+  }
+
+  void _onJumpChat() {
+    final id = DesktopWindow.openChatId.value;
+    if (id == null || id == 0 || !mounted) return;
+    DesktopWindow.openChatId.value = null;
+    unawaited(openChatById(context, id));
   }
 
   void _onChatSelected(DesktopChatSelection chat) {
@@ -190,12 +202,31 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   Widget build(BuildContext context) {
     return DesktopShortcuts(
       onClosePane: () {
+        if (ChatScreen.consumeEscapeInVisibleChat()) return;
         if (_infoOpen) {
           _closeInfo();
         } else {
           _closeChat();
         }
       },
+      onSearchChats: ChatListScreen.openSearch,
+      onFindInChat: () {
+        if (_selected.value == null || !ChatScreen.openSearchInVisibleChat()) {
+          ChatListScreen.openSearch();
+        }
+      },
+      onOpenSettings: _openSettings,
+      onNewChat: () => _onRailSelect(2),
+      onQuit: () {
+        if (DesktopTray.isSupported) {
+          unawaited(DesktopTray.instance.quit());
+        }
+      },
+      onAdjacentChat: (delta) {
+        final next = ChatListScreen.adjacentChat(_selected.value?.chatId, delta);
+        if (next != null) _onChatSelected(next);
+      },
+      onCopyMessage: ChatScreen.copyVisibleSelection,
       onSearchChats: ChatListScreen.openSearch,
       onFindInChat: () {
         if (_selected.value == null || !ChatScreen.openSearchInVisibleChat()) {

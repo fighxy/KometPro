@@ -1,6 +1,7 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <shlobj.h>
+#include <stdlib.h>
 #include <wchar.h>
 #include <windows.h>
 
@@ -11,6 +12,8 @@ namespace {
 constexpr const wchar_t kMutexName[] = L"Local\\ru.komet.app.single";
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 constexpr const wchar_t kWindowTitle[] = L"Komet";
+
+HWND g_existing = nullptr;
 
 BOOL CALLBACK RestoreExistingWindow(HWND hwnd, LPARAM) {
   wchar_t cls[64] = {};
@@ -25,27 +28,47 @@ BOOL CALLBACK RestoreExistingWindow(HWND hwnd, LPARAM) {
   if (wcscmp(title, kWindowTitle) != 0) {
     return TRUE;
   }
+  g_existing = hwnd;
   ShowWindow(hwnd, SW_RESTORE);
   SetForegroundWindow(hwnd);
   return FALSE;
 }
 
-bool FocusExistingInstance() {
+int ParseChatArg(const wchar_t* command_line) {
+  if (!command_line) return 0;
+  const wchar_t* found = wcsstr(command_line, L"--chat=");
+  if (!found) return 0;
+  return _wtoi(found + 7);
+}
+
+bool FocusExistingInstance(int chat_id) {
+  g_existing = nullptr;
   EnumWindows(RestoreExistingWindow, 0);
+  if (g_existing && chat_id != 0) {
+    COPYDATASTRUCT data = {};
+    data.dwData = 1;
+    data.cbData = sizeof(chat_id);
+    data.lpData = &chat_id;
+    SendMessageW(g_existing, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&data));
+  }
   return true;
 }
 }  // namespace
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  const int launch_chat = ParseChatArg(command_line);
   HANDLE mutex = CreateMutexW(nullptr, TRUE, kMutexName);
   if (mutex == nullptr) {
     return EXIT_FAILURE;
   }
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    FocusExistingInstance();
+    FocusExistingInstance(launch_chat);
     CloseHandle(mutex);
     return EXIT_SUCCESS;
+  }
+  if (launch_chat != 0) {
+    SetPendingLaunchChat(launch_chat);
   }
 
   // Attach to console when present (e.g., 'flutter run') or create a

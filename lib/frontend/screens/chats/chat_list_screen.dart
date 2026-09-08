@@ -32,6 +32,7 @@ import '../../../backend/modules/share_sender.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/config/desktop_density.dart';
+import '../../../core/desktop/desktop_window.dart';
 import '../../../models/shared_payload.dart';
 import '../../widgets/rich_message_controller.dart';
 import 'share_composer_bar.dart';
@@ -1075,6 +1076,7 @@ class _ChatListScreenState extends State<ChatListScreen>
           _isInitialLoading = false;
         });
         _syncShimmer();
+        unawaited(_publishJumpList());
         _prefetchContactsForChats(loadedChats);
         unawaited(_prefetchPresenceForChats(loadedChats));
         if (widget.archiveMode) {
@@ -1136,6 +1138,14 @@ class _ChatListScreenState extends State<ChatListScreen>
     final i = _folders.indexWhere((f) => f.id == _selectedFolderId);
     if (i >= 0) return i;
     return 0;
+  }
+
+  Future<void> _publishJumpList() async {
+    if (!DesktopDensity.enabled) return;
+    await DesktopWindow.setJumpList([
+      for (final chat in _chats.take(8))
+        (id: chat.id, title: (chat.title ?? 'Чат').trim().isEmpty ? 'Чат' : chat.title!),
+    ]);
   }
 
   DesktopChatSelection? _adjacentSelection(int? currentId, int delta) {

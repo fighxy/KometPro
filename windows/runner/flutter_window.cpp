@@ -1,8 +1,107 @@
 #include "flutter_window.h"
 
+#include <flutter/encodable_value.h>
 #include <optional>
+#include <propkey.h>
+#include <propvarutil.h>
+#include <shlobj.h>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+int g_launch_chat_id = 0;
+
+void SetLaunchChatId(int id) { g_launch_chat_id = id; }
+
+int TakeLaunchChatId() {
+  const int id = g_launch_chat_id;
+  g_launch_chat_id = 0;
+  return id;
+}
+
+void SetJumpList(const flutter::EncodableList& chats) {
+  ICustomDestinationList* list = nullptr;
+  if (FAILED(CoCreateInstance(CLSID_DestinationList, nullptr, CLSCTX_INPROC_SERVER,
+                              IID_PPV_ARGS(&list)))) {
+    return;
+  }
+  list->SetAppID(L"ru.komet.app");
+  UINT max_slots = 0;
+  IObjectArray* removed = nullptr;
+  if (FAILED(list->BeginList(&max_slots, IID_PPV_ARGS(&removed)))) {
+    list->Release();
+    return;
+  }
+  if (removed) {
+    removed->Release();
+  }
+
+  IObjectCollection* collection = nullptr;
+  if (FAILED(CoCreateInstance(CLSID_EnumerableObjectCollection, nullptr,
+                              CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&collection)))) {
+    list->AbortList();
+    list->Release();
+    return;
+  }
+
+  wchar_t exe[MAX_PATH] = {};
+  GetModuleFileNameW(nullptr, exe, MAX_PATH);
+
+  for (const auto& item : chats) {
+    const auto* map = std::get_if<flutter::EncodableMap>(&item);
+    if (!map) continue;
+    int id = 0;
+    std::string title;
+    for (const auto& [key, value] : *map) {
+      const auto* key_str = std::get_if<std::string>(&key);
+      if (!key_str) continue;
+      if (*key_str == "id") {
+        if (const auto* n = std::get_if<int>(&value)) id = *n;
+        if (const auto* n = std::get_if<int32_t>(&value)) id = *n;
+      } else if (*key_str == "title") {
+        if (const auto* s = std::get_if<std::string>(&value)) title = *s;
+      }
+    }
+    if (id == 0) continue;
+
+    IShellLinkW* link = nullptr;
+    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_PPV_ARGS(&link)))) {
+      continue;
+    }
+    link->SetPath(exe);
+    wchar_t args[64] = {};
+    swprintf_s(args, L"--chat=%d", id);
+    link->SetArguments(args);
+
+    std::wstring wide(title.begin(), title.end());
+    if (wide.empty()) wide = L"Chat";
+    IPropertyStore* props = nullptr;
+    if (SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&props)))) {
+      PROPVARIANT pv;
+      if (SUCCEEDED(InitPropVariantFromString(wide.c_str(), &pv))) {
+        props->SetValue(PKEY_Title, pv);
+        PropVariantClear(&pv);
+      }
+      props->Commit();
+      props->Release();
+    }
+    collection->AddObject(link);
+    link->Release();
+  }
+
+  IObjectArray* array = nullptr;
+  if (SUCCEEDED(collection->QueryInterface(IID_PPV_ARGS(&array)))) {
+    list->AppendCategory(L"Recent", array);
+    array->Release();
+  }
+  collection->Release();
+  list->CommitList();
+  list->Release();
+}
+}  // namespace
+
+void SetPendingLaunchChat(int id) { SetLaunchChatId(id); }
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -59,6 +158,25 @@ void FlutterWindow::RegisterDesktopChannel() {
           result->Success();
           return;
         }
+        if (call.method_name() == "setJumpList") {
+          const auto* args =
+              std::get_if<flutter::EncodableMap>(call.arguments());
+          if (args) {
+            const auto it = args->find(flutter::EncodableValue("chats"));
+            if (it != args->end()) {
+              if (const auto* list =
+                      std::get_if<flutter::EncodableList>(&it->second)) {
+                SetJumpList(*list);
+              }
+            }
+          }
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "takeLaunchChat") {
+          result->Success(flutter::EncodableValue(TakeLaunchChatId()));
+          return;
+        }
         result->NotImplemented();
       });
 }
@@ -104,6 +222,18 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
+    case WM_COPYDATA: {
+      const auto* data = reinterpret_cast<COPYDATASTRUCT*>(lparam);
+      if (data && data->cbData >= sizeof(int)) {
+        int chat_id = *reinterpret_cast<int*>(data->lpData);
+        if (desktop_channel_ && chat_id != 0) {
+          desktop_channel_->InvokeMethod(
+              "openChat",
+              std::make_unique<flutter::EncodableValue>(chat_id));
+        }
+      }
+      return TRUE;
+    }
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;

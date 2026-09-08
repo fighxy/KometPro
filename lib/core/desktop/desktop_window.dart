@@ -17,6 +17,7 @@ class DesktopWindow {
 
   static final hideOnClose = ValueNotifier<bool>(true);
   static const _channel = MethodChannel(_channelName);
+  static final openChatId = ValueNotifier<int?>(null);
 
   static bool get isSupported {
     try {
@@ -28,9 +29,32 @@ class DesktopWindow {
 
   static Future<void> load() async {
     if (!isSupported) return;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'openChat') {
+        final id = call.arguments;
+        final chatId = id is int ? id : int.tryParse(id?.toString() ?? '');
+        if (chatId != null && chatId != 0) openChatId.value = chatId;
+      }
+    });
     try {
       final prefs = await SharedPreferences.getInstance();
       hideOnClose.value = prefs.getBool(_hideOnCloseKey) ?? true;
+    } catch (_) {}
+    try {
+      final pending = await _channel.invokeMethod<int>('takeLaunchChat');
+      if (pending != null && pending != 0) openChatId.value = pending;
+    } catch (_) {}
+  }
+
+  static Future<void> setJumpList(List<({int id, String title})> chats) async {
+    if (!isSupported) return;
+    try {
+      await _channel.invokeMethod<void>('setJumpList', {
+        'chats': [
+          for (final chat in chats.take(8))
+            {'id': chat.id, 'title': chat.title},
+        ],
+      });
     } catch (_) {}
   }
 
