@@ -856,8 +856,13 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
                   children: [
                     IconButton(
                       icon: Icon(Symbols.arrow_back, color: iconColor),
-                      onPressed: () =>
-                          widget.onClose?.call() ?? Navigator.pop(context),
+                      onPressed: () {
+                        if (widget.onClose != null) {
+                          widget.onClose!();
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      },
                     ),
                     Expanded(
                       child: chipOpacity > 0 && unread.isNotEmpty

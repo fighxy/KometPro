@@ -1,4 +1,11 @@
+# Komet 0.6 Windows (ux/native-pass)
+# P0: single-instance, tray restore, titlebar theme, hide-on-close, taskbar flash
+# P1: icon rail, density tokens, third column, compact menus, Alt+arrows
+# P2: toast Reply/Read, jump list, Esc cascade, Ctrl+Shift+C/F
+# P3: interface scale 75–150%, mica, autostart, tray badge, no circular reveal
+# Not in this build: Inno/MSIX installer
 name: Build Windows
+run-name: Komet 0.6 Windows — native-pass P0–P3 (rail, scale, toasts, mica)
 
 on:
   workflow_dispatch:

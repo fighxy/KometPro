@@ -380,8 +380,8 @@ class _AdaptiveShellState extends State<AdaptiveShell>
             ),
           );
         },
-      ),
-      },
+          );
+        },
       ),
     );
   }

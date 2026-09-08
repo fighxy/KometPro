@@ -23,6 +23,7 @@ import 'package:komet/core/config/app_theme_schedule.dart';
 import 'package:komet/core/config/app_wallpaper_tint.dart';
 import 'package:komet/core/config/build_profile.dart';
 import 'package:komet/core/config/debug_test.dart';
+import 'package:komet/core/config/desktop_density.dart';
 import 'package:komet/core/links/deep_link_service.dart';
 import 'package:komet/core/protocol/packet.dart';
 import 'package:komet/core/push/notification_bridge.dart';
@@ -504,10 +505,7 @@ class KometAppState extends State<KometApp>
       apply();
       return;
     }
-    if (MediaQuery.disableAnimationsOf(ctx) ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux ||
-        defaultTargetPlatform == TargetPlatform.macOS) {
+    if (MediaQuery.disableAnimationsOf(ctx) || DesktopDensity.enabled) {
       apply();
       return;
     }

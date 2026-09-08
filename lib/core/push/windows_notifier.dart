@@ -80,7 +80,7 @@ class WindowsNotifier {
     if (data == null) return;
 
     final accountId = await TokenStorage.getActiveAccountId();
-    final payload = jsonEncode({
+    final toastPayload = jsonEncode({
       'chat': chatId,
       if (accountId != null) 'c': accountId,
       if (msgId != null) 'mid': int.tryParse(msgId) ?? msgId,
@@ -119,7 +119,7 @@ class WindowsNotifier {
           ],
         ),
       ),
-      payload: payload,
+      payload: toastPayload,
     );
   }
 

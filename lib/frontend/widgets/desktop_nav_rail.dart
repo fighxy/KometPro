@@ -50,7 +50,13 @@ class DesktopNavRail extends StatelessWidget {
                 icon: Symbols.settings,
                 selected: index == 3,
                 tooltip: 'Настройки',
-                onTap: () => onSettings?.call() ?? onSelect(3),
+                onTap: () {
+                  if (onSettings != null) {
+                    onSettings!();
+                  } else {
+                    onSelect(3);
+                  }
+                },
               ),
               const SizedBox(height: 12),
             ],
