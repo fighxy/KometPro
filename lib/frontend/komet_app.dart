@@ -34,6 +34,7 @@ import 'package:komet/core/storage/token_storage.dart';
 import 'package:komet/core/transport/tls_config.dart';
 import 'package:komet/core/transport/vpn_bypass.dart';
 import 'package:komet/core/desktop/desktop_tray.dart';
+import 'package:komet/core/desktop/desktop_window.dart';
 import 'package:komet/core/utils/android_system_ui.dart';
 import 'package:komet/core/utils/debug_session_log.dart';
 import 'package:komet/core/utils/logger.dart';
@@ -155,6 +156,7 @@ class KometAppState extends State<KometApp>
     _lastAppliedThemeMode = _effectiveThemeMode;
     _rescheduleSwitch();
     unawaited(_refreshWallpaperSeed());
+    unawaited(_syncDesktopTitleBar());
     if (DesktopTray.isSupported) {
       AppDeps.shared.chats.chatsChanged.addListener(_syncTrayUnread);
       unawaited(_syncTrayUnread());
@@ -389,6 +391,11 @@ class KometAppState extends State<KometApp>
     if (mounted) setState(() {});
   }
 
+  @override
+  void didChangePlatformBrightness() {
+    unawaited(_syncDesktopTitleBar());
+  }
+
   Future<void> _syncTrayUnread() async {
     try {
       final profile = await AppDatabase.loadActiveProfile();
@@ -410,6 +417,7 @@ class KometAppState extends State<KometApp>
   void _onThemeModeChanged() {
     _rescheduleSwitch();
     _lastAppliedThemeMode = _effectiveThemeMode;
+    unawaited(_syncDesktopTitleBar());
     if (mounted) setState(() {});
   }
 
@@ -423,6 +431,7 @@ class KometAppState extends State<KometApp>
     final next = _effectiveThemeMode;
     if (next == _lastAppliedThemeMode) return;
     _lastAppliedThemeMode = next;
+    unawaited(_syncDesktopTitleBar());
     if (mounted) setState(() {});
   }
 
@@ -439,6 +448,7 @@ class KometAppState extends State<KometApp>
       if (!mounted) return;
       _lastAppliedThemeMode = _effectiveThemeMode;
       setState(() {});
+      unawaited(_syncDesktopTitleBar());
       _rescheduleSwitch();
     });
   }
@@ -455,6 +465,18 @@ class KometAppState extends State<KometApp>
         final isDark = AppThemeSchedule.current.value.isDarkAt(DateTime.now());
         return isDark ? ThemeMode.dark : ThemeMode.light;
     }
+  }
+
+  Future<void> _syncDesktopTitleBar() async {
+    if (!DesktopWindow.isSupported) return;
+    final mode = _effectiveThemeMode;
+    final platform = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final brightness = switch (mode) {
+      ThemeMode.light => Brightness.light,
+      ThemeMode.dark => Brightness.dark,
+      ThemeMode.system => platform,
+    };
+    await DesktopWindow.syncTitleBar(brightness);
   }
 
   Future<void> applyThemeMode(AppThemeMode mode) async {

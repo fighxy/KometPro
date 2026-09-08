@@ -8,6 +8,7 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../utils/logger.dart';
+import 'desktop_window.dart';
 
 class DesktopTray with WindowListener, TrayListener {
   DesktopTray._();
@@ -20,13 +21,7 @@ class DesktopTray with WindowListener, TrayListener {
   static const _assetIco = 'assets/tray/komet.ico';
   static const _assetPng = 'assets/komet_icon.png';
 
-  static bool get isSupported {
-    try {
-      return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    } catch (_) {
-      return false;
-    }
-  }
+  static bool get isSupported => DesktopWindow.isSupported;
 
   bool _started = false;
   bool _quitting = false;
@@ -36,6 +31,7 @@ class DesktopTray with WindowListener, TrayListener {
   Future<void> setUnread(int count) async {
     if (!isSupported || !_started) return;
     final next = count < 0 ? 0 : count;
+    final grew = next > _unread;
     if (next == _unread) return;
     _unread = next;
     try {
@@ -49,17 +45,23 @@ class DesktopTray with WindowListener, TrayListener {
     } catch (e) {
       logger.w('DesktopTray: badge failed: $e');
     }
+    if (grew && !_hidden) {
+      unawaited(DesktopWindow.flashTaskbar());
+    } else if (next == 0) {
+      unawaited(DesktopWindow.stopFlash());
+    }
   }
 
   Future<void> init() async {
     if (_started || !isSupported) return;
     _started = true;
+    await DesktopWindow.load();
     await windowManager.ensureInitialized();
     final bounds = await _loadBounds();
     await windowManager.waitUntilReadyToShow(
       WindowOptions(
         size: bounds.size,
-        minimumSize: const Size(420, 520),
+        minimumSize: DesktopWindow.minSize,
         center: bounds.offset == null,
         title: 'Komet',
       ),
@@ -142,13 +144,19 @@ class DesktopTray with WindowListener, TrayListener {
       final x = prefs.getDouble(_xKey);
       final y = prefs.getDouble(_yKey);
       final size = Size(
-        (w ?? 1100).clamp(420, 4000),
-        (h ?? 720).clamp(520, 3000),
+        (w ?? DesktopWindow.defaultSize.width).clamp(
+          DesktopWindow.minSize.width,
+          4000,
+        ),
+        (h ?? DesktopWindow.defaultSize.height).clamp(
+          DesktopWindow.minSize.height,
+          3000,
+        ),
       );
       if (x == null || y == null) return (size: size, offset: null);
       return (size: size, offset: Offset(x, y));
     } catch (_) {
-      return (size: const Size(1100, 720), offset: null);
+      return (size: DesktopWindow.defaultSize, offset: null);
     }
   }
 
@@ -172,6 +180,7 @@ class DesktopTray with WindowListener, TrayListener {
     } catch (_) {}
     await windowManager.show();
     await windowManager.focus();
+    unawaited(DesktopWindow.stopFlash());
   }
 
   Future<void> hideToTray() async {
@@ -198,7 +207,16 @@ class DesktopTray with WindowListener, TrayListener {
   @override
   void onWindowClose() {
     if (_quitting) return;
-    unawaited(hideToTray());
+    if (DesktopWindow.hideOnClose.value) {
+      unawaited(hideToTray());
+    } else {
+      unawaited(quit());
+    }
+  }
+
+  @override
+  void onWindowFocus() {
+    unawaited(DesktopWindow.stopFlash());
   }
 
   @override
@@ -209,13 +227,7 @@ class DesktopTray with WindowListener, TrayListener {
 
   @override
   void onTrayIconMouseDown() {
-    if (_hidden) {
-      unawaited(reveal());
-    } else if (Platform.isWindows) {
-      unawaited(hideToTray());
-    } else {
-      unawaited(reveal());
-    }
+    unawaited(reveal());
   }
 
   @override

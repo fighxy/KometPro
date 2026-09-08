@@ -5,6 +5,7 @@ import '../../widgets/connection_status.dart';
 
 import '../../../core/config/build_profile.dart';
 import '../../../core/config/komet_settings.dart';
+import '../../../core/desktop/desktop_window.dart';
 import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/settings_card.dart';
@@ -70,6 +71,29 @@ class KometSettingsScreen extends StatelessWidget {
                 ),
               ],
             ),
+            if (DesktopWindow.isSupported) ...[
+              const SizedBox(height: 20),
+              const SectionHeader(
+                'Окно',
+                padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+                fontSize: 14,
+              ),
+              SettingsCard(
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: DesktopWindow.hideOnClose,
+                    builder: (context, value, _) => SettingsToggleTile(
+                      icon: Symbols.desktop_windows,
+                      label: 'Закрытие в трей',
+                      subtitle:
+                          'Крестик прячет окно. Выключить — выход из приложения',
+                      value: value,
+                      onChanged: DesktopWindow.setHideOnClose,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 20),
             const SectionHeader(
               'Папки',

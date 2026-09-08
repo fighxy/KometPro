@@ -25,6 +25,7 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  RegisterDesktopChannel();
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -39,7 +40,48 @@ bool FlutterWindow::OnCreate() {
   return true;
 }
 
+void FlutterWindow::RegisterDesktopChannel() {
+  desktop_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "ru.komet/desktop_window",
+          &flutter::StandardMethodCodec::GetInstance());
+  desktop_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                 result) {
+        if (call.method_name() == "flashTaskbar") {
+          FlashTaskbar(true);
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "stopFlash") {
+          FlashTaskbar(false);
+          result->Success();
+          return;
+        }
+        result->NotImplemented();
+      });
+}
+
+void FlutterWindow::FlashTaskbar(bool enable) {
+  HWND hwnd = GetHandle();
+  if (!hwnd) {
+    return;
+  }
+  FLASHWINFO info = {};
+  info.cbSize = sizeof(info);
+  info.hwnd = hwnd;
+  if (enable) {
+    info.dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG;
+    info.uCount = 4;
+  } else {
+    info.dwFlags = FLASHW_STOP;
+  }
+  FlashWindowEx(&info);
+}
+
 void FlutterWindow::OnDestroy() {
+  desktop_channel_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
