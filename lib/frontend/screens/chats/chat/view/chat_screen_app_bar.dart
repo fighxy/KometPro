@@ -112,9 +112,6 @@ extension _ChatAppBarBuild on _ChatScreenState {
                             onOpenScheduled: _openScheduledMessages,
                             onCall: _startCall,
                             onMenu: _commentsMode ? (_) {} : _openChatMenu,
-                            onJumpDate: _commentsMode
-                                ? null
-                                : () => _pickSearchDate(),
                           ),
                         ),
                       ),

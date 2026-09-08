@@ -93,7 +93,7 @@ class SearchTopBar extends StatelessWidget {
           children: [
             backBtn,
             Expanded(child: field),
-            dateBtn,
+            if (onPickDate != null) dateBtn,
             searchBtn,
           ],
         ),
