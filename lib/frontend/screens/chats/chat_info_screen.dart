@@ -98,6 +98,7 @@ class ChatInfoScreen extends StatefulWidget {
   final bool openedFromChat;
 
   final void Function(String messageId, int time)? onJumpToMessage;
+  final VoidCallback? onClose;
 
   const ChatInfoScreen({
     super.key,
@@ -110,6 +111,7 @@ class ChatInfoScreen extends StatefulWidget {
     this.heroTag,
     this.openedFromChat = false,
     this.onJumpToMessage,
+    this.onClose,
   });
 
   @override
@@ -854,7 +856,8 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
                   children: [
                     IconButton(
                       icon: Icon(Symbols.arrow_back, color: iconColor),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () =>
+                          widget.onClose?.call() ?? Navigator.pop(context),
                     ),
                     Expanded(
                       child: chipOpacity > 0 && unread.isNotEmpty

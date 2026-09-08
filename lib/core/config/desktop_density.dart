@@ -17,6 +17,8 @@ class DesktopDensity {
   }
 
   static const double railWidth = 60;
+  static const double infoPaneWidth = 320;
+  static const double infoPaneMinWindow = 1280;
   static const double rowInnerHeight = 48;
   static const double avatarRadius = 22;
   static const double titleSize = 14.5;

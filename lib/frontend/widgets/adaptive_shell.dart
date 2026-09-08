@@ -15,6 +15,7 @@ import '../../core/utils/format.dart';
 import '../../core/utils/update_checker.dart';
 import '../screens/chats/chat_list_screen.dart';
 import '../screens/chats/chat_screen.dart';
+import '../screens/chats/chat_info_screen.dart';
 import '../screens/profile/settings_tab.dart';
 import 'app_scope.dart';
 import 'auth_limits_sheet.dart';
@@ -61,6 +62,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   final ValueNotifier<double> _listWidth = ValueNotifier(_defaultListWidth);
   final ValueNotifier<DesktopChatSelection?> _selected = ValueNotifier(null);
   int _railIndex = 0;
+  bool _infoOpen = false;
   bool _hadHinge = false;
 
   @override
@@ -140,7 +142,17 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   }
 
   void _closeChat() {
+    _infoOpen = false;
     _selected.value = null;
+  }
+
+  void _toggleInfo() {
+    setState(() => _infoOpen = !_infoOpen);
+  }
+
+  void _closeInfo() {
+    if (!_infoOpen) return;
+    setState(() => _infoOpen = false);
   }
 
   void _onRailSelect(int index) {
@@ -171,7 +183,13 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   @override
   Widget build(BuildContext context) {
     return DesktopShortcuts(
-      onClosePane: _closeChat,
+      onClosePane: () {
+        if (_infoOpen) {
+          _closeInfo();
+        } else {
+          _closeChat();
+        }
+      },
       onSearchChats: ChatListScreen.openSearch,
       onFindInChat: () {
         if (_selected.value == null || !ChatScreen.openSearchInVisibleChat()) {
@@ -272,6 +290,12 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                                   initialMessageTime: selected.initialMessageTime,
                                   embedded: true,
                                   onClose: _closeChat,
+                                  onOpenEmbeddedInfo:
+                                      DesktopDensity.enabled &&
+                                          totalWidth >=
+                                              DesktopDensity.infoPaneMinWindow
+                                      ? _toggleInfo
+                                      : null,
                                 ),
                         );
                         final iosPane = defaultTargetPlatform == TargetPlatform.iOS;
@@ -283,6 +307,31 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                       },
                     ),
                   ),
+                  if (DesktopDensity.enabled &&
+                      _infoOpen &&
+                      selected != null &&
+                      totalWidth >= DesktopDensity.infoPaneMinWindow)
+                    SizedBox(
+                      width: DesktopDensity.infoPaneWidth,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border(
+                            left: BorderSide(
+                              color: cs.outlineVariant.withValues(alpha: 0.35),
+                            ),
+                          ),
+                        ),
+                        child: ChatInfoScreen(
+                          key: ValueKey('info-${selected.chatId}'),
+                          chatId: selected.chatId,
+                          name: selected.name,
+                          imageUrl: selected.imageUrl,
+                          chatType: selected.chatType,
+                          openedFromChat: true,
+                          onClose: _closeInfo,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

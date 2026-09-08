@@ -353,6 +353,10 @@ extension _ChatHistoryLoad on _ChatScreenState {
   }
 
   void _openChatInfo({ChatInfoTab? initialTab}) {
+    if (initialTab == null && widget.onOpenEmbeddedInfo != null) {
+      widget.onOpenEmbeddedInfo!();
+      return;
+    }
     final navigator = Navigator.of(context);
     final chatRoute = ModalRoute.of(context);
     navigator.push(

@@ -205,6 +205,7 @@ class ChatScreen extends StatefulWidget {
   final bool? channelSubscribed;
   final bool embedded;
   final VoidCallback? onClose;
+  final VoidCallback? onOpenEmbeddedInfo;
   final ForwardRequest? forwardRequest;
   final ReplyRequest? replyRequest;
   final String? initialMessageId;
@@ -223,6 +224,7 @@ class ChatScreen extends StatefulWidget {
     this.channelSubscribed,
     this.embedded = false,
     this.onClose,
+    this.onOpenEmbeddedInfo,
     this.forwardRequest,
     this.replyRequest,
     this.initialMessageId,

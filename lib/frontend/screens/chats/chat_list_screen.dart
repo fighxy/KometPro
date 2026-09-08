@@ -3172,8 +3172,9 @@ class _ChatListScreenState extends State<ChatListScreen>
     final story = (_isSelectionMode || widget.forwardMode)
         ? null
         : _storyPreviewFor(storyOwnerId);
-    final desktopPane = widget.onChatSelected != null || DesktopDensity.enabled;
-    final avatarRadius = desktopPane
+    final desktopPane = widget.onChatSelected != null;
+    final dense = DesktopDensity.enabled;
+    final avatarRadius = dense
         ? DesktopDensity.avatarRadius
         : (story == null ? 30.0 : 26.0);
 
@@ -3355,7 +3356,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: SizedBox(
-                    height: desktopPane ? DesktopDensity.rowInnerHeight : 54,
+                    height: dense ? DesktopDensity.rowInnerHeight : 54,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -3383,10 +3384,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                                         name,
                                         style: TextStyle(
                                           color: cs.onSurface,
-                                          fontSize: desktopPane
+                                          fontSize: dense
                                               ? DesktopDensity.titleSize
                                               : 17,
-                                          fontWeight: desktopPane
+                                          fontWeight: dense
                                               ? DesktopDensity.titleWeight
                                               : FontWeight.w700,
                                           height: 1.1,
@@ -3423,7 +3424,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 time,
                                 style: TextStyle(
                                   color: cs.outline,
-                                  fontSize: desktopPane
+                                  fontSize: dense
                                       ? DesktopDensity.timeSize
                                       : 14,
                                   fontWeight: FontWeight.w500,
