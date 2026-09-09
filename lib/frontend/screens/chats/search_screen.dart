@@ -284,6 +284,10 @@ class _SearchScreenState extends State<SearchScreen> {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
         if (_loading) const LinearProgressIndicator(minHeight: 2),
+        if (_public.isNotEmpty) ...[
+          _sectionHeader(cs, 'Каналы'),
+          for (final hit in _public) _chatTile(hit),
+        ],
         if (phoneResult != null) ...[
           _sectionHeader(cs, 'По номеру'),
           _ResultTile(
@@ -310,10 +314,6 @@ class _SearchScreenState extends State<SearchScreen> {
         if (_messages.isNotEmpty) ...[
           _sectionHeader(cs, 'Сообщения'),
           for (final hit in _messages) _messageTile(hit),
-        ],
-        if (_public.isNotEmpty) ...[
-          _sectionHeader(cs, 'Глобальный поиск'),
-          for (final hit in _public) _chatTile(hit),
         ],
         const SizedBox(height: 16),
       ],
