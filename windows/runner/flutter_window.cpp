@@ -7,6 +7,12 @@
 #include <propvarutil.h>
 #include <shellapi.h>
 #include <shlobj.h>
+#include <chrono>
+#include <fstream>
+#include <mutex>
+#include <sstream>
+#include <iomanip>
+#include <ctime>
 
 #include "flutter/generated_plugin_registrant.h"
 #include "resource.h"
@@ -14,6 +20,33 @@
 #ifndef NIN_SELECT
 #define NIN_SELECT (WM_USER + 0)
 #endif
+
+// Performance Logging
+static std::mutex g_perf_mutex;
+static const char* PERF_LOG_PATH = "logs/perf_log.txt";
+
+void LogPerfEvent(const std::string& event, long long duration_us = 0) {
+    std::lock_guard<std::mutex> lock(g_perf_mutex);
+    std::ofstream log(PERF_LOG_PATH, std::ios::app);
+    if (log.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        auto time_t_now = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()) % 1000;
+        
+        log << "[" << std::put_time(std::localtime(&time_t_now), "%H:%M:%S") 
+            << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+            << event;
+        if (duration_us > 0) {
+            log << " (Duration: " << (duration_us / 1000.0) << "ms)";
+        }
+        log << "\n";
+        log.flush();
+    }
+}
+
+#define LOG_PERF(msg) LogPerfEvent(msg)
+#define LOG_PERF_DUR(msg, dur) LogPerfEvent(msg, dur)
 
 namespace {
 constexpr UINT WM_TRAYICON = WM_APP + 32;
@@ -375,12 +408,16 @@ void FlutterWindow::KickCompositor() {
   
   // Post the compositor kick asynchronously to avoid blocking message loop
   // This prevents UI freeze when called during focus operations
-  PostMessage(hwnd, WM_USER + 0x4B00, 0, 0);
+  LOG_PERF("KickCompositor: Posted async");
+  PostMessage(hwnd, WM_KICK_COMPOSITOR_ASYNC, 0, 0);
 }
 
 static constexpr UINT WM_KICK_COMPOSITOR_ASYNC = WM_USER + 0x4B00;
 
 static void DoKickCompositor(HWND hwnd, flutter::FlutterViewController* controller) {
+  auto start_time = std::chrono::high_resolution_clock::now();
+  LOG_PERF("DoKickCompositor: Start");
+  
   if (!hwnd) return;
   RECT wr = {};
   GetWindowRect(hwnd, &wr);
@@ -405,6 +442,10 @@ static void DoKickCompositor(HWND hwnd, flutter::FlutterViewController* controll
   if (controller) {
     controller->ForceRedraw();
   }
+  
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+  LOG_PERF_DUR("DoKickCompositor: Complete", duration);
 }
 
 void FlutterWindow::ForceForeground() {
@@ -413,8 +454,12 @@ void FlutterWindow::ForceForeground() {
     return;
   }
   
+  auto start_time = std::chrono::high_resolution_clock::now();
+  LOG_PERF("ForceForeground: Start");
+  
   // Check if we're already foreground - avoid unnecessary work
   if (GetForegroundWindow() == hwnd) {
+    LOG_PERF("ForceForeground: Already foreground, skip");
     return;
   }
   
@@ -432,6 +477,7 @@ void FlutterWindow::ForceForeground() {
     if (fg_tid != 0 && fg_tid != our_tid) {
       // Attach to foreground thread input for focus handoff
       AttachThreadInput(fg_tid, our_tid, TRUE);
+      LOG_PERF("ForceForeground: Attached to foreground thread");
     }
   }
   
@@ -440,9 +486,11 @@ void FlutterWindow::ForceForeground() {
     ShowWindow(hwnd, SW_RESTORE);
     // Small delay to let restore complete
     Sleep(10);
+    LOG_PERF("ForceForeground: Restored from minimized");
   } else if (!IsWindowVisible(hwnd)) {
     ShowWindow(hwnd, SW_SHOW);
     Sleep(10);
+    LOG_PERF("ForceForeground: Shown from hidden");
   }
   
   // Bring to top and set foreground
@@ -455,6 +503,9 @@ void FlutterWindow::ForceForeground() {
     // Fallback: try using Alt+Tab simulation via key event
     keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, 0);
     keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
+    LOG_PERF("ForceForeground: SetForegroundWindow failed, used keybd_event fallback");
+  } else {
+    LOG_PERF("ForceForeground: SetForegroundWindow succeeded");
   }
   
   BringWindowToTop(hwnd);
@@ -463,6 +514,10 @@ void FlutterWindow::ForceForeground() {
   if (fg && fg_tid != 0 && fg_tid != our_tid) {
     AttachThreadInput(fg_tid, our_tid, FALSE);
   }
+  
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+  LOG_PERF_DUR("ForceForeground: Complete", duration);
 }
 
 void FlutterWindow::AddNativeTray() {
@@ -581,6 +636,8 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  auto msg_start = std::chrono::high_resolution_clock::now();
+  
   if (message == WM_TIMER &&
       (wparam == kKickTimerEarly || wparam == kKickTimerLate)) {
     KillTimer(hwnd, wparam);
@@ -640,6 +697,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       // MSGF_MENU=2, MSGF_MOVE=3, MSGF_SIZE=4 - use numeric values for compatibility
       if (source == 2 || source == 3 || source == 4) {
         // Allow processing of pending messages during modal loops
+        LOG_PERF("WM_ENTERIDLE: Modal loop detected");
         return 0;
       }
       break;
@@ -652,6 +710,24 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
         break;
       }
       return DefWindowProc(hwnd, message, wparam, lparam);
+    }
+    
+    // Log focus changes for debugging
+    case WM_SETFOCUS: {
+      LOG_PERF("WM_SETFOCUS: Window gained focus");
+      break;
+    }
+    case WM_KILLFOCUS: {
+      LOG_PERF("WM_KILLFOCUS: Window lost focus");
+      break;
+    }
+    case WM_ACTIVATE: {
+      if (LOWORD(wparam) == WA_INACTIVE) {
+        LOG_PERF("WM_ACTIVATE: Window deactivated");
+      } else {
+        LOG_PERF("WM_ACTIVATE: Window activated");
+      }
+      break;
     }
   }
 
