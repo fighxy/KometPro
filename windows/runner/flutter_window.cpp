@@ -637,7 +637,8 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     // Handle WM_ENTERIDLE to keep message loop responsive during menu/tracking
     case WM_ENTERIDLE: {
       const UINT source = LOWORD(wparam);
-      if (source == MSGF_MENU || source == MSGF_MOVE || source == MSGF_SIZE) {
+      // MSGF_MENU=2, MSGF_MOVE=3, MSGF_SIZE=4 - use numeric values for compatibility
+      if (source == 2 || source == 3 || source == 4) {
         // Allow processing of pending messages during modal loops
         return 0;
       }
