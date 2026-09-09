@@ -54,7 +54,10 @@ bool FocusExistingInstance(int chat_id) {
     data.dwData = 1;
     data.cbData = sizeof(chat_id);
     data.lpData = &chat_id;
-    SendMessageW(g_existing, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&data));
+    DWORD_PTR ignored = 0;
+    SendMessageTimeoutW(g_existing, WM_COPYDATA, 0,
+                        reinterpret_cast<LPARAM>(&data),
+                        SMTO_ABORTIFHUNG | SMTO_BLOCK, 2000, &ignored);
   }
   return true;
 }
