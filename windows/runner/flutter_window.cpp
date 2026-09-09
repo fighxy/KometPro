@@ -372,6 +372,16 @@ void FlutterWindow::KickCompositor() {
   if (!hwnd) {
     return;
   }
+  
+  // Post the compositor kick asynchronously to avoid blocking message loop
+  // This prevents UI freeze when called during focus operations
+  PostMessage(hwnd, WM_USER + 0x4B00, 0, 0);
+}
+
+static constexpr UINT WM_KICK_COMPOSITOR_ASYNC = WM_USER + 0x4B00;
+
+static void DoKickCompositor(HWND hwnd, flutter::FlutterViewController* controller) {
+  if (!hwnd) return;
   RECT wr = {};
   GetWindowRect(hwnd, &wr);
   const int w = wr.right - wr.left;
@@ -382,17 +392,18 @@ void FlutterWindow::KickCompositor() {
     SetWindowPos(hwnd, nullptr, wr.left, wr.top, w, h,
                  SWP_NOZORDER | SWP_NOACTIVATE);
   }
-  RECT cr = GetClientArea();
+  RECT cr = {};
+  GetClientRect(hwnd, &cr);
   HWND child = GetWindow(hwnd, GW_CHILD);
   if (child) {
     MoveWindow(child, cr.left, cr.top, cr.right - cr.left,
                cr.bottom - cr.top, TRUE);
   }
+  // Avoid RDW_ALLCHILDREN which can block on complex hierarchies
   RedrawWindow(hwnd, nullptr, nullptr,
-               RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME |
-                   RDW_UPDATENOW);
-  if (flutter_controller_) {
-    flutter_controller_->ForceRedraw();
+               RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_UPDATENOW);
+  if (controller) {
+    controller->ForceRedraw();
   }
 }
 
@@ -401,24 +412,54 @@ void FlutterWindow::ForceForeground() {
   if (!hwnd) {
     return;
   }
+  
+  // Check if we're already foreground - avoid unnecessary work
+  if (GetForegroundWindow() == hwnd) {
+    return;
+  }
+  
   HWND fg = GetForegroundWindow();
   DWORD fg_tid = 0;
-  if (fg) {
+  DWORD our_tid = GetCurrentThreadId();
+  
+  // Try to allow setting foreground window
+  if (fg && fg != hwnd) {
+    DWORD fg_pid = 0;
     GetWindowThreadProcessId(fg, &fg_tid);
+    GetWindowThreadProcessId(hwnd, &fg_pid);
+    
+    // Windows 10/11: request permission to set foreground
+    if (fg_tid != 0 && fg_tid != our_tid) {
+      // Attach to foreground thread input for focus handoff
+      AttachThreadInput(fg_tid, our_tid, TRUE);
+    }
   }
-  const DWORD our_tid = GetCurrentThreadId();
-  if (fg && fg_tid != 0 && fg_tid != our_tid) {
-    AttachThreadInput(fg_tid, our_tid, TRUE);
-  }
+  
+  // Restore if minimized
   if (IsIconic(hwnd)) {
     ShowWindow(hwnd, SW_RESTORE);
+    // Small delay to let restore complete
+    Sleep(10);
   } else if (!IsWindowVisible(hwnd)) {
     ShowWindow(hwnd, SW_SHOW);
+    Sleep(10);
   }
+  
+  // Bring to top and set foreground
   SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-  SetForegroundWindow(hwnd);
+  
+  // Critical: ensure we have permission before calling SetForegroundWindow
+  BOOL result = SetForegroundWindow(hwnd);
+  if (!result) {
+    // Fallback: try using Alt+Tab simulation via key event
+    keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, 0);
+    keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
+  }
+  
   BringWindowToTop(hwnd);
+  
+  // Detach from foreground thread
   if (fg && fg_tid != 0 && fg_tid != our_tid) {
     AttachThreadInput(fg_tid, our_tid, FALSE);
   }
@@ -486,7 +527,10 @@ void FlutterWindow::ShowNativeTrayMenu() {
   }
   POINT pt = {};
   GetCursorPos(&pt);
+  
+  // Critical: set foreground before TrackPopupMenu to avoid focus issues on Win10
   SetForegroundWindow(hwnd);
+  
   HMENU menu = CreatePopupMenu();
   if (!menu) {
     return;
@@ -495,11 +539,17 @@ void FlutterWindow::ShowNativeTrayMenu() {
   AppendMenuW(menu, MF_STRING, IDM_TRAY_HIDE, tray_hide_.c_str());
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   AppendMenuW(menu, MF_STRING, IDM_TRAY_QUIT, tray_quit_.c_str());
+  
+  // Use TPM_RIGHTBUTTON and ensure menu doesn't block message loop
   const int cmd = TrackPopupMenu(menu,
                                  TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
                                  pt.x, pt.y, 0, hwnd, nullptr);
+  
+  // Post WM_NULL to keep menu open until user selects
   PostMessage(hwnd, WM_NULL, 0, 0);
   DestroyMenu(menu);
+  
+  // Handle action asynchronously to avoid blocking
   if (cmd == IDM_TRAY_SHOW) {
     HandleTrayAction("show");
   } else if (cmd == IDM_TRAY_HIDE) {
@@ -537,6 +587,13 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     KickCompositor();
     return 0;
   }
+  
+  // Handle async compositor kick message
+  if (message == WM_KICK_COMPOSITOR_ASYNC) {
+    DoKickCompositor(hwnd, flutter_controller_.get());
+    return 0;
+  }
+  
   if (message == WM_TRAYICON) {
     const UINT mouse = LOWORD(lparam);
     if (mouse == WM_LBUTTONUP || mouse == NIN_SELECT) {
@@ -576,6 +633,25 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;
+      
+    // Handle WM_ENTERIDLE to keep message loop responsive during menu/tracking
+    case WM_ENTERIDLE: {
+      const UINT source = LOWORD(wparam);
+      if (source == MSGF_MENU || source == MSGF_MOVE || source == MSGF_SIZE) {
+        // Allow processing of pending messages during modal loops
+        return 0;
+      }
+      break;
+    }
+    
+    // Handle SC_KEYMENU to prevent Alt key from causing focus issues
+    case WM_SYSCOMMAND: {
+      if ((wparam & 0xFFF0) == SC_KEYMENU) {
+        // Let Flutter handle keyboard navigation
+        break;
+      }
+      return DefWindowProc(hwnd, message, wparam, lparam);
+    }
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);

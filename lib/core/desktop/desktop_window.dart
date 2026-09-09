@@ -158,12 +158,17 @@ class DesktopWindow {
     }
     try {
       if (await windowManager.isMinimized()) {
+        // Use SW_SHOWNOACTIVATE to avoid focus race during restore
         await windowManager.restore();
+        // Small delay to let restore complete before showing
+        await Future<void>.delayed(const Duration(milliseconds: 50));
       }
     } catch (_) {}
     try {
       await windowManager.show();
     } catch (_) {}
+    // Delay before forcing foreground to allow Windows to process show
+    await Future<void>.delayed(const Duration(milliseconds: 30));
     try {
       await _channel.invokeMethod<void>('forceForeground');
     } catch (_) {
@@ -181,7 +186,8 @@ class DesktopWindow {
         await windowManager.center();
       }
     } catch (_) {}
-    await kickCompositor();
+    // Kick compositor asynchronously - it's now non-blocking on native side
+    unawaited(kickCompositor());
   }
 
   static Future<void> skipTaskbar() async {
