@@ -7,12 +7,6 @@
 #include <propvarutil.h>
 #include <shellapi.h>
 #include <shlobj.h>
-#include <chrono>
-#include <fstream>
-#include <mutex>
-#include <sstream>
-#include <iomanip>
-#include <ctime>
 
 #include "flutter/generated_plugin_registrant.h"
 #include "resource.h"
@@ -20,66 +14,6 @@
 #ifndef NIN_SELECT
 #define NIN_SELECT (WM_USER + 0)
 #endif
-
-// Performance Logging
-static std::mutex g_perf_mutex;
-static char g_perf_log_path[MAX_PATH];
-static bool g_perf_path_initialized = false;
-
-void InitPerfLogPath() {
-    if (g_perf_path_initialized) return;
-    
-    // Get %LOCALAPPDATA%
-    char* app_data = nullptr;
-    size_t len = 0;
-    errno_t err = _dupenv_s(&app_data, &len, "LOCALAPPDATA");
-    if (err != 0 || !app_data) {
-        snprintf(g_perf_log_path, MAX_PATH, ".\\Komet\\logs\\perf_log.txt");
-    } else {
-        snprintf(g_perf_log_path, MAX_PATH, "%s\\Komet\\logs\\perf_log.txt", app_data);
-        free(app_data);
-    }
-    
-    // Ensure directory exists
-    char dir_path[MAX_PATH];
-    strncpy_s(dir_path, g_perf_log_path, _TRUNCATE);
-    char* last_slash = strrchr(dir_path, '\\');
-    if (last_slash) {
-        *last_slash = '\0';
-        SHCreateDirectoryExA(nullptr, dir_path, nullptr);
-    }
-    
-    g_perf_path_initialized = true;
-}
-
-void LogPerfEvent(const std::string& event, long long duration_us = 0) {
-    if (!g_perf_path_initialized) {
-        InitPerfLogPath();
-    }
-    
-    std::lock_guard<std::mutex> lock(g_perf_mutex);
-    std::ofstream log(g_perf_log_path, std::ios::app);
-    if (log.is_open()) {
-        auto now = std::chrono::system_clock::now();
-        auto time_t_now = std::chrono::system_clock::to_time_t(now);
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now.time_since_epoch()) % 1000;
-        
-        struct tm timeinfo;
-        localtime_s(&timeinfo, &time_t_now);
-        log << "[" << std::put_time(&timeinfo, "%H:%M:%S") 
-            << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
-            << event;
-        if (duration_us > 0) {
-            log << " (Duration: " << (duration_us / 1000.0) << "ms)";
-        }
-        log << "\n";
-        log.flush();
-    }
-}
-
-#define LOG_PERF(msg) LogPerfEvent(msg)
-#define LOG_PERF_DUR(msg, dur) LogPerfEvent(msg, dur)
 
 namespace {
 constexpr UINT WM_TRAYICON = WM_APP + 32;
@@ -426,71 +360,19 @@ void FlutterWindow::ForceForeground() {
     return;
   }
   
-  auto start_time = std::chrono::high_resolution_clock::now();
-  LOG_PERF("ForceForeground: Start");
-  
-  // Check if we're already foreground - avoid unnecessary work
   if (GetForegroundWindow() == hwnd) {
-    LOG_PERF("ForceForeground: Already foreground, skip");
     return;
   }
-  
-  HWND fg = GetForegroundWindow();
-  DWORD fg_tid = 0;
-  DWORD our_tid = GetCurrentThreadId();
-  
-  // Try to allow setting foreground window
-  if (fg && fg != hwnd) {
-    DWORD fg_pid = 0;
-    GetWindowThreadProcessId(fg, &fg_tid);
-    GetWindowThreadProcessId(hwnd, &fg_pid);
-    
-    // Windows 10/11: request permission to set foreground
-    if (fg_tid != 0 && fg_tid != our_tid) {
-      // Attach to foreground thread input for focus handoff
-      BOOL attach_result = AttachThreadInput(fg_tid, our_tid, TRUE);
-      LOG_PERF(attach_result ? "ForceForeground: Attached to foreground thread" 
-                             : "ForceForeground: AttachThreadInput failed");
-    }
-  }
-  
-  // Restore if minimized
+
   if (IsIconic(hwnd)) {
     ShowWindow(hwnd, SW_RESTORE);
-    // Small delay to let restore complete
-    Sleep(10);
-    LOG_PERF("ForceForeground: Restored from minimized");
   } else if (!IsWindowVisible(hwnd)) {
     ShowWindow(hwnd, SW_SHOW);
-    Sleep(10);
-    LOG_PERF("ForceForeground: Shown from hidden");
   }
-  
-  // Bring to top and set foreground
+
   SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-  
-  // Critical: ensure we have permission before calling SetForegroundWindow
-  BOOL result = SetForegroundWindow(hwnd);
-  if (!result) {
-    // Fallback: try using Alt+Tab simulation via key event
-    keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, 0);
-    keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
-    LOG_PERF("ForceForeground: SetForegroundWindow failed, used keybd_event fallback");
-  } else {
-    LOG_PERF("ForceForeground: SetForegroundWindow succeeded");
-  }
-  
-  BringWindowToTop(hwnd);
-  
-  // Detach from foreground thread
-  if (fg && fg_tid != 0 && fg_tid != our_tid) {
-    AttachThreadInput(fg_tid, our_tid, FALSE);
-  }
-  
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-  LOG_PERF_DUR("ForceForeground: Complete", duration);
+  SetForegroundWindow(hwnd);
 }
 
 void FlutterWindow::AddNativeTray() {
@@ -567,13 +449,9 @@ void FlutterWindow::ShowNativeTrayMenu() {
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   AppendMenuW(menu, MF_STRING, IDM_TRAY_QUIT, tray_quit_.c_str());
   
-  LOG_PERF("ShowNativeTrayMenu: Showing popup menu");
-  
   const int cmd = TrackPopupMenu(menu,
                                  TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
                                  pt.x, pt.y, 0, hwnd, nullptr);
-  
-  LOG_PERF("ShowNativeTrayMenu: Menu closed");
   
   DestroyMenu(menu);
   
@@ -610,8 +488,6 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
-  auto msg_start = std::chrono::high_resolution_clock::now();
-  
   if (message == WM_TRAYICON) {
     const UINT mouse = LOWORD(lparam);
     if (mouse == WM_LBUTTONUP || mouse == NIN_SELECT) {
@@ -623,6 +499,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       return 0;
     }
     return 0;
+  }
+
+  if (message == WM_ACTIVATE && LOWORD(wparam) != WA_INACTIVE) {
+    FlashTaskbar(false);
   }
 
   // Give Flutter, including plugins, an opportunity to handle window messages.
@@ -661,24 +541,6 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       return DefWindowProc(hwnd, message, wparam, lparam);
     }
     
-    // Log focus changes for debugging
-    case WM_SETFOCUS: {
-      LOG_PERF("WM_SETFOCUS: Window gained focus");
-      break;
-    }
-    case WM_KILLFOCUS: {
-      LOG_PERF("WM_KILLFOCUS: Window lost focus");
-      break;
-    }
-    case WM_ACTIVATE: {
-      if (LOWORD(wparam) == WA_INACTIVE) {
-        LOG_PERF("WM_ACTIVATE: Window deactivated");
-        // При потере фокуса ничего не делаем
-      } else {
-        LOG_PERF("WM_ACTIVATE: Window activated");
-      }
-      break;
-    }
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
