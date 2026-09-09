@@ -476,8 +476,9 @@ void FlutterWindow::ForceForeground() {
     // Windows 10/11: request permission to set foreground
     if (fg_tid != 0 && fg_tid != our_tid) {
       // Attach to foreground thread input for focus handoff
-      AttachThreadInput(fg_tid, our_tid, TRUE);
-      LOG_PERF("ForceForeground: Attached to foreground thread");
+      BOOL attach_result = AttachThreadInput(fg_tid, our_tid, TRUE);
+      LOG_PERF(attach_result ? "ForceForeground: Attached to foreground thread" 
+                             : "ForceForeground: AttachThreadInput failed");
     }
   }
   
@@ -584,7 +585,21 @@ void FlutterWindow::ShowNativeTrayMenu() {
   GetCursorPos(&pt);
   
   // Critical: set foreground before TrackPopupMenu to avoid focus issues on Win10
-  SetForegroundWindow(hwnd);
+  // Use AttachThreadInput for better compatibility with Windows 10
+  HWND fg_window = GetForegroundWindow();
+  if (fg_window != hwnd) {
+    DWORD fg_thread = GetWindowThreadProcessId(fg_window, nullptr);
+    DWORD this_thread = GetCurrentThreadId();
+    if (fg_thread != this_thread) {
+      AttachThreadInput(this_thread, fg_thread, TRUE);
+      SetForegroundWindow(hwnd);
+      AttachThreadInput(this_thread, fg_thread, FALSE);
+    } else {
+      SetForegroundWindow(hwnd);
+    }
+  } else {
+    SetForegroundWindow(hwnd);
+  }
   
   HMENU menu = CreatePopupMenu();
   if (!menu) {
@@ -595,10 +610,14 @@ void FlutterWindow::ShowNativeTrayMenu() {
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   AppendMenuW(menu, MF_STRING, IDM_TRAY_QUIT, tray_quit_.c_str());
   
+  LOG_PERF("ShowNativeTrayMenu: Showing popup menu");
+  
   // Use TPM_RIGHTBUTTON and ensure menu doesn't block message loop
   const int cmd = TrackPopupMenu(menu,
                                  TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
                                  pt.x, pt.y, 0, hwnd, nullptr);
+  
+  LOG_PERF("ShowNativeTrayMenu: Menu closed");
   
   // Post WM_NULL to keep menu open until user selects
   PostMessage(hwnd, WM_NULL, 0, 0);
@@ -697,9 +716,26 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       // MSGF_MENU=2, MSGF_MOVE=3, MSGF_SIZE=4 - use numeric values for compatibility
       if (source == 2 || source == 3 || source == 4) {
         // Allow processing of pending messages during modal loops
-        LOG_PERF("WM_ENTERIDLE: Modal loop detected");
-        return 0;
+        // Don't return 0 - let DefWindowProc process it to avoid blocking
+        LOG_PERF("WM_ENTERIDLE: Modal loop detected, pumping messages");
+        
+        // Pump pending messages to prevent freeze
+        MSG msg;
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_NOREMOVE)) {
+          if (msg.message == WM_QUIT) {
+            return -1;
+          }
+          // Skip input messages during modal tracking to avoid conflicts
+          if (msg.message >= WM_MOUSEFIRST && msg.message <= WM_MOUSELAST) {
+            PeekMessage(&msg, nullptr, msg.message, msg.message, PM_REMOVE);
+          } else if (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST) {
+            PeekMessage(&msg, nullptr, msg.message, msg.message, PM_REMOVE);
+          } else {
+            break;
+          }
+        }
       }
+      // Always let DefWindowProc handle WM_ENTERIDLE
       break;
     }
     
