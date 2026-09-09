@@ -626,21 +626,19 @@ void FlutterWindow::ShowNativeTrayMenu() {
   POINT pt = {};
   GetCursorPos(&pt);
   
-  // Critical: set foreground before TrackPopupMenu to avoid focus issues on Win10
-  // Use AttachThreadInput for better compatibility with Windows 10
-  HWND fg_window = GetForegroundWindow();
-  if (fg_window != hwnd) {
-    DWORD fg_thread = GetWindowThreadProcessId(fg_window, nullptr);
-    DWORD this_thread = GetCurrentThreadId();
-    if (fg_thread != this_thread) {
-      AttachThreadInput(this_thread, fg_thread, TRUE);
-      SetForegroundWindow(hwnd);
-      AttachThreadInput(this_thread, fg_thread, FALSE);
-    } else {
-      SetForegroundWindow(hwnd);
-    }
-  } else {
-    SetForegroundWindow(hwnd);
+  // КРИТИЧЕСКИЙ ФИКС ДЛЯ WINDOWS 10 (сборка 1809 и другие старые версии):
+  // Проблема: TrackPopupMenu запускает модальный цикл, который блокирует обработку
+  // сообщений окна. Когда меню закрывается, окно может остаться в "подвешенном" состоянии,
+  // особенно если оно было в фокусе. Это вызывает визуальное зависание.
+  //
+  // Решение: Временно деактивировать окно перед показом меню, затем вернуть фокус.
+  
+  bool wasForeground = (GetForegroundWindow() == hwnd);
+  
+  // 1. Если окно в фокусе, временно передаем фокус рабочему столу
+  // Это предотвращает конфликт между модальным циклом меню и основным циклом окна
+  if (wasForeground) {
+    SetForegroundWindow(GetDesktopWindow());
   }
   
   HMENU menu = CreatePopupMenu();
@@ -654,18 +652,23 @@ void FlutterWindow::ShowNativeTrayMenu() {
   
   LOG_PERF("ShowNativeTrayMenu: Showing popup menu");
   
-  // Use TPM_RIGHTBUTTON and ensure menu doesn't block message loop
+  // 2. Показываем меню (блокирующий вызов)
   const int cmd = TrackPopupMenu(menu,
                                  TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
                                  pt.x, pt.y, 0, hwnd, nullptr);
   
   LOG_PERF("ShowNativeTrayMenu: Menu closed");
   
-  // Post WM_NULL to keep menu open until user selects
-  PostMessage(hwnd, WM_NULL, 0, 0);
   DestroyMenu(menu);
   
-  // Handle action asynchronously to avoid blocking
+  // 3. КРИТИЧНО: Возвращаем фокус окну ПОСЛЕ закрытия меню
+  // Используем PostMessage + SetForegroundWindow для надежного восстановления
+  if (wasForeground) {
+    // Откладываем восстановление фокуса, чтобы избежать рекурсии
+    PostMessage(hwnd, WM_KICK_FOCUS, 0, 0);
+  }
+  
+  // 4. Обрабатываем команду меню (если выбрана)
   if (cmd == IDM_TRAY_SHOW) {
     HandleTrayAction("show");
   } else if (cmd == IDM_TRAY_HIDE) {
