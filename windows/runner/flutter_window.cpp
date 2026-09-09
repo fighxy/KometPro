@@ -26,11 +26,39 @@ static constexpr UINT WM_KICK_COMPOSITOR_ASYNC = WM_USER + 0x4B00;
 
 // Performance Logging
 static std::mutex g_perf_mutex;
-static const char* PERF_LOG_PATH = "logs/perf_log.txt";
+static char g_perf_log_path[MAX_PATH];
+static bool g_perf_path_initialized = false;
+
+void InitPerfLogPath() {
+    if (g_perf_path_initialized) return;
+    
+    // Get %LOCALAPPDATA%
+    const char* app_data = getenv("LOCALAPPDATA");
+    if (!app_data) {
+        app_data = ".";
+    }
+    
+    snprintf(g_perf_log_path, MAX_PATH, "%s\\Komet\\logs\\perf_log.txt", app_data);
+    
+    // Ensure directory exists
+    char dir_path[MAX_PATH];
+    strncpy_s(dir_path, g_perf_log_path, _TRUNCATE);
+    char* last_slash = strrchr(dir_path, '\\');
+    if (last_slash) {
+        *last_slash = '\0';
+        SHCreateDirectoryExA(nullptr, dir_path, nullptr);
+    }
+    
+    g_perf_path_initialized = true;
+}
 
 void LogPerfEvent(const std::string& event, long long duration_us = 0) {
+    if (!g_perf_path_initialized) {
+        InitPerfLogPath();
+    }
+    
     std::lock_guard<std::mutex> lock(g_perf_mutex);
-    std::ofstream log(PERF_LOG_PATH, std::ios::app);
+    std::ofstream log(g_perf_log_path, std::ios::app);
     if (log.is_open()) {
         auto now = std::chrono::system_clock::now();
         auto time_t_now = std::chrono::system_clock::to_time_t(now);
