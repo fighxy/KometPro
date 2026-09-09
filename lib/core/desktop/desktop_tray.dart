@@ -42,8 +42,28 @@ class DesktopTray with WindowListener, TrayListener {
           : (ui.PlatformDispatcher.instance.locale.languageCode == 'ru'
                 ? 'Komet — $next непрочитанных'
                 : 'Komet — $next unread');
-      await trayManager.setToolTip(tip);
-      await _rebuildMenu();
+      if (Platform.isWindows) {
+        await DesktopWindow.setTrayTip(tip);
+        await DesktopWindow.addNativeTray(
+          tip: tip,
+          show: next > 0
+              ? (ui.PlatformDispatcher.instance.locale.languageCode == 'ru'
+                    ? 'Открыть Komet ($next)'
+                    : 'Open Komet ($next)')
+              : (ui.PlatformDispatcher.instance.locale.languageCode == 'ru'
+                    ? 'Открыть Komet'
+                    : 'Open Komet'),
+          hide: ui.PlatformDispatcher.instance.locale.languageCode == 'ru'
+              ? 'Скрыть'
+              : 'Hide',
+          quit: ui.PlatformDispatcher.instance.locale.languageCode == 'ru'
+              ? 'Выйти'
+              : 'Quit',
+        );
+      } else {
+        await trayManager.setToolTip(tip);
+        await _rebuildMenu();
+      }
     } catch (e) {
       logger.w('DesktopTray: badge failed: $e');
     }
@@ -69,23 +89,60 @@ class DesktopTray with WindowListener, TrayListener {
         title: 'Komet',
       ),
       () async {
-        if (DesktopWindow.isPlausibleOffset(bounds.offset)) {
-          await windowManager.setPosition(bounds.offset!);
-        }
         await windowManager.setPreventClose(true);
         await DesktopWindow.forceShow();
+        if (DesktopWindow.isPlausibleOffset(bounds.offset)) {
+          try {
+            await windowManager.setPosition(bounds.offset!);
+          } catch (_) {}
+          await DesktopWindow.kickCompositor();
+        }
       },
     );
     windowManager.addListener(this);
-    trayManager.addListener(this);
+    DesktopWindow.onTrayAction = _onNativeTrayAction;
     try {
-      final icon = await _resolveIcon();
-      await trayManager.setIcon(icon);
-      await trayManager.setToolTip('Komet');
-      await _rebuildMenu();
+      if (Platform.isWindows) {
+        await _addNativeTray();
+      } else {
+        trayManager.addListener(this);
+        final icon = await _resolveIcon();
+        await trayManager.setIcon(icon);
+        await trayManager.setToolTip('Komet');
+        await _rebuildMenu();
+      }
     } catch (e) {
       logger.w('DesktopTray: иконка трея не встала: $e');
     }
+  }
+
+  Future<void> _addNativeTray() async {
+    final ru = ui.PlatformDispatcher.instance.locale.languageCode == 'ru';
+    await DesktopWindow.addNativeTray(
+      tip: _unread == 0
+          ? 'Komet'
+          : (ru
+                ? 'Komet — $_unread непрочитанных'
+                : 'Komet — $_unread unread'),
+      show: _unread > 0
+          ? (ru ? 'Открыть Komet ($_unread)' : 'Open Komet ($_unread)')
+          : (ru ? 'Открыть Komet' : 'Open Komet'),
+      hide: ru ? 'Скрыть' : 'Hide',
+      quit: ru ? 'Выйти' : 'Quit',
+    );
+  }
+
+  void _onNativeTrayAction(String action) {
+    Future<void>.delayed(const Duration(milliseconds: 40), () {
+      switch (action) {
+        case 'quit':
+          unawaited(quit());
+        case 'hide':
+          unawaited(hideToTray());
+        default:
+          unawaited(reveal());
+      }
+    });
   }
 
   Future<void> _rebuildMenu() async {
@@ -132,7 +189,7 @@ class DesktopTray with WindowListener, TrayListener {
   }
 
   Future<void> _refreshIcon() async {
-    if (!isSupported || !_started) return;
+    if (!isSupported || !_started || Platform.isWindows) return;
     try {
       final icon = _unread > 0 ? await _paintBadgeIcon(_unread) : await _resolveIcon();
       await trayManager.setIcon(icon);
@@ -247,9 +304,7 @@ class DesktopTray with WindowListener, TrayListener {
     await _persistBounds();
     _hidden = true;
     await windowManager.hide();
-    try {
-      await windowManager.setSkipTaskbar(true);
-    } catch (_) {}
+    await DesktopWindow.skipTaskbar();
   }
 
   Future<void> quit() async {
@@ -257,7 +312,11 @@ class DesktopTray with WindowListener, TrayListener {
     _quitting = true;
     await _persistBounds();
     try {
-      await trayManager.destroy();
+      if (Platform.isWindows) {
+        await DesktopWindow.removeNativeTray();
+      } else {
+        await trayManager.destroy();
+      }
     } catch (_) {}
     await windowManager.setPreventClose(false);
     await windowManager.destroy();
@@ -291,18 +350,21 @@ class DesktopTray with WindowListener, TrayListener {
 
   @override
   void onTrayIconRightMouseDown() {
+    if (Platform.isWindows) return;
     unawaited(trayManager.popUpContextMenu());
   }
 
   @override
   void onTrayMenuItemClick(MenuItem item) {
-    switch (item.key) {
-      case 'quit':
-        unawaited(quit());
-      case 'hide':
-        unawaited(hideToTray());
-      default:
-        unawaited(reveal());
-    }
+    Future<void>.delayed(const Duration(milliseconds: 40), () {
+      switch (item.key) {
+        case 'quit':
+          unawaited(quit());
+        case 'hide':
+          unawaited(hideToTray());
+        default:
+          unawaited(reveal());
+      }
+    });
   }
 }

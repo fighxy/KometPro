@@ -23,6 +23,8 @@ class DesktopWindow {
   static final autoStart = ValueNotifier<bool>(false);
   static const _channel = MethodChannel(_channelName);
   static final openChatId = ValueNotifier<int?>(null);
+  static void Function(String action)? onTrayAction;
+  static bool _taskbarSkipped = false;
 
   static bool get isSupported {
     try {
@@ -39,6 +41,12 @@ class DesktopWindow {
         final id = call.arguments;
         final chatId = id is int ? id : int.tryParse(id?.toString() ?? '');
         if (chatId != null && chatId != 0) openChatId.value = chatId;
+      }
+      if (call.method == 'trayAction') {
+        final action = call.arguments?.toString();
+        if (action != null && action.isNotEmpty) {
+          onTrayAction?.call(action);
+        }
       }
     });
     try {
@@ -142,9 +150,12 @@ class DesktopWindow {
 
   static Future<void> forceShow() async {
     if (!isSupported) return;
-    try {
-      await windowManager.setSkipTaskbar(false);
-    } catch (_) {}
+    if (_taskbarSkipped) {
+      try {
+        await windowManager.setSkipTaskbar(false);
+      } catch (_) {}
+      _taskbarSkipped = false;
+    }
     try {
       if (await windowManager.isMinimized()) {
         await windowManager.restore();
@@ -152,8 +163,14 @@ class DesktopWindow {
     } catch (_) {}
     try {
       await windowManager.show();
-      await windowManager.focus();
     } catch (_) {}
+    try {
+      await _channel.invokeMethod<void>('forceForeground');
+    } catch (_) {
+      try {
+        await windowManager.focus();
+      } catch (_) {}
+    }
     try {
       final size = await windowManager.getSize();
       final pos = await windowManager.getPosition();
@@ -163,6 +180,53 @@ class DesktopWindow {
         await windowManager.setSize(defaultSize);
         await windowManager.center();
       }
+    } catch (_) {}
+    await kickCompositor();
+  }
+
+  static Future<void> skipTaskbar() async {
+    if (!isSupported) return;
+    _taskbarSkipped = true;
+    try {
+      await windowManager.setSkipTaskbar(true);
+    } catch (_) {}
+  }
+
+  static Future<void> kickCompositor() async {
+    if (!isSupported) return;
+    try {
+      await _channel.invokeMethod<void>('kickCompositor');
+    } catch (_) {}
+  }
+
+  static Future<void> addNativeTray({
+    required String tip,
+    required String show,
+    required String hide,
+    required String quit,
+  }) async {
+    if (!isSupported) return;
+    try {
+      await _channel.invokeMethod<void>('nativeTray', {
+        'tip': tip,
+        'show': show,
+        'hide': hide,
+        'quit': quit,
+      });
+    } catch (_) {}
+  }
+
+  static Future<void> setTrayTip(String tip) async {
+    if (!isSupported) return;
+    try {
+      await _channel.invokeMethod<void>('setTrayTip', tip);
+    } catch (_) {}
+  }
+
+  static Future<void> removeNativeTray() async {
+    if (!isSupported) return;
+    try {
+      await _channel.invokeMethod<void>('removeNativeTray');
     } catch (_) {}
   }
 }

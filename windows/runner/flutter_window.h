@@ -7,6 +7,7 @@
 #include <flutter/standard_method_codec.h>
 
 #include <memory>
+#include <string>
 
 #include "win32_window.h"
 
@@ -29,6 +30,13 @@ class FlutterWindow : public Win32Window {
  private:
   void RegisterDesktopChannel();
   void FlashTaskbar(bool enable);
+  void KickCompositor();
+  void ForceForeground();
+  void AddNativeTray();
+  void RemoveNativeTray();
+  void UpdateTrayTip(const std::wstring& tip);
+  void ShowNativeTrayMenu();
+  void HandleTrayAction(const std::string& action);
 
   // The project to run.
   flutter::DartProject project_;
@@ -37,6 +45,11 @@ class FlutterWindow : public Win32Window {
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       desktop_channel_;
+  bool tray_added_ = false;
+  std::wstring tray_tip_ = L"Komet";
+  std::wstring tray_show_ = L"Open Komet";
+  std::wstring tray_hide_ = L"Hide";
+  std::wstring tray_quit_ = L"Quit";
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

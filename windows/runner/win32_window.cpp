@@ -153,8 +153,10 @@ bool Win32Window::Show() {
   if (!window_handle_) {
     return false;
   }
-  ShowWindow(window_handle_, SW_RESTORE);
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  if (IsIconic(window_handle_)) {
+    return ShowWindow(window_handle_, SW_RESTORE);
+  }
+  return ShowWindow(window_handle_, SW_SHOW);
 }
 
 // static

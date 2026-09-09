@@ -5,11 +5,25 @@
 #include <optional>
 #include <propkey.h>
 #include <propvarutil.h>
+#include <shellapi.h>
 #include <shlobj.h>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "resource.h"
+
+#ifndef NIN_SELECT
+#define NIN_SELECT (WM_USER + 0)
+#endif
 
 namespace {
+constexpr UINT WM_TRAYICON = WM_APP + 32;
+constexpr UINT kKickTimerEarly = 0x4B01;
+constexpr UINT kKickTimerLate = 0x4B02;
+constexpr UINT_PTR ID_TRAY = 1;
+constexpr UINT IDM_TRAY_SHOW = 1;
+constexpr UINT IDM_TRAY_HIDE = 2;
+constexpr UINT IDM_TRAY_QUIT = 3;
+
 int g_launch_chat_id = 0;
 
 void SetLaunchChatId(int id) { g_launch_chat_id = id; }
@@ -142,6 +156,46 @@ void SetAutoStart(bool enabled) {
   RegCloseKey(key);
 }
 
+bool IsWindows11() {
+  using RtlGetVersionFn = LONG(WINAPI*)(OSVERSIONINFOW*);
+  HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+  if (!ntdll) {
+    return false;
+  }
+  auto rtl = reinterpret_cast<RtlGetVersionFn>(
+      GetProcAddress(ntdll, "RtlGetVersion"));
+  if (!rtl) {
+    return false;
+  }
+  OSVERSIONINFOW info = {};
+  info.dwOSVersionInfoSize = sizeof(info);
+  if (rtl(&info) != 0) {
+    return false;
+  }
+  return info.dwBuildNumber >= 22000;
+}
+
+std::wstring Utf16FromUtf8(const std::string& utf8) {
+  if (utf8.empty()) {
+    return std::wstring();
+  }
+  const int needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+  if (needed <= 1) {
+    return std::wstring();
+  }
+  std::wstring wide(static_cast<size_t>(needed - 1), L'\0');
+  MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wide.data(), needed);
+  return wide;
+}
+
+const std::string* StringArg(const flutter::EncodableMap& map, const char* key) {
+  const auto it = map.find(flutter::EncodableValue(key));
+  if (it == map.end()) {
+    return nullptr;
+  }
+  return std::get_if<std::string>(&it->second);
+}
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -168,6 +222,12 @@ bool FlutterWindow::OnCreate() {
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
+    this->KickCompositor();
+    HWND hwnd = GetHandle();
+    if (hwnd) {
+      SetTimer(hwnd, kKickTimerEarly, 32, nullptr);
+      SetTimer(hwnd, kKickTimerLate, 250, nullptr);
+    }
   });
 
   // Flutter can complete the first frame before the "show window" callback is
@@ -219,7 +279,7 @@ void FlutterWindow::RegisterDesktopChannel() {
         if (call.method_name() == "setMica") {
           const auto* enabled = std::get_if<bool>(call.arguments());
           HWND hwnd = GetHandle();
-          if (hwnd && enabled) {
+          if (hwnd && enabled && IsWindows11()) {
 #ifndef DWMWA_SYSTEMBACKDROP_TYPE
 #define DWMWA_SYSTEMBACKDROP_TYPE 38
 #endif
@@ -227,6 +287,50 @@ void FlutterWindow::RegisterDesktopChannel() {
             DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &type,
                                   sizeof(type));
           }
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "kickCompositor") {
+          KickCompositor();
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "forceForeground") {
+          ForceForeground();
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "nativeTray") {
+          const auto* args =
+              std::get_if<flutter::EncodableMap>(call.arguments());
+          if (args) {
+            if (const auto* tip = StringArg(*args, "tip")) {
+              tray_tip_ = Utf16FromUtf8(*tip);
+            }
+            if (const auto* show = StringArg(*args, "show")) {
+              tray_show_ = Utf16FromUtf8(*show);
+            }
+            if (const auto* hide = StringArg(*args, "hide")) {
+              tray_hide_ = Utf16FromUtf8(*hide);
+            }
+            if (const auto* quit = StringArg(*args, "quit")) {
+              tray_quit_ = Utf16FromUtf8(*quit);
+            }
+          }
+          AddNativeTray();
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "setTrayTip") {
+          const auto* tip = std::get_if<std::string>(call.arguments());
+          if (tip) {
+            UpdateTrayTip(Utf16FromUtf8(*tip));
+          }
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "removeNativeTray") {
+          RemoveNativeTray();
           result->Success();
           return;
         }
@@ -263,7 +367,158 @@ void FlutterWindow::FlashTaskbar(bool enable) {
   FlashWindowEx(&info);
 }
 
+void FlutterWindow::KickCompositor() {
+  HWND hwnd = GetHandle();
+  if (!hwnd) {
+    return;
+  }
+  RECT wr = {};
+  GetWindowRect(hwnd, &wr);
+  const int w = wr.right - wr.left;
+  const int h = wr.bottom - wr.top;
+  if (w > 80 && h > 80) {
+    SetWindowPos(hwnd, nullptr, wr.left, wr.top, w, h + 1,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(hwnd, nullptr, wr.left, wr.top, w, h,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
+  }
+  RECT cr = GetClientArea();
+  HWND child = GetWindow(hwnd, GW_CHILD);
+  if (child) {
+    MoveWindow(child, cr.left, cr.top, cr.right - cr.left,
+               cr.bottom - cr.top, TRUE);
+  }
+  RedrawWindow(hwnd, nullptr, nullptr,
+               RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME |
+                   RDW_UPDATENOW);
+  if (flutter_controller_) {
+    flutter_controller_->ForceRedraw();
+  }
+}
+
+void FlutterWindow::ForceForeground() {
+  HWND hwnd = GetHandle();
+  if (!hwnd) {
+    return;
+  }
+  HWND fg = GetForegroundWindow();
+  DWORD fg_tid = 0;
+  if (fg) {
+    GetWindowThreadProcessId(fg, &fg_tid);
+  }
+  const DWORD our_tid = GetCurrentThreadId();
+  if (fg && fg_tid != 0 && fg_tid != our_tid) {
+    AttachThreadInput(fg_tid, our_tid, TRUE);
+  }
+  if (IsIconic(hwnd)) {
+    ShowWindow(hwnd, SW_RESTORE);
+  } else if (!IsWindowVisible(hwnd)) {
+    ShowWindow(hwnd, SW_SHOW);
+  }
+  SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+  SetForegroundWindow(hwnd);
+  BringWindowToTop(hwnd);
+  if (fg && fg_tid != 0 && fg_tid != our_tid) {
+    AttachThreadInput(fg_tid, our_tid, FALSE);
+  }
+}
+
+void FlutterWindow::AddNativeTray() {
+  HWND hwnd = GetHandle();
+  if (!hwnd) {
+    return;
+  }
+  NOTIFYICONDATAW nid = {};
+  nid.cbSize = sizeof(nid);
+  nid.hWnd = hwnd;
+  nid.uID = ID_TRAY;
+  nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+  nid.uCallbackMessage = WM_TRAYICON;
+  nid.hIcon = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON));
+  wcsncpy_s(nid.szTip, tray_tip_.c_str(), _TRUNCATE);
+  if (tray_added_) {
+    Shell_NotifyIconW(NIM_MODIFY, &nid);
+    return;
+  }
+  if (Shell_NotifyIconW(NIM_ADD, &nid)) {
+    tray_added_ = true;
+  }
+}
+
+void FlutterWindow::RemoveNativeTray() {
+  if (!tray_added_) {
+    return;
+  }
+  HWND hwnd = GetHandle();
+  NOTIFYICONDATAW nid = {};
+  nid.cbSize = sizeof(nid);
+  nid.hWnd = hwnd;
+  nid.uID = ID_TRAY;
+  Shell_NotifyIconW(NIM_DELETE, &nid);
+  tray_added_ = false;
+}
+
+void FlutterWindow::UpdateTrayTip(const std::wstring& tip) {
+  tray_tip_ = tip.empty() ? L"Komet" : tip;
+  if (!tray_added_) {
+    return;
+  }
+  HWND hwnd = GetHandle();
+  if (!hwnd) {
+    return;
+  }
+  NOTIFYICONDATAW nid = {};
+  nid.cbSize = sizeof(nid);
+  nid.hWnd = hwnd;
+  nid.uID = ID_TRAY;
+  nid.uFlags = NIF_TIP | NIF_ICON | NIF_MESSAGE;
+  nid.uCallbackMessage = WM_TRAYICON;
+  nid.hIcon = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON));
+  wcsncpy_s(nid.szTip, tray_tip_.c_str(), _TRUNCATE);
+  Shell_NotifyIconW(NIM_MODIFY, &nid);
+}
+
+void FlutterWindow::ShowNativeTrayMenu() {
+  HWND hwnd = GetHandle();
+  if (!hwnd) {
+    return;
+  }
+  POINT pt = {};
+  GetCursorPos(&pt);
+  SetForegroundWindow(hwnd);
+  HMENU menu = CreatePopupMenu();
+  if (!menu) {
+    return;
+  }
+  AppendMenuW(menu, MF_STRING, IDM_TRAY_SHOW, tray_show_.c_str());
+  AppendMenuW(menu, MF_STRING, IDM_TRAY_HIDE, tray_hide_.c_str());
+  AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+  AppendMenuW(menu, MF_STRING, IDM_TRAY_QUIT, tray_quit_.c_str());
+  const int cmd = TrackPopupMenu(menu,
+                                 TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
+                                 pt.x, pt.y, 0, hwnd, nullptr);
+  PostMessage(hwnd, WM_NULL, 0, 0);
+  DestroyMenu(menu);
+  if (cmd == IDM_TRAY_SHOW) {
+    HandleTrayAction("show");
+  } else if (cmd == IDM_TRAY_HIDE) {
+    HandleTrayAction("hide");
+  } else if (cmd == IDM_TRAY_QUIT) {
+    HandleTrayAction("quit");
+  }
+}
+
+void FlutterWindow::HandleTrayAction(const std::string& action) {
+  if (!desktop_channel_) {
+    return;
+  }
+  desktop_channel_->InvokeMethod(
+      "trayAction", std::make_unique<flutter::EncodableValue>(action));
+}
+
 void FlutterWindow::OnDestroy() {
+  RemoveNativeTray();
   desktop_channel_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
@@ -276,6 +531,25 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == WM_TIMER &&
+      (wparam == kKickTimerEarly || wparam == kKickTimerLate)) {
+    KillTimer(hwnd, wparam);
+    KickCompositor();
+    return 0;
+  }
+  if (message == WM_TRAYICON) {
+    const UINT mouse = LOWORD(lparam);
+    if (mouse == WM_LBUTTONUP || mouse == NIN_SELECT) {
+      HandleTrayAction("show");
+      return 0;
+    }
+    if (mouse == WM_RBUTTONUP || mouse == WM_CONTEXTMENU) {
+      ShowNativeTrayMenu();
+      return 0;
+    }
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =
