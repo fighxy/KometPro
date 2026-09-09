@@ -33,12 +33,18 @@ void InitPerfLogPath() {
     if (g_perf_path_initialized) return;
     
     // Get %LOCALAPPDATA%
-    const char* app_data = getenv("LOCALAPPDATA");
-    if (!app_data) {
-        app_data = ".";
+    char app_data[MAX_PATH];
+    size_t len = 0;
+    if (_dupenv_s(&app_data, &len, "LOCALAPPDATA") != 0 || !app_data) {
+        strcpy_s(app_data, MAX_PATH, ".");
     }
     
     snprintf(g_perf_log_path, MAX_PATH, "%s\\Komet\\logs\\perf_log.txt", app_data);
+    
+    // Free allocated memory from _dupenv_s
+    if (len > 0 && app_data) {
+        free(app_data);
+    }
     
     // Ensure directory exists
     char dir_path[MAX_PATH];
