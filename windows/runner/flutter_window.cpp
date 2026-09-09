@@ -453,6 +453,14 @@ static void DoKickCompositor(HWND hwnd, flutter::FlutterViewController* controll
   LOG_PERF("DoKickCompositor: Start");
   
   if (!hwnd) return;
+  
+  // Проверка: если окно не активно, пропускаем операцию
+  // Это предотвращает зависание при вызове в фоне
+  if (GetForegroundWindow() != hwnd) {
+    LOG_PERF("DoKickCompositor: Skipped (window not foreground)");
+    return;
+  }
+  
   RECT wr = {};
   GetWindowRect(hwnd, &wr);
   const int w = wr.right - wr.left;
@@ -694,7 +702,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   if (message == WM_TIMER &&
       (wparam == kKickTimerEarly || wparam == kKickTimerLate)) {
     KillTimer(hwnd, wparam);
-    KickCompositor();
+    // Вызываем KickCompositor только если окно активно
+    if (GetForegroundWindow() == hwnd) {
+      KickCompositor();
+    }
     return 0;
   }
   
@@ -794,8 +805,11 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     case WM_ACTIVATE: {
       if (LOWORD(wparam) == WA_INACTIVE) {
         LOG_PERF("WM_ACTIVATE: Window deactivated");
+        // При потере фокуса ничего не делаем
       } else {
         LOG_PERF("WM_ACTIVATE: Window activated");
+        // При получении фокуса НЕ вызываем KickCompositor сразу
+        // Даем окну стабилизироваться, таймер сработает позже
       }
       break;
     }
