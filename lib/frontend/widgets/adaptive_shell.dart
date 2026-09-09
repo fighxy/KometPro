@@ -7,9 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../backend/modules/chats.dart';
 import '../../core/config/app_breakpoints.dart';
+import '../../core/design/komet_layout.dart';
+import '../../core/design/komet_tokens.dart';
+import 'desktop_command_palette.dart';
 import '../../core/config/build_profile.dart';
 import '../../core/config/debug_test.dart';
 import '../../core/config/desktop_density.dart';
+import '../../core/config/desktop_density_mode.dart';
 import '../../core/config/desktop_ui_scale.dart';
 import '../../core/desktop/desktop_tray.dart';
 import '../../core/desktop/desktop_window.dart';
@@ -56,10 +60,9 @@ class DesktopChatSelection {
 
 class _AdaptiveShellState extends State<AdaptiveShell>
     with WidgetsBindingObserver {
-  static const double _defaultListWidth = 380;
+  static const double _defaultListWidth = KometLayout.list;
   static const double _minListWidth = 280;
   static const double _maxListWidth = 560;
-  static const double _minChatPaneWidth = 360;
   static const double _dividerHitWidth = 10;
   static const double _dividerLineWidth = 1;
   static const String _prefsKey = 'desktop_list_width';
@@ -153,6 +156,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
         ),
       );
     }
+    if (_selected.value?.chatId != chat.chatId) _infoOpen = false;
     _selected.value = chat;
   }
 
@@ -162,7 +166,73 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   }
 
   void _toggleInfo() {
+    final chat = _selected.value;
+    if (chat == null) return;
+    final width = MediaQuery.sizeOf(context).width;
+    final list = _listWidth.value.clamp(
+      _minListWidth,
+      KometLayout.listLimit(width, DesktopDensity.s, false),
+    );
+    if (!KometLayout.dockInspector(width, list, DesktopDensity.s)) {
+      showDialog<void>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: DesktopDensity.infoPaneWidth,
+            child: ChatInfoScreen(
+              chatId: chat.chatId,
+              name: chat.name,
+              imageUrl: chat.imageUrl,
+              chatType: chat.chatType,
+              openedFromChat: true,
+              onClose: () => Navigator.of(dialogContext).pop(),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _infoOpen = !_infoOpen);
+  }
+
+  void _openCommandPalette() {
+    showDesktopCommandPalette(
+      context,
+      commands: [
+        DesktopCommand(
+          'Найти чат',
+          Icons.search,
+          ChatListScreen.openSearch,
+          shortcut: 'Ctrl+Shift+F',
+        ),
+        DesktopCommand(
+          'Новый чат',
+          Icons.edit_outlined,
+          () => _onRailSelect(2),
+          shortcut: 'Ctrl+N',
+        ),
+        DesktopCommand(
+          'Настройки',
+          Icons.settings_outlined,
+          _openSettings,
+          shortcut: 'Ctrl+,',
+        ),
+        DesktopCommand('Звонки', Icons.call_outlined, () => _onRailSelect(1)),
+        if (_selected.value != null) ...[
+          DesktopCommand('Поиск в переписке', Icons.search, () {
+            ChatScreen.openSearchInVisibleChat();
+          }, shortcut: 'Ctrl+F'),
+          DesktopCommand('Информация о чате', Icons.info_outline, _toggleInfo),
+          DesktopCommand(
+            'Закрыть чат',
+            Icons.close,
+            _closeChat,
+            shortcut: 'Esc',
+          ),
+        ],
+      ],
+    );
   }
 
   void _closeInfo() {
@@ -180,17 +250,19 @@ class _AdaptiveShellState extends State<AdaptiveShell>
     if (DesktopDensity.enabled) {
       await DesktopSettingsPage.open(context);
     } else {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const SettingsTab(),
-        ),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const SettingsTab()));
     }
     if (mounted) setState(() => _railIndex = 0);
   }
 
   void _onDrag(double dx, double totalWidth) {
-    final maxAllowedByPane = totalWidth - _minChatPaneWidth - _dividerHitWidth;
+    final maxAllowedByPane = KometLayout.listLimit(
+      totalWidth,
+      DesktopDensity.s,
+      false,
+    );
     final upperBound = maxAllowedByPane < _maxListWidth
         ? maxAllowedByPane
         : _maxListWidth;
@@ -203,13 +275,14 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   Widget build(BuildContext context) {
     return DesktopShortcuts(
       onClosePane: () {
-        if (ChatScreen.consumeEscapeInVisibleChat()) return;
         if (_infoOpen) {
           _closeInfo();
         } else {
+          if (ChatScreen.consumeEscapeInVisibleChat()) return;
           _closeChat();
         }
       },
+      onCommandPalette: _openCommandPalette,
       onSearchChats: ChatListScreen.openSearch,
       onFindInChat: () {
         if (_selected.value == null || !ChatScreen.openSearchInVisibleChat()) {
@@ -224,162 +297,193 @@ class _AdaptiveShellState extends State<AdaptiveShell>
         }
       },
       onAdjacentChat: (delta) {
-        final next = ChatListScreen.adjacentChat(_selected.value?.chatId, delta);
+        final next = ChatListScreen.adjacentChat(
+          _selected.value?.chatId,
+          delta,
+        );
         if (next != null) _onChatSelected(next);
       },
       onCopyMessage: ChatScreen.copyVisibleSelection,
       child: ListenableBuilder(
         listenable: Listenable.merge([
           DesktopUiScale.value,
+          AppDesktopDensity.current,
+          _listWidth,
           DesktopWindow.micaEnabled,
         ]),
         builder: (context, _) {
           return ValueListenableBuilder<DesktopChatSelection?>(
-        valueListenable: _selected,
-        builder: (context, selected, _) {
-          return PopScope(
-            canPop: selected == null,
-            onPopInvokedWithResult: (didPop, _) {
-              if (didPop) return;
-              if (_selected.value != null) _closeChat();
-            },
-            child: LayoutBuilder(
-          builder: (context, constraints) {
-            final hinge = AppBreakpoints.hingeOf(MediaQuery.of(context));
-            if (!AppBreakpoints.useSplitView(
-              constraints.maxWidth,
-              hinge: hinge,
-            )) {
-              return _withRail(const ChatListScreen());
-            }
-            final totalWidth = constraints.maxWidth;
-            final hingeWidth = hinge == null
-                ? null
-                : AppBreakpoints.hingeListWidth(hinge, totalWidth);
-            final cs = Theme.of(context).colorScheme;
-            final highContrast = MediaQuery.highContrastOf(context);
-            final mica = DesktopWindow.micaEnabled.value;
-            return _withRail(
-              Scaffold(
-              backgroundColor: mica
-                  ? cs.surface.withValues(alpha: highContrast ? 0.92 : 0.72)
-                  : cs.surface,
-              body: Row(
-                children: [
-                  ValueListenableBuilder<double>(
-                    valueListenable: _listWidth,
-                    builder: (context, width, _) {
-                      final hingeLocked = hingeWidth;
-                      final effectiveListWidth = (hingeLocked ?? width).clamp(
-                        _minListWidth,
-                        (totalWidth - _minChatPaneWidth - _dividerHitWidth)
-                            .clamp(_minListWidth, _maxListWidth),
-                      );
-                      return SizedBox(
-                        width: effectiveListWidth,
-                        child: ValueListenableBuilder<DesktopChatSelection?>(
-                          valueListenable: _selected,
-                          builder: (context, selected, _) {
-                            return ChatListScreen(
-                              onChatSelected: _onChatSelected,
-                              activeChatId: selected?.chatId,
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                  _ResizeDivider(
-                    hitWidth: _dividerHitWidth,
-                    lineWidth: _dividerLineWidth,
-                    color: cs.outlineVariant.withValues(alpha: 0.35),
-                    onDrag: (dx) => _onDrag(dx, totalWidth),
-                    onDragEnd: _persistListWidth,
-                  ),
-                  Expanded(
-                    child: ValueListenableBuilder<DesktopChatSelection?>(
-                      valueListenable: _selected,
-                      builder: (context, selected, _) {
-                        final pane = AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 160),
-                          switchInCurve: Curves.easeOut,
-                          switchOutCurve: Curves.easeOut,
-                          layoutBuilder: (current, previous) {
-                            return Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                ...previous,
-                                if (current != null) current,
-                              ],
-                            );
-                          },
-                          child: selected == null
-                              ? _EmptyChatPane(
-                                  key: const ValueKey('empty'),
-                                  colorScheme: cs,
-                                )
-                              : ChatScreen(
-                                  key: ValueKey(
-                                    '${selected.chatId}:${selected.initialMessageId ?? ''}',
-                                  ),
-                                  chatId: selected.chatId,
-                                  name: selected.name,
-                                  imageUrl: selected.imageUrl,
-                                  chatType: selected.chatType,
-                                  initialMessageId: selected.initialMessageId,
-                                  initialMessageTime: selected.initialMessageTime,
-                                  embedded: true,
-                                  onClose: _closeChat,
-                                  onOpenEmbeddedInfo:
-                                      DesktopDensity.enabled &&
-                                          totalWidth >=
-                                              DesktopDensity.infoPaneMinWindow
-                                      ? _toggleInfo
-                                      : null,
-                                ),
-                        );
-                        final iosPane = defaultTargetPlatform == TargetPlatform.iOS;
-                        return SwipeToPop(
-                          enabled: selected != null && iosPane,
-                          onPop: _closeChat,
-                          child: pane,
-                        );
-                      },
-                    ),
-                  ),
-                  if (DesktopDensity.enabled &&
-                      _infoOpen &&
-                      selected != null &&
-                      totalWidth >= DesktopDensity.infoPaneMinWindow)
-                    SizedBox(
-                      width: DesktopDensity.infoPaneWidth,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: Border(
-                            left: BorderSide(
-                              color: cs.outlineVariant.withValues(alpha: 0.35),
+            valueListenable: _selected,
+            builder: (context, selected, _) {
+              return PopScope(
+                canPop: selected == null,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (didPop) return;
+                  if (_selected.value != null) _closeChat();
+                },
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final hinge = AppBreakpoints.hingeOf(
+                      MediaQuery.of(context),
+                    );
+                    if (!AppBreakpoints.useSplitView(
+                      constraints.maxWidth,
+                      hinge: hinge,
+                    )) {
+                      return _withRail(const ChatListScreen());
+                    }
+                    final totalWidth = constraints.maxWidth;
+                    final hingeWidth = hinge == null
+                        ? null
+                        : AppBreakpoints.hingeListWidth(hinge, totalWidth);
+                    final cs = Theme.of(context).colorScheme;
+                    final highContrast = MediaQuery.highContrastOf(context);
+                    final mica = DesktopWindow.micaEnabled.value;
+                    return _withRail(
+                      Scaffold(
+                        backgroundColor: mica
+                            ? cs.surface.withValues(
+                                alpha: highContrast ? 0.92 : 0.72,
+                              )
+                            : cs.surface,
+                        body: Row(
+                          children: [
+                            ValueListenableBuilder<double>(
+                              valueListenable: _listWidth,
+                              builder: (context, width, _) {
+                                final hingeLocked = hingeWidth;
+                                final effectiveListWidth =
+                                    (hingeLocked ?? width).clamp(
+                                      _minListWidth,
+                                      KometLayout.listLimit(
+                                        totalWidth,
+                                        DesktopDensity.s,
+                                        false,
+                                      ),
+                                    );
+                                return SizedBox(
+                                  width: effectiveListWidth,
+                                  child:
+                                      ValueListenableBuilder<
+                                        DesktopChatSelection?
+                                      >(
+                                        valueListenable: _selected,
+                                        builder: (context, selected, _) {
+                                          return ChatListScreen(
+                                            onChatSelected: _onChatSelected,
+                                            activeChatId: selected?.chatId,
+                                          );
+                                        },
+                                      ),
+                                );
+                              },
                             ),
-                          ),
-                        ),
-                        child: ChatInfoScreen(
-                          key: ValueKey('info-${selected.chatId}'),
-                          chatId: selected.chatId,
-                          name: selected.name,
-                          imageUrl: selected.imageUrl,
-                          chatType: selected.chatType,
-                          openedFromChat: true,
-                          onClose: _closeInfo,
+                            _ResizeDivider(
+                              hitWidth: _dividerHitWidth,
+                              lineWidth: _dividerLineWidth,
+                              color: cs.outlineVariant.withValues(alpha: 0.35),
+                              onDrag: (dx) => _onDrag(dx, totalWidth),
+                              onDragEnd: _persistListWidth,
+                            ),
+                            Expanded(
+                              child: ValueListenableBuilder<DesktopChatSelection?>(
+                                valueListenable: _selected,
+                                builder: (context, selected, _) {
+                                  final pane = AnimatedSwitcher(
+                                    duration: KometTokens.motion(context, 160),
+                                    switchInCurve: Curves.easeOut,
+                                    switchOutCurve: Curves.easeOut,
+                                    layoutBuilder: (current, previous) {
+                                      return Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          ...previous,
+                                          if (current != null) current,
+                                        ],
+                                      );
+                                    },
+                                    child: selected == null
+                                        ? _EmptyChatPane(
+                                            key: const ValueKey('empty'),
+                                            colorScheme: cs,
+                                          )
+                                        : ChatScreen(
+                                            key: ValueKey(
+                                              '${selected.chatId}:${selected.initialMessageId ?? ''}',
+                                            ),
+                                            chatId: selected.chatId,
+                                            name: selected.name,
+                                            imageUrl: selected.imageUrl,
+                                            chatType: selected.chatType,
+                                            initialMessageId:
+                                                selected.initialMessageId,
+                                            initialMessageTime:
+                                                selected.initialMessageTime,
+                                            embedded: true,
+                                            onClose: _closeChat,
+                                            onOpenEmbeddedInfo:
+                                                DesktopDensity.enabled
+                                                ? _toggleInfo
+                                                : null,
+                                          ),
+                                  );
+                                  final iosPane =
+                                      defaultTargetPlatform ==
+                                      TargetPlatform.iOS;
+                                  return SwipeToPop(
+                                    enabled: selected != null && iosPane,
+                                    onPop: _closeChat,
+                                    child: pane,
+                                  );
+                                },
+                              ),
+                            ),
+                            if (DesktopDensity.enabled &&
+                                _infoOpen &&
+                                selected != null &&
+                                KometLayout.dockInspector(
+                                  totalWidth,
+                                  _listWidth.value.clamp(
+                                    _minListWidth,
+                                    KometLayout.listLimit(
+                                      totalWidth,
+                                      DesktopDensity.s,
+                                      false,
+                                    ),
+                                  ),
+                                  DesktopDensity.s,
+                                ))
+                              SizedBox(
+                                width: DesktopDensity.infoPaneWidth,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: cs.outlineVariant.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  child: ChatInfoScreen(
+                                    key: ValueKey('info-${selected.chatId}'),
+                                    chatId: selected.chatId,
+                                    name: selected.name,
+                                    imageUrl: selected.imageUrl,
+                                    chatType: selected.chatType,
+                                    openedFromChat: true,
+                                    onClose: _closeInfo,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            );
-          },
-            ),
-          );
-        },
+                    );
+                  },
+                ),
+              );
+            },
           );
         },
       ),
@@ -650,4 +754,3 @@ class _RecentRow extends StatelessWidget {
     );
   }
 }
-

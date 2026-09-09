@@ -55,6 +55,17 @@ class GlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.highContrastOf(context) ||
+        MediaQuery.disableAnimationsOf(context) ||
+        AppVisualStyle.current.value == VisualStyle.materialYou) {
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: ColoredBox(
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          child: child,
+        ),
+      );
+    }
     final glass = liquid && LiquidGlass.isSupported;
     final decorated = DecoratedBox(
       decoration: BoxDecoration(
@@ -111,7 +122,17 @@ class LiquidGlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!LiquidGlass.isSupported) return child;
+    if (!LiquidGlass.active ||
+        MediaQuery.highContrastOf(context) ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: ColoredBox(
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          child: child,
+        ),
+      );
+    }
     return _LiquidGlassBackdrop(
       borderRadius: borderRadius,
       tint: tint,

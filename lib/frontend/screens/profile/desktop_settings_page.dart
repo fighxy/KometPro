@@ -7,6 +7,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/build_profile.dart';
 import '../../../core/config/desktop_density.dart';
+import '../../../core/config/desktop_density_mode.dart';
+import '../../../core/design/komet_tokens.dart';
 import '../../../core/config/desktop_ui_scale.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/haptics.dart';
@@ -48,7 +50,10 @@ enum DesktopSettingsSection {
 }
 
 class DesktopSettingsPage extends StatefulWidget {
-  const DesktopSettingsPage({super.key, this.initial = DesktopSettingsSection.account});
+  const DesktopSettingsPage({
+    super.key,
+    this.initial = DesktopSettingsSection.account,
+  });
 
   final DesktopSettingsSection initial;
 
@@ -77,6 +82,7 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
   ProfileData? _profile;
   String? _version;
   bool _checkingUpdate = false;
+  String _query = '';
   StreamSubscription? _profileSub;
 
   @override
@@ -127,9 +133,15 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
         title: const Text('Выйти из аккаунта?'),
         content: const Text('Сессия на этом устройстве будет завершена.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: cs.error, foregroundColor: cs.onError),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Выйти'),
           ),
@@ -179,6 +191,9 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
             _Sidebar(
               section: _section,
               profile: _profile,
+              query: _query,
+              onSearch: (value) =>
+                  setState(() => _query = value.trim().toLowerCase()),
               onClose: () => Navigator.of(context).maybePop(),
               onSelect: (section) {
                 setState(() {
@@ -188,7 +203,10 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                 });
               },
             ),
-            VerticalDivider(width: 1, color: cs.outlineVariant.withValues(alpha: 0.35)),
+            VerticalDivider(
+              width: 1,
+              color: cs.outlineVariant.withValues(alpha: 0.35),
+            ),
             Expanded(
               child: ColoredBox(
                 color: cs.surface,
@@ -200,9 +218,7 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                       showBack: _subpage != null,
                       onBack: _closeSub,
                     ),
-                    Expanded(
-                      child: _subpage ?? _paneBody(),
-                    ),
+                    Expanded(child: _subpage ?? _paneBody()),
                   ],
                 ),
               ),
@@ -230,7 +246,7 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
       case DesktopSettingsSection.storage:
         return 'Хранилище';
       case DesktopSettingsSection.advanced:
-        return 'Komet';
+        return 'Дополнительно';
       case DesktopSettingsSection.about:
         return 'О приложении';
     }
@@ -244,9 +260,10 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
           onEdit: () => _openSub('Профиль', const EditProfileScreen()),
           onQr: () {
             if (_profile == null) return;
-            final name = [_profile!.firstName, _profile!.lastName ?? '']
-                .where((s) => s.trim().isNotEmpty)
-                .join(' ');
+            final name = [
+              _profile!.firstName,
+              _profile!.lastName ?? '',
+            ].where((s) => s.trim().isNotEmpty).join(' ');
             showProfileQrSheet(
               context,
               name: name,
@@ -285,12 +302,16 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
 class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.section,
+    required this.query,
+    required this.onSearch,
     required this.profile,
     required this.onSelect,
     required this.onClose,
   });
 
   final DesktopSettingsSection section;
+  final String query;
+  final ValueChanged<String> onSearch;
   final ProfileData? profile;
   final ValueChanged<DesktopSettingsSection> onSelect;
   final VoidCallback onClose;
@@ -300,11 +321,12 @@ class _Sidebar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final name = profile == null
         ? 'Komet'
-        : [profile!.firstName, profile!.lastName ?? '']
-            .where((s) => s.trim().isNotEmpty)
-            .join(' ');
+        : [
+            profile!.firstName,
+            profile!.lastName ?? '',
+          ].where((s) => s.trim().isNotEmpty).join(' ');
     return SizedBox(
-      width: 248,
+      width: 232,
       child: ColoredBox(
         color: cs.surfaceContainerLow,
         child: Column(
@@ -376,59 +398,85 @@ class _Sidebar extends StatelessWidget {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+              child: TextField(
+                onChanged: onSearch,
+                decoration: const InputDecoration(
+                  labelText: 'Поиск разделов',
+                  prefixIcon: Icon(Symbols.search, size: 20),
+                  isDense: true,
+                ),
+              ),
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-                children: [
-                  _NavTile(
-                    icon: Symbols.palette,
-                    label: 'Оформление',
-                    selected: section == DesktopSettingsSection.appearance,
-                    onTap: () => onSelect(DesktopSettingsSection.appearance),
-                  ),
-                  _NavTile(
-                    icon: Symbols.notifications_active,
-                    label: 'Уведомления',
-                    selected: section == DesktopSettingsSection.notifications,
-                    onTap: () => onSelect(DesktopSettingsSection.notifications),
-                  ),
-                  _NavTile(
-                    icon: Symbols.lock,
-                    label: 'Конфиденциальность',
-                    selected: section == DesktopSettingsSection.privacy,
-                    onTap: () => onSelect(DesktopSettingsSection.privacy),
-                  ),
-                  _NavTile(
-                    icon: Symbols.devices,
-                    label: 'Устройства',
-                    selected: section == DesktopSettingsSection.devices,
-                    onTap: () => onSelect(DesktopSettingsSection.devices),
-                  ),
-                  _NavTile(
-                    icon: Symbols.vpn_lock,
-                    label: 'Сеть',
-                    selected: section == DesktopSettingsSection.network,
-                    onTap: () => onSelect(DesktopSettingsSection.network),
-                  ),
-                  _NavTile(
-                    icon: Symbols.cloud,
-                    label: 'Хранилище',
-                    selected: section == DesktopSettingsSection.storage,
-                    onTap: () => onSelect(DesktopSettingsSection.storage),
-                  ),
-                  _NavTile(
-                    icon: Symbols.tune,
-                    label: 'Komet',
-                    selected: section == DesktopSettingsSection.advanced,
-                    onTap: () => onSelect(DesktopSettingsSection.advanced),
-                  ),
-                  _NavTile(
-                    icon: Symbols.info,
-                    label: 'О приложении',
-                    selected: section == DesktopSettingsSection.about,
-                    onTap: () => onSelect(DesktopSettingsSection.about),
-                  ),
-                ],
+                children:
+                    [
+                          _NavTile(
+                            icon: Symbols.palette,
+                            label: 'Оформление',
+                            selected:
+                                section == DesktopSettingsSection.appearance,
+                            onTap: () =>
+                                onSelect(DesktopSettingsSection.appearance),
+                          ),
+                          _NavTile(
+                            icon: Symbols.notifications_active,
+                            label: 'Уведомления',
+                            selected:
+                                section == DesktopSettingsSection.notifications,
+                            onTap: () =>
+                                onSelect(DesktopSettingsSection.notifications),
+                          ),
+                          _NavTile(
+                            icon: Symbols.lock,
+                            label: 'Конфиденциальность',
+                            selected: section == DesktopSettingsSection.privacy,
+                            onTap: () =>
+                                onSelect(DesktopSettingsSection.privacy),
+                          ),
+                          _NavTile(
+                            icon: Symbols.devices,
+                            label: 'Устройства',
+                            selected: section == DesktopSettingsSection.devices,
+                            onTap: () =>
+                                onSelect(DesktopSettingsSection.devices),
+                          ),
+                          _NavTile(
+                            icon: Symbols.vpn_lock,
+                            label: 'Сеть',
+                            selected: section == DesktopSettingsSection.network,
+                            onTap: () =>
+                                onSelect(DesktopSettingsSection.network),
+                          ),
+                          _NavTile(
+                            icon: Symbols.cloud,
+                            label: 'Хранилище',
+                            selected: section == DesktopSettingsSection.storage,
+                            onTap: () =>
+                                onSelect(DesktopSettingsSection.storage),
+                          ),
+                          _NavTile(
+                            icon: Symbols.tune,
+                            label: 'Дополнительно',
+                            selected:
+                                section == DesktopSettingsSection.advanced,
+                            onTap: () =>
+                                onSelect(DesktopSettingsSection.advanced),
+                          ),
+                          _NavTile(
+                            icon: Symbols.info,
+                            label: 'О приложении',
+                            selected: section == DesktopSettingsSection.about,
+                            onTap: () => onSelect(DesktopSettingsSection.about),
+                          ),
+                        ]
+                        .where(
+                          (tile) => tile.label.toLowerCase().contains(query),
+                        )
+                        .toList(),
               ),
             ),
           ],
@@ -457,11 +505,11 @@ class _NavTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
-        color: selected ? cs.primary.withValues(alpha: 0.12) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        color: selected ? KometTokens.of(context).selected : Colors.transparent,
+        borderRadius: KometTokens.controlRadius,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: KometTokens.controlRadius,
           hoverColor: cs.onSurface.withValues(alpha: 0.05),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -470,16 +518,22 @@ class _NavTile extends StatelessWidget {
                 Icon(
                   icon,
                   size: 20,
-                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                  color: selected
+                      ? KometTokens.of(context).onSelected
+                      : cs.onSurfaceVariant,
                   weight: selected ? 600 : 400,
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? cs.primary : cs.onSurface,
-                    fontSize: 13.5,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: selected
+                          ? KometTokens.of(context).onSelected
+                          : cs.onSurface,
+                      fontSize: 13.5,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
@@ -513,6 +567,7 @@ class _PaneHeader extends StatelessWidget {
           children: [
             if (showBack)
               IconButton(
+                tooltip: 'Назад',
                 onPressed: onBack,
                 icon: const Icon(Symbols.arrow_back, size: 20),
               )
@@ -550,9 +605,10 @@ class _AccountPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     if (profile == null) return const Center(child: SmallSpinner(size: 32));
-    final name = [profile!.firstName, profile!.lastName ?? '']
-        .where((s) => s.trim().isNotEmpty)
-        .join(' ');
+    final name = [
+      profile!.firstName,
+      profile!.lastName ?? '',
+    ].where((s) => s.trim().isNotEmpty).join(' ');
     final phone = profile!.phone == 0 ? '' : '+${profile!.phone}';
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
@@ -572,7 +628,10 @@ class _AccountPane extends StatelessWidget {
                     child: (profile!.baseUrl ?? '').isEmpty
                         ? Text(
                             name.isNotEmpty ? name[0].toUpperCase() : 'K',
-                            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 24),
+                            style: TextStyle(
+                              color: cs.onSurfaceVariant,
+                              fontSize: 24,
+                            ),
                           )
                         : null,
                   ),
@@ -594,7 +653,10 @@ class _AccountPane extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               phone,
-                              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                              style: TextStyle(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                       ],
@@ -646,6 +708,39 @@ class _AppearancePane extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
       children: [
+        ValueListenableBuilder<DesktopDensityMode>(
+          valueListenable: AppDesktopDensity.current,
+          builder: (context, mode, _) => SettingsCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Плотность списка чатов'),
+                    const SizedBox(height: 12),
+                    SegmentedButton<DesktopDensityMode>(
+                      segments: const [
+                        ButtonSegment(
+                          value: DesktopDensityMode.comfortable,
+                          label: Text('Обычная'),
+                        ),
+                        ButtonSegment(
+                          value: DesktopDensityMode.compact,
+                          label: Text('Компактная'),
+                        ),
+                      ],
+                      selected: {mode},
+                      onSelectionChanged: (values) =>
+                          AppDesktopDensity.save(values.single),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         const _InterfaceScaleCard(),
         const SizedBox(height: 16),
         SettingsCard(
@@ -673,7 +768,8 @@ class _AppearancePane extends StatelessWidget {
             SettingsNavTile(
               icon: Symbols.touch_app,
               label: 'Меню действий',
-              onTap: () => onOpen('Меню действий', const MessageActionsScreen()),
+              onTap: () =>
+                  onOpen('Меню действий', const MessageActionsScreen()),
             ),
             SettingsNavTile(
               icon: Symbols.apps,
@@ -732,9 +828,10 @@ class _InterfaceScaleCard extends StatelessWidget {
                 value: scale,
                 min: DesktopUiScale.min,
                 max: DesktopUiScale.max,
-                divisions: ((DesktopUiScale.max - DesktopUiScale.min) /
-                        DesktopUiScale.step)
-                    .round(),
+                divisions:
+                    ((DesktopUiScale.max - DesktopUiScale.min) /
+                            DesktopUiScale.step)
+                        .round(),
                 label: '$percent%',
                 onChanged: (v) => DesktopUiScale.set(v),
               ),
@@ -788,7 +885,7 @@ class _ScalePreview extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: KometTokens.controlRadius,
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Padding(
@@ -929,7 +1026,11 @@ class SettingsNavTile extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             Icon(Symbols.chevron_right, size: 18, color: cs.outline),

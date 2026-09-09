@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/config/app_shape.dart';
-import 'glossy_pill.dart';
+import '../../core/design/komet_components.dart';
+import '../../core/design/komet_tokens.dart';
 
 class SettingsPanel extends StatelessWidget {
   final Widget child;
@@ -18,12 +19,9 @@ class SettingsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GlossyPill(
-      color: color ?? cs.surfaceContainerHigh,
-      borderRadius: AppShape.cardRadius,
+    return KometSurface(
+      color: color ?? KometTokens.of(context).raised,
       padding: padding,
-      depth: 6,
       child: child,
     );
   }
@@ -36,22 +34,19 @@ class SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GlossyPill(
-      color: cs.surfaceContainerHigh,
-      borderRadius: AppShape.cardRadius,
-      depth: 6,
+    return KometSurface(
+      color: KometTokens.of(context).raised,
       child: Column(
         children: [
           for (var i = 0; i < children.length; i++) ...[
-            children[i],
+            KometFocusRing(child: children[i]),
             if (i != children.length - 1)
               Padding(
                 padding: const EdgeInsets.only(left: 58),
                 child: Divider(
                   height: 1,
                   thickness: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.35),
+                  color: KometTokens.of(context).divider,
                 ),
               ),
           ],
@@ -83,14 +78,14 @@ class SettingsToggleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 200),
+      duration: KometTokens.motion(context, 200),
       opacity: enabled ? 1 : 0.4,
       child: IgnorePointer(
         ignoring: !enabled,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => onChanged(!value),
+            onTap: enabled ? () => onChanged(!value) : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
@@ -124,7 +119,7 @@ class SettingsToggleTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Switch(value: value, onChanged: onChanged),
+                  Switch(value: value, onChanged: enabled ? onChanged : null),
                 ],
               ),
             ),
@@ -159,7 +154,7 @@ class SettingsNavTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap ?? () {},
+        onTap: onTap,
         borderRadius: isLast
             ? const BorderRadius.vertical(
                 bottom: Radius.circular(AppShape.card),

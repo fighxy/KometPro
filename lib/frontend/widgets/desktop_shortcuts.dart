@@ -2,6 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+class CommandPaletteIntent extends Intent {
+  const CommandPaletteIntent();
+}
+
 class SearchChatsIntent extends Intent {
   const SearchChatsIntent();
 }
@@ -40,6 +44,7 @@ class DesktopShortcuts extends StatelessWidget {
     super.key,
     required this.child,
     this.onSearchChats,
+    this.onCommandPalette,
     this.onClosePane,
     this.onFindInChat,
     this.onOpenSettings,
@@ -51,6 +56,7 @@ class DesktopShortcuts extends StatelessWidget {
 
   final Widget child;
   final VoidCallback? onSearchChats;
+  final VoidCallback? onCommandPalette;
   final VoidCallback? onClosePane;
   final VoidCallback? onFindInChat;
   final VoidCallback? onOpenSettings;
@@ -75,14 +81,15 @@ class DesktopShortcuts extends StatelessWidget {
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
         SingleActivator(LogicalKeyboardKey.keyK, control: !_meta, meta: _meta):
-            const SearchChatsIntent(),
+            const CommandPaletteIntent(),
         SingleActivator(
           LogicalKeyboardKey.keyF,
           control: !_meta,
           meta: _meta,
           shift: true,
         ): const SearchChatsIntent(),
-        const SingleActivator(LogicalKeyboardKey.escape): const ClosePaneIntent(),
+        const SingleActivator(LogicalKeyboardKey.escape):
+            const ClosePaneIntent(),
         SingleActivator(LogicalKeyboardKey.keyF, control: !_meta, meta: _meta):
             const FindInChatIntent(),
         SingleActivator(LogicalKeyboardKey.keyW, control: !_meta, meta: _meta):
@@ -106,6 +113,12 @@ class DesktopShortcuts extends StatelessWidget {
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
+          CommandPaletteIntent: CallbackAction<CommandPaletteIntent>(
+            onInvoke: (_) {
+              (onCommandPalette ?? onSearchChats)?.call();
+              return null;
+            },
+          ),
           SearchChatsIntent: CallbackAction<SearchChatsIntent>(
             onInvoke: (_) {
               onSearchChats?.call();

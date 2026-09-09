@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../design/komet_tokens.dart';
+
 class AppShape {
-  static const double card = 20;
-  static const double button = 14;
-  static const double sheet = 24;
-  static const double dialog = 24;
+  static const double card = KometTokens.card;
+  static const double button = KometTokens.control;
+  static const double sheet = KometTokens.mobileSheet;
+  static const double dialog = KometTokens.dialog;
   static const double pill = 100;
 
   static const BorderRadius cardRadius = BorderRadius.all(

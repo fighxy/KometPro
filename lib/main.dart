@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'core/config/desktop_density_mode.dart';
 import 'dart:ui' as ui;
 
 import 'package:kolibri/kolibri.dart' show initKolibri;
@@ -245,6 +247,7 @@ void main(List<String> args) async {
   await ChatEncryptionStore.instance.load();
   await KometSettings.load();
   await DesktopUiScale.load();
+  await AppDesktopDensity.load();
   if (KometSettings.ghostMode.value) SelfPresence.markOffline();
   await ContactCache.load();
   final initialFpsOverlay = prefs.getBool('dev_fps_overlay') ?? false;

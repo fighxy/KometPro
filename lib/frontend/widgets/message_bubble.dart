@@ -1152,8 +1152,12 @@ class MessageBubble extends StatelessWidget {
     final keyboard = _inlineKeyboard;
     final isVideoNote = _isVideoNote;
     final screenWidth = MediaQuery.sizeOf(context).width;
+    final mediaOnly = (_contentText?.isEmpty ?? true) &&
+        _contentAttachments.any((item) => item is PhotoAttachment || item is VideoAttachment);
     final maxBubbleWidth = isVideoNote
         ? math.min(screenWidth - 24, ChatLayout.bubbleHardCap)
+        : mediaOnly
+        ? ChatLayout.maxMediaWidth(screenWidth)
         : ChatLayout.maxBubbleWidth(screenWidth);
     final noBubbleBackground =
         isVideoNote || _isSticker || jumboAnimoji != null;
@@ -1161,7 +1165,7 @@ class MessageBubble extends StatelessWidget {
         ? Colors.transparent
         : (isMe
               ? BubbleCss.outgoingFill(cs, cs.brightness)
-              : cs.surfaceContainerHighest);
+              : cs.surfaceContainerLow);
 
     BubbleContext makeCtx({bool metaInFooter = false}) => BubbleContext(
       context: context,

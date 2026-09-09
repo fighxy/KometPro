@@ -652,9 +652,7 @@ extension _ChatSendPipeline on _ChatScreenState {
       FileAttachment(fileId: fileId),
     ).id;
     try {
-      final realId = await _chatController.sendFile(
-        fileId,
-      );
+      final realId = await _chatController.sendFile(fileId);
       final ok = realId != null;
       if (!mounted) return ok;
       if (ok) {
@@ -1258,6 +1256,35 @@ extension _ChatSendPipeline on _ChatScreenState {
     return true;
   }
 
+  Future<void> _dropFiles(List<String> paths) async {
+    if (_myId == 0 || _pastePending) return;
+    _pastePending = true;
+    try {
+      final files = <ClipboardFileRef>[];
+      for (final path in paths) {
+        final file = File(path);
+        if (!await file.exists()) continue;
+        files.add(
+          ClipboardFileRef(
+            path: path,
+            name: file.uri.pathSegments.last,
+            size: await file.length(),
+          ),
+        );
+      }
+      if (!mounted) return;
+      final items = await materializeClipboardMedia(
+        ClipboardMediaPayload(files: files),
+      );
+      if (!mounted) return;
+      await _previewPastedAttachments(items);
+    } catch (_) {
+      if (mounted) showCustomNotification(context, 'Не удалось открыть файлы');
+    } finally {
+      _pastePending = false;
+    }
+  }
+
   Future<void> _pasteClipboardMedia() async {
     if (_myId == 0 || _pastePending) return;
     _pastePending = true;
@@ -1268,46 +1295,50 @@ extension _ChatSendPipeline on _ChatScreenState {
           ? const <PastedAttachment>[]
           : await materializeClipboardMedia(payload);
       if (!mounted) return;
-      if (items.isEmpty) {
-        showCustomNotification(
-          context,
-          AppLocalizations.of(context)!.pasteAttachFailed,
-        );
-        return;
-      }
-
-      final media = items.where((it) => it.isMedia).toList();
-      final documents = items.where((it) => !it.isMedia).toList();
-      if (_encryptionEnabled && documents.isNotEmpty) {
-        _refuseUnencrypted('Файлы');
-        if (media.isEmpty) return;
-        documents.clear();
-      }
-
-      final caption = await showPastePreviewSheet(
-        context,
-        items: [...media, ...documents],
-      );
-      if (caption == null || !mounted) return;
-
-      if (media.isNotEmpty) {
-        await _sendPhotos(
-          media
-              .map((it) => PickedPhoto(item: GalleryItem.fromFile(it.file)))
-              .toList(),
-          caption,
-        );
-      }
-      for (final document in documents) {
-        if (!mounted) return;
-        await _uploadAsFile(
-          source: document.file,
-          filename: document.name,
-          size: document.size,
-        );
-      }
+      await _previewPastedAttachments(items);
     } finally {
       _pastePending = false;
+    }
+  }
+
+  Future<void> _previewPastedAttachments(List<PastedAttachment> items) async {
+    if (items.isEmpty) {
+      showCustomNotification(
+        context,
+        AppLocalizations.of(context)!.pasteAttachFailed,
+      );
+      return;
+    }
+
+    final media = items.where((it) => it.isMedia).toList();
+    final documents = items.where((it) => !it.isMedia).toList();
+    if (_encryptionEnabled && documents.isNotEmpty) {
+      _refuseUnencrypted('Файлы');
+      if (media.isEmpty) return;
+      documents.clear();
+    }
+
+    final caption = await showPastePreviewSheet(
+      context,
+      items: [...media, ...documents],
+    );
+    if (caption == null || !mounted) return;
+
+    if (media.isNotEmpty) {
+      await _sendPhotos(
+        media
+            .map((it) => PickedPhoto(item: GalleryItem.fromFile(it.file)))
+            .toList(),
+        caption,
+      );
+    }
+    for (final document in documents) {
+      if (!mounted) return;
+      await _uploadAsFile(
+        source: document.file,
+        filename: document.name,
+        size: document.size,
+      );
     }
   }
 
@@ -1353,5 +1384,4 @@ extension _ChatSendPipeline on _ChatScreenState {
     _syncUploadStatus();
     await sending;
   }
-
 }

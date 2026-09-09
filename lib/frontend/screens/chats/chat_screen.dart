@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import '../../widgets/desktop_file_drop.dart';
 import 'dart:convert' show base64Encode;
 import 'dart:io' show File;
 import 'dart:math' as math;
@@ -1900,7 +1902,11 @@ class _ChatScreenState extends State<ChatScreen>
                   backgroundColor: underlap ? Colors.transparent : cs.surface,
                   extendBodyBehindAppBar: underlap,
                   appBar: _buildAppBar(cs),
-                  body: body,
+                  body: DesktopFileDrop(
+                    enabled: !_previewChat && !_commentsMode && !_pastePending,
+                    onFiles: (paths) => unawaited(_dropFiles(paths)),
+                    child: body!,
+                  ),
                 ),
               ),
             ),

@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
+import '../../../../../core/design/komet_components.dart';
+import '../../../../../core/design/komet_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -91,7 +95,9 @@ class _AnimatedChatTileState extends State<AnimatedChatTile>
   @override
   Widget build(BuildContext context) {
     final c = _controller;
-    if (c == null) return SizedBox(child: widget.child);
+    if (c == null || MediaQuery.disableAnimationsOf(context)) {
+      return SizedBox(child: widget.child);
+    }
     return SizedBox(
       child: AnimatedBuilder(
         animation: c,
@@ -174,6 +180,8 @@ class DesktopChatChrome extends StatefulWidget {
   final bool enableHover;
   final GestureTapDownCallback? onSecondaryTapDown;
   final Widget child;
+  final VoidCallback? onArchive;
+  final bool archived;
 
   const DesktopChatChrome({
     super.key,
@@ -183,6 +191,8 @@ class DesktopChatChrome extends StatefulWidget {
     required this.enableHover,
     required this.child,
     this.onSecondaryTapDown,
+    this.onArchive,
+    this.archived = false,
   });
 
   @override
@@ -191,27 +201,115 @@ class DesktopChatChrome extends StatefulWidget {
 
 class _DesktopChatChromeState extends State<DesktopChatChrome> {
   bool _hovered = false;
+  bool _showActions = false;
+  Timer? _hoverTimer;
+
+  void _hover(bool entered) {
+    _hoverTimer?.cancel();
+    setState(() {
+      _hovered = entered;
+      if (!entered) _showActions = false;
+    });
+    if (entered) {
+      _hoverTimer = Timer(const Duration(milliseconds: 250), () {
+        if (mounted) setState(() => _showActions = true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _hoverTimer?.cancel();
+    super.dispose();
+  }
 
   Color _fill(ColorScheme cs) {
-    if (widget.selected) return cs.primary.withValues(alpha: 0.08);
-    if (widget.active) return cs.primary.withValues(alpha: 0.14);
+    if (widget.selected) return cs.secondaryContainer;
+    if (widget.active) return cs.primaryContainer;
     if (widget.pinned) {
-      return cs.surfaceContainerHighest.withValues(
-        alpha: _hovered ? 0.46 : 0.38,
-      );
+      return _hovered ? cs.surfaceContainerHigh : cs.surfaceContainerLow;
     }
-    if (_hovered) return cs.onSurface.withValues(alpha: 0.05);
+    if (_hovered) return cs.surfaceContainerHigh;
     return Colors.transparent;
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    Widget child = ColoredBox(color: _fill(cs), child: widget.child);
+    Widget child = Semantics(
+      selected: widget.selected || widget.active,
+      child: KometFocusRing(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _fill(cs),
+            border: Border(
+              left: BorderSide(
+                width: 3,
+                color: widget.active
+                    ? KometTokens.of(context).focused
+                    : Colors.transparent,
+              ),
+            ),
+          ),
+          child: Stack(
+            children: [
+              widget.child,
+              if (widget.enableHover && _showActions)
+                Positioned(
+                  right: 8,
+                  top: 4,
+                  bottom: 4,
+                  child: Material(
+                    color: _fill(cs),
+                    borderRadius: KometTokens.controlRadius,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.onArchive != null)
+                          IconButton(
+                            tooltip: widget.archived
+                                ? 'Вернуть из архива'
+                                : 'В архив',
+                            icon: Icon(
+                              widget.archived
+                                  ? Icons.unarchive_outlined
+                                  : Icons.archive_outlined,
+                              size: 18,
+                            ),
+                            onPressed: widget.onArchive,
+                          ),
+                        if (widget.onSecondaryTapDown != null)
+                          Builder(
+                            builder: (buttonContext) => IconButton(
+                              tooltip: 'Действия с чатом',
+                              icon: const Icon(Icons.more_horiz, size: 18),
+                              onPressed: () {
+                                final box =
+                                    buttonContext.findRenderObject()
+                                        as RenderBox;
+                                widget.onSecondaryTapDown!(
+                                  TapDownDetails(
+                                    globalPosition: box.localToGlobal(
+                                      Offset(0, box.size.height),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
     if (widget.enableHover) {
       child = MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+        onEnter: (_) => _hover(true),
+        onExit: (_) => _hover(false),
         child: child,
       );
     }

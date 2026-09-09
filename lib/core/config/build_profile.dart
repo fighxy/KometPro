@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart' show appFlavor;
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 abstract final class BuildProfile {
   static const String storeFlavor = 'store';
@@ -9,7 +10,7 @@ abstract final class BuildProfile {
   static const bool firebasePush = appFlavor == 'oneme';
   static const bool spoofUi = !isStore;
   static const bool tokenLogin = !isStore;
-  static const bool devTools = !isStore;
+  static const bool devTools = !isStore && kDebugMode;
   static const bool insecureTransport = !isStore;
   static const bool trafficCapture = !isStore;
   static const bool pranks = !isStore;

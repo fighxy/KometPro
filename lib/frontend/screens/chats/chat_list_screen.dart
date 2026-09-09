@@ -332,6 +332,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       _sessionState,
       identityHashCode(_profile),
       widget.activeChatId,
+      DesktopDensity.s,
+      DesktopDensity.compact,
     ]);
     if (_cachedChatsBody == null || _chatsBodyCacheKey != key) {
       _chatsBodyCacheKey = key;
@@ -3259,7 +3261,13 @@ class _ChatListScreenState extends State<ChatListScreen>
       pinned: isPinned,
       active: isActive,
       selected: isSelected,
-      enableHover: desktopPane && !widget.forwardMode && !_shareMode,
+      enableHover: desktopPane && !widget.forwardMode && !_shareMode && !_isSelectionMode,
+      archived: widget.archiveMode,
+      onArchive: chat == null || chat.id == 0 || _profile == null ? null : () async {
+        await ArchivedChatsStore.instance.setArchived(_profile!.id, chat.id, !widget.archiveMode);
+        if (!mounted) return;
+        showCustomNotification(context, widget.archiveMode ? 'Чат возвращён' : 'Чат в архиве');
+      },
       onSecondaryTapDown: (!DesktopDensity.enabled ||
               widget.forwardMode ||
               _shareMode ||
@@ -3592,6 +3600,14 @@ class _ChatListScreenState extends State<ChatListScreen>
                   onTap: () => unawaited(_toggleChatInFolder(chat, folder)),
                 ),
             ],
+          ),
+        if (!isSaved && _profile != null)
+          ChatMenuItem(
+            icon: widget.archiveMode ? Symbols.unarchive : Symbols.archive,
+            label: widget.archiveMode ? 'Вернуть из архива' : 'В архив',
+            onTap: () => unawaited(ArchivedChatsStore.instance.setArchived(
+              _profile!.id, chat.id, !widget.archiveMode,
+            )),
           ),
         ChatMenuItem(
           icon: pinned ? Symbols.keep_off : Symbols.keep,

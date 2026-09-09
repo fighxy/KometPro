@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/config/desktop_density.dart';
+import '../../core/design/komet_components.dart';
+import '../../core/design/komet_tokens.dart';
+import 'package:flutter/foundation.dart';
 
 class DesktopNavRail extends StatelessWidget {
   const DesktopNavRail({
@@ -49,7 +52,9 @@ class DesktopNavRail extends StatelessWidget {
               _RailButton(
                 icon: Symbols.settings,
                 selected: index == 3,
-                tooltip: 'Настройки',
+                tooltip: defaultTargetPlatform == TargetPlatform.macOS
+                    ? 'Настройки (⌘+,)'
+                    : 'Настройки (Ctrl+,)',
                 onTap: () {
                   if (onSettings != null) {
                     onSettings!();
@@ -83,25 +88,39 @@ class _RailButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final color = selected ? cs.primary : cs.onSurfaceVariant;
+    final color = selected
+        ? KometTokens.of(context).onSelected
+        : cs.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Tooltip(
         message: tooltip,
         waitDuration: const Duration(milliseconds: 400),
-        child: Material(
-          color: selected
-              ? cs.primary.withValues(alpha: 0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
-            hoverColor: cs.onSurface.withValues(alpha: 0.06),
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: Icon(icon, size: 22, color: color, weight: selected ? 600 : 400),
+        child: KometFocusRing(
+          child: Semantics(
+            button: true,
+            selected: selected,
+            label: tooltip,
+            child: Material(
+              color: selected
+                  ? KometTokens.of(context).selected
+                  : Colors.transparent,
+              borderRadius: KometTokens.controlRadius,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: KometTokens.controlRadius,
+                hoverColor: cs.onSurface.withValues(alpha: 0.06),
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: color,
+                    weight: selected ? 600 : 400,
+                  ),
+                ),
+              ),
             ),
           ),
         ),

@@ -100,6 +100,7 @@ dependencies:
   flutter_svg: ^2.0.10
   window_manager: ^0.4.3
   tray_manager: ^0.2.4
+  desktop_drop: ^0.8.4
 
 dev_dependencies:
   flutter_test:

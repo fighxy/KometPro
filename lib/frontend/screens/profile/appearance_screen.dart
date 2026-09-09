@@ -206,7 +206,13 @@ class _VisualStyleCard extends StatelessWidget {
                   if (LiquidGlass.isSupported)
                     ButtonSegment(
                       value: VisualStyle.liquidGlass,
-                      label: Text(l10n.appearanceVisualStyleLiquidGlass),
+                      label: Tooltip(
+                        message:
+                            'Экспериментальная тема: может увеличить нагрузку на GPU',
+                        child: Text(
+                          '${l10n.appearanceVisualStyleLiquidGlass} · Labs',
+                        ),
+                      ),
                     ),
                 ],
                 selected: {selectable},
