@@ -33,16 +33,13 @@ void InitPerfLogPath() {
     if (g_perf_path_initialized) return;
     
     // Get %LOCALAPPDATA%
-    char app_data[MAX_PATH];
+    char* app_data = nullptr;
     size_t len = 0;
-    if (_dupenv_s(&app_data, &len, "LOCALAPPDATA") != 0 || !app_data) {
-        strcpy_s(app_data, MAX_PATH, ".");
-    }
-    
-    snprintf(g_perf_log_path, MAX_PATH, "%s\\Komet\\logs\\perf_log.txt", app_data);
-    
-    // Free allocated memory from _dupenv_s
-    if (len > 0 && app_data) {
+    errno_t err = _dupenv_s(&app_data, &len, "LOCALAPPDATA");
+    if (err != 0 || !app_data) {
+        snprintf(g_perf_log_path, MAX_PATH, ".\\Komet\\logs\\perf_log.txt");
+    } else {
+        snprintf(g_perf_log_path, MAX_PATH, "%s\\Komet\\logs\\perf_log.txt", app_data);
         free(app_data);
     }
     
