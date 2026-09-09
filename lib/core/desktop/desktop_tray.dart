@@ -43,7 +43,6 @@ class DesktopTray with WindowListener, TrayListener {
                 ? 'Komet — $next непрочитанных'
                 : 'Komet — $next unread');
       if (Platform.isWindows) {
-        await DesktopWindow.setTrayTip(tip);
         await DesktopWindow.addNativeTray(
           tip: tip,
           show: next > 0
@@ -329,11 +328,6 @@ class DesktopTray with WindowListener, TrayListener {
     } else {
       unawaited(quit());
     }
-  }
-
-  @override
-  void onWindowFocus() {
-    unawaited(DesktopWindow.stopFlash());
   }
 
   @override
