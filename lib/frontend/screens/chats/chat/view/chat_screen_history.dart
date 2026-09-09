@@ -1112,19 +1112,37 @@ extension _ChatHistoryLoad on _ChatScreenState {
   }
 
   void _openComments(CachedMessage post) {
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
-              chatId: widget.chatId,
-              name: widget.name,
-              imageUrl: widget.imageUrl,
-              chatType: 'CHANNEL',
-              commentPostId: post.id,
-              postMessage: _stripInlineKeyboard(post),
-            ),
-          ),
-        )
+    final isDesktop = MediaQuery.sizeOf(context).width >= 900;
+    final comments = ChatScreen(
+      chatId: widget.chatId,
+      name: widget.name,
+      imageUrl: widget.imageUrl,
+      chatType: 'CHANNEL',
+      commentPostId: post.id,
+      postMessage: _stripInlineKeyboard(post),
+    );
+    (isDesktop
+            ? showDialog<void>(
+                context: context,
+                barrierColor: Colors.black26,
+                builder: (_) => Dialog(
+                  insetPadding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 36,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 520,
+                      maxHeight: 760,
+                    ),
+                    child: comments,
+                  ),
+                ),
+              )
+            : Navigator.of(context).push<void>(
+                MaterialPageRoute(builder: (_) => comments),
+              ))
         .then((_) => _refreshCommentCount(post.id));
   }
 
