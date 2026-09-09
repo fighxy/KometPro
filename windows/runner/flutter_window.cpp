@@ -21,6 +21,9 @@
 #define NIN_SELECT (WM_USER + 0)
 #endif
 
+// Message definitions (must be before any function usage)
+static constexpr UINT WM_KICK_COMPOSITOR_ASYNC = WM_USER + 0x4B00;
+
 // Performance Logging
 static std::mutex g_perf_mutex;
 static const char* PERF_LOG_PATH = "logs/perf_log.txt";
@@ -34,7 +37,9 @@ void LogPerfEvent(const std::string& event, long long duration_us = 0) {
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             now.time_since_epoch()) % 1000;
         
-        log << "[" << std::put_time(std::localtime(&time_t_now), "%H:%M:%S") 
+        struct tm timeinfo;
+        localtime_s(&timeinfo, &time_t_now);
+        log << "[" << std::put_time(&timeinfo, "%H:%M:%S") 
             << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
             << event;
         if (duration_us > 0) {
@@ -411,8 +416,6 @@ void FlutterWindow::KickCompositor() {
   LOG_PERF("KickCompositor: Posted async");
   PostMessage(hwnd, WM_KICK_COMPOSITOR_ASYNC, 0, 0);
 }
-
-static constexpr UINT WM_KICK_COMPOSITOR_ASYNC = WM_USER + 0x4B00;
 
 static void DoKickCompositor(HWND hwnd, flutter::FlutterViewController* controller) {
   auto start_time = std::chrono::high_resolution_clock::now();
