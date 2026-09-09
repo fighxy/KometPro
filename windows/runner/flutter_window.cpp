@@ -21,9 +21,6 @@
 #define NIN_SELECT (WM_USER + 0)
 #endif
 
-// Message definitions (must be before any function usage)
-static constexpr UINT WM_KICK_COMPOSITOR_ASYNC = WM_USER + 0x4B00;
-
 // Performance Logging
 static std::mutex g_perf_mutex;
 static char g_perf_log_path[MAX_PATH];
@@ -86,8 +83,6 @@ void LogPerfEvent(const std::string& event, long long duration_us = 0) {
 
 namespace {
 constexpr UINT WM_TRAYICON = WM_APP + 32;
-constexpr UINT kKickTimerEarly = 0x4B01;
-constexpr UINT kKickTimerLate = 0x4B02;
 constexpr UINT_PTR ID_TRAY = 1;
 constexpr UINT IDM_TRAY_SHOW = 1;
 constexpr UINT IDM_TRAY_HIDE = 2;
@@ -291,12 +286,6 @@ bool FlutterWindow::OnCreate() {
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
-    this->KickCompositor();
-    HWND hwnd = GetHandle();
-    if (hwnd) {
-      SetTimer(hwnd, kKickTimerEarly, 32, nullptr);
-      SetTimer(hwnd, kKickTimerLate, 250, nullptr);
-    }
   });
 
   // Flutter can complete the first frame before the "show window" callback is
@@ -356,11 +345,6 @@ void FlutterWindow::RegisterDesktopChannel() {
             DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &type,
                                   sizeof(type));
           }
-          result->Success();
-          return;
-        }
-        if (call.method_name() == "kickCompositor") {
-          KickCompositor();
           result->Success();
           return;
         }
@@ -434,60 +418,6 @@ void FlutterWindow::FlashTaskbar(bool enable) {
     info.dwFlags = FLASHW_STOP;
   }
   FlashWindowEx(&info);
-}
-
-void FlutterWindow::KickCompositor() {
-  HWND hwnd = GetHandle();
-  if (!hwnd) {
-    return;
-  }
-  
-  // Post the compositor kick asynchronously to avoid blocking message loop
-  // This prevents UI freeze when called during focus operations
-  LOG_PERF("KickCompositor: Posted async");
-  PostMessage(hwnd, WM_KICK_COMPOSITOR_ASYNC, 0, 0);
-}
-
-static void DoKickCompositor(HWND hwnd, flutter::FlutterViewController* controller) {
-  auto start_time = std::chrono::high_resolution_clock::now();
-  LOG_PERF("DoKickCompositor: Start");
-  
-  if (!hwnd) return;
-  
-  // Проверка: если окно не активно, пропускаем операцию
-  // Это предотвращает зависание при вызове в фоне
-  if (GetForegroundWindow() != hwnd) {
-    LOG_PERF("DoKickCompositor: Skipped (window not foreground)");
-    return;
-  }
-  
-  RECT wr = {};
-  GetWindowRect(hwnd, &wr);
-  const int w = wr.right - wr.left;
-  const int h = wr.bottom - wr.top;
-  if (w > 80 && h > 80) {
-    SetWindowPos(hwnd, nullptr, wr.left, wr.top, w, h + 1,
-                 SWP_NOZORDER | SWP_NOACTIVATE);
-    SetWindowPos(hwnd, nullptr, wr.left, wr.top, w, h,
-                 SWP_NOZORDER | SWP_NOACTIVATE);
-  }
-  RECT cr = {};
-  GetClientRect(hwnd, &cr);
-  HWND child = GetWindow(hwnd, GW_CHILD);
-  if (child) {
-    MoveWindow(child, cr.left, cr.top, cr.right - cr.left,
-               cr.bottom - cr.top, TRUE);
-  }
-  // Avoid RDW_ALLCHILDREN which can block on complex hierarchies
-  RedrawWindow(hwnd, nullptr, nullptr,
-               RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_UPDATENOW);
-  if (controller) {
-    controller->ForceRedraw();
-  }
-  
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-  LOG_PERF_DUR("DoKickCompositor: Complete", duration);
 }
 
 void FlutterWindow::ForceForeground() {
@@ -626,20 +556,7 @@ void FlutterWindow::ShowNativeTrayMenu() {
   POINT pt = {};
   GetCursorPos(&pt);
   
-  // КРИТИЧЕСКИЙ ФИКС ДЛЯ WINDOWS 10 (сборка 1809 и другие старые версии):
-  // Проблема: TrackPopupMenu запускает модальный цикл, который блокирует обработку
-  // сообщений окна. Когда меню закрывается, окно может остаться в "подвешенном" состоянии,
-  // особенно если оно было в фокусе. Это вызывает визуальное зависание.
-  //
-  // Решение: Временно деактивировать окно перед показом меню, затем вернуть фокус.
-  
-  bool wasForeground = (GetForegroundWindow() == hwnd);
-  
-  // 1. Если окно в фокусе, временно передаем фокус рабочему столу
-  // Это предотвращает конфликт между модальным циклом меню и основным циклом окна
-  if (wasForeground) {
-    SetForegroundWindow(GetDesktopWindow());
-  }
+  SetForegroundWindow(hwnd);
   
   HMENU menu = CreatePopupMenu();
   if (!menu) {
@@ -652,7 +569,6 @@ void FlutterWindow::ShowNativeTrayMenu() {
   
   LOG_PERF("ShowNativeTrayMenu: Showing popup menu");
   
-  // 2. Показываем меню (блокирующий вызов)
   const int cmd = TrackPopupMenu(menu,
                                  TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
                                  pt.x, pt.y, 0, hwnd, nullptr);
@@ -661,14 +577,8 @@ void FlutterWindow::ShowNativeTrayMenu() {
   
   DestroyMenu(menu);
   
-  // 3. КРИТИЧНО: Возвращаем фокус окну ПОСЛЕ закрытия меню
-  // Используем PostMessage + SetForegroundWindow для надежного восстановления
-  if (wasForeground) {
-    // Откладываем восстановление фокуса, чтобы избежать рекурсии
-    PostMessage(hwnd, WM_KICK_FOCUS, 0, 0);
-  }
+  PostMessage(hwnd, WM_NULL, 0, 0);
   
-  // 4. Обрабатываем команду меню (если выбрана)
   if (cmd == IDM_TRAY_SHOW) {
     HandleTrayAction("show");
   } else if (cmd == IDM_TRAY_HIDE) {
@@ -701,22 +611,6 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
   auto msg_start = std::chrono::high_resolution_clock::now();
-  
-  if (message == WM_TIMER &&
-      (wparam == kKickTimerEarly || wparam == kKickTimerLate)) {
-    KillTimer(hwnd, wparam);
-    // Вызываем KickCompositor только если окно активно
-    if (GetForegroundWindow() == hwnd) {
-      KickCompositor();
-    }
-    return 0;
-  }
-  
-  // Handle async compositor kick message
-  if (message == WM_KICK_COMPOSITOR_ASYNC) {
-    DoKickCompositor(hwnd, flutter_controller_.get());
-    return 0;
-  }
   
   if (message == WM_TRAYICON) {
     const UINT mouse = LOWORD(lparam);
@@ -758,35 +652,6 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       flutter_controller_->engine()->ReloadSystemFonts();
       break;
       
-    // Handle WM_ENTERIDLE to keep message loop responsive during menu/tracking
-    case WM_ENTERIDLE: {
-      const UINT source = LOWORD(wparam);
-      // MSGF_MENU=2, MSGF_MOVE=3, MSGF_SIZE=4 - use numeric values for compatibility
-      if (source == 2 || source == 3 || source == 4) {
-        // Allow processing of pending messages during modal loops
-        // Don't return 0 - let DefWindowProc process it to avoid blocking
-        LOG_PERF("WM_ENTERIDLE: Modal loop detected, pumping messages");
-        
-        // Pump pending messages to prevent freeze
-        MSG msg;
-        while (PeekMessage(&msg, nullptr, 0, 0, PM_NOREMOVE)) {
-          if (msg.message == WM_QUIT) {
-            return -1;
-          }
-          // Skip input messages during modal tracking to avoid conflicts
-          if (msg.message >= WM_MOUSEFIRST && msg.message <= WM_MOUSELAST) {
-            PeekMessage(&msg, nullptr, msg.message, msg.message, PM_REMOVE);
-          } else if (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST) {
-            PeekMessage(&msg, nullptr, msg.message, msg.message, PM_REMOVE);
-          } else {
-            break;
-          }
-        }
-      }
-      // Always let DefWindowProc handle WM_ENTERIDLE
-      break;
-    }
-    
     // Handle SC_KEYMENU to prevent Alt key from causing focus issues
     case WM_SYSCOMMAND: {
       if ((wparam & 0xFFF0) == SC_KEYMENU) {
@@ -811,8 +676,6 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
         // При потере фокуса ничего не делаем
       } else {
         LOG_PERF("WM_ACTIVATE: Window activated");
-        // При получении фокуса НЕ вызываем KickCompositor сразу
-        // Даем окну стабилизироваться, таймер сработает позже
       }
       break;
     }
@@ -820,3 +683,4 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
 }
+

@@ -30,7 +30,6 @@ class FlutterWindow : public Win32Window {
  private:
   void RegisterDesktopChannel();
   void FlashTaskbar(bool enable);
-  void KickCompositor();
   void ForceForeground();
   void AddNativeTray();
   void RemoveNativeTray();
@@ -53,3 +52,4 @@ class FlutterWindow : public Win32Window {
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
+

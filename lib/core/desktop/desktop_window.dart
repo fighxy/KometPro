@@ -186,8 +186,6 @@ class DesktopWindow {
         await windowManager.center();
       }
     } catch (_) {}
-    // Kick compositor asynchronously - it's now non-blocking on native side
-    unawaited(kickCompositor());
   }
 
   static Future<void> skipTaskbar() async {
@@ -195,13 +193,6 @@ class DesktopWindow {
     _taskbarSkipped = true;
     try {
       await windowManager.setSkipTaskbar(true);
-    } catch (_) {}
-  }
-
-  static Future<void> kickCompositor() async {
-    if (!isSupported) return;
-    try {
-      await _channel.invokeMethod<void>('kickCompositor');
     } catch (_) {}
   }
 
@@ -236,3 +227,4 @@ class DesktopWindow {
     } catch (_) {}
   }
 }
+

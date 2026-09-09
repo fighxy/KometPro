@@ -95,7 +95,6 @@ class DesktopTray with WindowListener, TrayListener {
           try {
             await windowManager.setPosition(bounds.offset!);
           } catch (_) {}
-          await DesktopWindow.kickCompositor();
         }
       },
     );
@@ -368,3 +367,4 @@ class DesktopTray with WindowListener, TrayListener {
     });
   }
 }
+
