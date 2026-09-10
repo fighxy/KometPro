@@ -400,7 +400,7 @@ extension _ChatTranscriptBuild on _ChatScreenState {
     if (_messages.isEmpty) {
       return Center(
         child: Text(
-          'No messages yet',
+          AppLocalizations.of(context)!.hubChatEmpty,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
