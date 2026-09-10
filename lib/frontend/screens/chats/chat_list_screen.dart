@@ -4133,8 +4133,12 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  void _openSearch() =>
-      unawaited(pushSwipeable(context, (_) => const SearchScreen()));
+  void _openSearch() => unawaited(
+    pushSwipeable(
+      context,
+      (_) => SearchScreen(onChatSelected: widget.onChatSelected),
+    ),
+  );
 
   void _openSavedMessages() {
     CachedChat? self;

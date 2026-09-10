@@ -334,8 +334,12 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
+        // Give longer recordings enough waveform width. A fixed compact width
+        // makes long recordings and their transcript controls feel cramped.
+        final compactWidth = BubbleCss.voiceCompactWidth +
+            math.min(140.0, math.max(0, widget.duration - 20) * 1.75);
         final preferredWidth = !_transcriptionVisible
-            ? BubbleCss.voiceCompactWidth
+            ? compactWidth
             : maxW.isFinite
             ? maxW
             : ChatLayout.maxBubbleWidth(MediaQuery.sizeOf(context).width);

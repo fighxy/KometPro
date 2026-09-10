@@ -18,7 +18,9 @@ import '../contacts/open_contact_profile.dart';
 import 'chat_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.onChatSelected});
+
+  final ValueChanged<DesktopChatSelection>? onChatSelected;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -180,13 +182,24 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _openChat(int chatId, String name, String? avatarUrl, String type) {
+    final selection = DesktopChatSelection(
+      chatId: chatId,
+      name: name,
+      imageUrl: avatarUrl ?? '',
+      chatType: type,
+    );
+    if (widget.onChatSelected != null) {
+      widget.onChatSelected!(selection);
+      Navigator.of(context).pop();
+      return;
+    }
     pushSwipeable(
       context,
       (_) => ChatScreen(
-        chatId: chatId,
-        name: name,
-        imageUrl: avatarUrl ?? '',
-        chatType: type,
+        chatId: selection.chatId,
+        name: selection.name,
+        imageUrl: selection.imageUrl,
+        chatType: selection.chatType,
       ),
     );
   }
