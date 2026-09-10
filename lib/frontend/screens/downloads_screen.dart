@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
@@ -177,29 +178,50 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 if (records.isEmpty) {
                   return _DownloadsEmpty(label: l10n.downloadsEmpty);
                 }
-                return ListView.separated(
-                  key: const ValueKey('downloads-list'),
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 32),
-                  itemCount: records.length,
-                  separatorBuilder: (_, _) => Divider(
-                    height: 1,
-                    indent: 92,
-                    color: cs.outlineVariant.withValues(alpha: 0.4),
+                final desktop = defaultTargetPlatform == TargetPlatform.windows ||
+                    defaultTargetPlatform == TargetPlatform.macOS ||
+                    defaultTargetPlatform == TargetPlatform.linux;
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: desktop ? 920 : double.infinity,
+                    ),
+                    child: ListView.separated(
+                      key: const ValueKey('downloads-list'),
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        desktop ? 20 : 0,
+                        desktop ? 12 : 0,
+                        desktop ? 20 : 0,
+                        32,
+                      ),
+                      itemCount: records.length,
+                      separatorBuilder: (_, _) => SizedBox(
+                        height: desktop ? 8 : 0,
+                      ),
+                      itemBuilder: (context, index) {
+                        final record = records[index];
+                        return Material(
+                          color: desktop
+                              ? cs.surfaceContainerLow
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(14),
+                          clipBehavior: Clip.antiAlias,
+                          child: _DownloadTile(
+                            record: record,
+                            onTap: () => _open(record),
+                            onSaveAs: () => _saveAs(record),
+                            onGoToMessage:
+                                record.chatId != null &&
+                                    record.messageId?.isNotEmpty == true
+                                ? () => _goToMessage(record)
+                                : null,
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                  itemBuilder: (context, index) {
-                    final record = records[index];
-                    return _DownloadTile(
-                      record: record,
-                      onTap: () => _open(record),
-                      onSaveAs: () => _saveAs(record),
-                      onGoToMessage:
-                          record.chatId != null &&
-                              record.messageId?.isNotEmpty == true
-                          ? () => _goToMessage(record)
-                          : null,
-                    );
-                  },
                 );
               },
             ),
