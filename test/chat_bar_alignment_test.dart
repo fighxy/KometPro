@@ -142,6 +142,7 @@ void main() {
                 onOpenInfo: () {},
                 onOpenScheduled: () {},
                 onCall: () {},
+                onSearch: () {},
                 onMenu: (_) {},
               ),
             ),
