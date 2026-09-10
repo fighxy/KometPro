@@ -186,7 +186,12 @@ class BubbleContext {
   Color get systemTint => cs.onPrimaryContainer.withValues(alpha: 0.12);
 
   Widget caption() {
-    final style = TextStyle(color: text, fontSize: 16, height: 1.3);
+    final style = TextStyle(
+      color: text,
+      fontSize: 16,
+      height: 1.3,
+      fontWeight: FontWeight.w400,
+    );
     final captionText = contentText;
     final ranges = contentFormatRanges;
     final Widget body;

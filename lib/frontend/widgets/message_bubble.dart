@@ -1984,10 +1984,11 @@ class MessageBubble extends StatelessWidget {
       color: ctx.text,
       fontSize: 16,
       height: 1.3,
+      fontWeight: FontWeight.w400,
       fontFamily: activeFontFamily,
       fontFamilyFallback: kEmojiFontFallback,
       fontVariations: activeFontFamily == 'Inter'
-          ? const [FontVariation('wght', 300)]
+          ? const [FontVariation('wght', 400)]
           : null,
     );
     final ranges = message.formatRanges;
