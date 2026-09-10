@@ -13,6 +13,7 @@ import '../../../core/config/desktop_density_mode.dart';
 import '../../../core/design/komet_tokens.dart';
 import '../../../core/config/desktop_ui_scale.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/utils/format.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/utils/update_checker.dart';
 import '../../../l10n/app_localizations.dart';
@@ -659,33 +660,39 @@ class _AccountPane extends StatelessWidget {
                             if (!enabled) return const SizedBox.shrink();
                             return ValueListenableBuilder<bool>(
                               valueListenable: SelfPresence.isOnline,
-                              builder: (context, online, _) => Padding(
-                                padding: const EdgeInsets.only(top: 7),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: online
-                                            ? const Color(0xFF35B979)
-                                            : cs.outline,
-                                        shape: BoxShape.circle,
+                              builder: (context, online, _) =>
+                                  ValueListenableBuilder<int?>(
+                                valueListenable: SelfPresence.lastSeenSeconds,
+                                builder: (context, seen, _) => Padding(
+                                  padding: const EdgeInsets.only(top: 7),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: online
+                                              ? const Color(0xFF35B979)
+                                              : cs.outline,
+                                          shape: BoxShape.circle,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      online
-                                          ? 'Онлайн · self-check'
-                                          : 'Офлайн · self-check',
-                                      style: TextStyle(
-                                        color: cs.onSurfaceVariant,
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w500,
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        online
+                                            ? 'Онлайн · self-check'
+                                            : seen != null
+                                            ? '${formatLastSeen(seen)} · self-check'
+                                            : 'Офлайн · self-check',
+                                        style: TextStyle(
+                                          color: cs.onSurfaceVariant,
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
