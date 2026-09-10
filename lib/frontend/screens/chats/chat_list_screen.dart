@@ -334,6 +334,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       widget.activeChatId,
       DesktopDensity.s,
       DesktopDensity.compact,
+      Theme.of(context).brightness,
+      Theme.of(context).colorScheme.hashCode,
     ]);
     if (_cachedChatsBody == null || _chatsBodyCacheKey != key) {
       _chatsBodyCacheKey = key;
