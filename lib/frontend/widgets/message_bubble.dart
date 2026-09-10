@@ -587,7 +587,7 @@ class _ReactionAnimojiGlyphState extends State<_ReactionAnimojiGlyph> {
         repeat: false,
       );
     } else {
-      body = Text(widget.emoji, style: const TextStyle(fontSize: 18, height: 1));
+      body = Text(widget.emoji, style: emojiTextStyle(size: 20));
     }
 
     return SizedBox(
@@ -712,7 +712,6 @@ class _ReactionPopState extends State<_ReactionPop>
 }
 
 class MessageBubble extends StatelessWidget {
-  static final Color _reactionChipBg = Colors.black.withValues(alpha: 0.28);
   static const BorderRadius _reactionChipRadius = BorderRadius.all(
     Radius.circular(14),
   );
@@ -1797,12 +1796,24 @@ class MessageBubble extends StatelessWidget {
               );
       }
 
-      Widget chip = Container(
-        height: 28,
-        padding: EdgeInsets.fromLTRB(8, 0, avatar != null ? 4 : 8, 0),
+      final chipBackground = isYours
+          ? cs.primaryContainer
+          : cs.surfaceContainerHighest.withValues(alpha: 0.92);
+      final chipForeground = isYours
+          ? cs.onPrimaryContainer
+          : cs.onSurfaceVariant;
+      Widget chip = AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        height: 32,
+        padding: EdgeInsets.fromLTRB(9, 0, avatar != null ? 5 : 9, 0),
         decoration: BoxDecoration(
-          color: isYours ? cs.primary.withValues(alpha: 0.28) : _reactionChipBg,
+          color: chipBackground,
           borderRadius: _reactionChipRadius,
+          border: Border.all(
+            color: isYours
+                ? cs.primary.withValues(alpha: 0.5)
+                : cs.outlineVariant.withValues(alpha: 0.7),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1816,13 +1827,13 @@ class MessageBubble extends StatelessWidget {
                 animation: reactionAnimation,
               )
             else
-              Text(c.reaction, style: const TextStyle(fontSize: 18, height: 1)),
+              Text(c.reaction, style: emojiTextStyle(size: 20)),
             if (c.count > 1) ...[
               const SizedBox(width: 4),
               Text(
                 c.count.toString(),
                 style: TextStyle(
-                  color: isYours ? cs.primary : cs.onSurface,
+                  color: chipForeground,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   height: 1,
@@ -1836,10 +1847,13 @@ class MessageBubble extends StatelessWidget {
 
       final onTap = onReactionTap;
       if (onTap != null) {
-        chip = GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onTap(c.reaction),
-          child: chip,
+        chip = Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: _reactionChipRadius,
+            onTap: () => onTap(c.reaction),
+            child: chip,
+          ),
         );
       }
 
