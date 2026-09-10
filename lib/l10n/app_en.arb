@@ -1,4 +1,5 @@
 {
+  "commonRetry": "Retry",
   "@@locale": "en",
   "loginTitle": "Sign in to Komet",
   "loginSubtitle": "Check your country code and enter your\nphone number.",
