@@ -1638,31 +1638,39 @@ class MessageBubble extends StatelessWidget {
         _contentType == MessageType.attachment ||
         _contentType == MessageType.voice;
     final ctx = makeCtx(metaInFooter: carriesMeta);
+    final reactionsFooter = Padding(
+      padding: inset,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: _ReactionsWrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: chips,
+            ),
+          ),
+          if (carriesMeta) ...[
+            const SizedBox(width: 8),
+            ctx.footerMeta(),
+          ],
+        ],
+      ),
+    );
+
+    if (_contentAttachments.any((item) => item is PhotoAttachment)) {
+      return _StackMatchTopWidth(
+        top: _buildContent(ctx),
+        bottom: reactionsFooter,
+      );
+    }
 
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-          _buildContent(ctx),
-          Padding(
-            padding: inset,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: _ReactionsWrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: chips,
-                  ),
-                ),
-                if (carriesMeta) ...[
-                  const SizedBox(width: 8),
-                  ctx.footerMeta(),
-                ],
-              ],
-            ),
-          ),
+        _buildContent(ctx),
+        reactionsFooter,
       ],
     );
 

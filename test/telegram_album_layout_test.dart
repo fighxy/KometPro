@@ -38,6 +38,7 @@ void main() {
           hasReactions: false,
           hasComments: false,
           isDesktop: true,
+          maxWidth: 400,
         ),
         0,
       );
@@ -50,8 +51,9 @@ void main() {
           hasReactions: false,
           hasComments: false,
           isDesktop: true,
+          maxWidth: 400,
         ),
-        320,
+        340,
       );
       expect(
         PhotoBubble.minimumContentWidth(
@@ -59,8 +61,9 @@ void main() {
           hasReactions: false,
           hasComments: false,
           isDesktop: true,
+          maxWidth: 400,
         ),
-        360,
+        400,
       );
       expect(
         PhotoBubble.minimumContentWidth(
@@ -68,8 +71,9 @@ void main() {
           hasReactions: true,
           hasComments: true,
           isDesktop: true,
+          maxWidth: 400,
         ),
-        340,
+        360,
       );
     });
 
@@ -80,8 +84,9 @@ void main() {
           hasReactions: false,
           hasComments: false,
           isDesktop: false,
+          maxWidth: 360,
         ),
-        280,
+        320,
       );
       expect(
         PhotoBubble.minimumContentWidth(
@@ -89,8 +94,22 @@ void main() {
           hasReactions: false,
           hasComments: true,
           isDesktop: false,
+          maxWidth: 360,
         ),
-        280,
+        320,
+      );
+    });
+
+    test('long mobile captions use the available chat width', () {
+      expect(
+        PhotoBubble.minimumContentWidth(
+          captionLength: 80,
+          hasReactions: true,
+          hasComments: true,
+          isDesktop: false,
+          maxWidth: 344,
+        ),
+        344,
       );
     });
   });

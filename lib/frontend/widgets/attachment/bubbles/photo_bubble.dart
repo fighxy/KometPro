@@ -58,14 +58,16 @@ class PhotoBubble extends StatelessWidget {
     required bool hasReactions,
     required bool hasComments,
     required bool isDesktop,
+    required double maxWidth,
   }) {
     if (captionLength == 0 && !hasReactions && !hasComments) return 0;
-    if (!isDesktop) return 280;
+    if (captionLength >= 80) return maxWidth;
 
-    var width = captionLength >= 80 ? 360.0 : 0.0;
-    if (captionLength > 0 && width == 0) width = 320;
-    if (hasReactions || hasComments) width = math.max(width, 340);
-    return width;
+    var preferredWidth = isDesktop ? 340.0 : 320.0;
+    if (hasReactions || hasComments) {
+      preferredWidth = math.max(preferredWidth, isDesktop ? 360.0 : 320.0);
+    }
+    return math.min(preferredWidth, maxWidth);
   }
 
   BorderRadius _bubbleRadius() {
@@ -112,6 +114,7 @@ class PhotoBubble extends StatelessWidget {
       hasReactions: hasReactions,
       hasComments: ctx.hasCommentsFooter,
       isDesktop: DesktopDensity.enabled,
+      maxWidth: maxWidth,
     );
     final minSingleWidth = preferredContentWidth
         .clamp(0.0, maxWidth)
