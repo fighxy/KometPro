@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 /// System color-emoji faces so Outfit/Inter do not swallow glyphs.
@@ -7,6 +8,20 @@ const List<String> kEmojiFontFallback = [
   'Noto Color Emoji',
   'Android Emoji',
 ];
+
+String? get platformEmojiFont => switch (defaultTargetPlatform) {
+  TargetPlatform.windows => 'Segoe UI Emoji',
+  TargetPlatform.macOS || TargetPlatform.iOS => 'Apple Color Emoji',
+  TargetPlatform.android || TargetPlatform.linux => 'Noto Color Emoji',
+  _ => null,
+};
+
+TextStyle emojiTextStyle({double size = 24}) => TextStyle(
+  fontFamily: platformEmojiFont,
+  fontFamilyFallback: kEmojiFontFallback,
+  fontSize: size,
+  height: 1,
+);
 
 extension EmojiTextStyle on TextStyle {
   TextStyle withEmojiFallback() {
@@ -18,6 +33,7 @@ extension EmojiTextStyle on TextStyle {
       return this;
     }
     return copyWith(
+      fontFamily: platformEmojiFont,
       fontFamilyFallback: [
         ...kEmojiFontFallback,
         if (existing != null) ...existing,
