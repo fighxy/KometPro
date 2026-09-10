@@ -184,9 +184,19 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      backgroundColor: cs.surfaceContainerLow,
-      body: SafeArea(
+    final showOwnHeader =
+        _subpage == null &&
+        (_section == DesktopSettingsSection.account ||
+            _section == DesktopSettingsSection.appearance ||
+            _section == DesktopSettingsSection.about);
+    return PopScope(
+      canPop: _subpage == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _subpage != null) _closeSub();
+      },
+      child: Scaffold(
+        backgroundColor: cs.surfaceContainerLow,
+        body: SafeArea(
         child: Row(
           children: [
             _Sidebar(
@@ -211,17 +221,19 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _PaneHeader(
-                      title: _subpageTitle ?? _titleFor(_section),
-                      showBack: _subpage != null,
-                      onBack: _closeSub,
-                    ),
+                    if (showOwnHeader)
+                      _PaneHeader(
+                        title: _titleFor(_section),
+                        showBack: false,
+                        onBack: _closeSub,
+                      ),
                     Expanded(child: _subpage ?? _paneBody()),
                   ],
                 ),
               ),
             ),
           ],
+        ),
         ),
       ),
     );
