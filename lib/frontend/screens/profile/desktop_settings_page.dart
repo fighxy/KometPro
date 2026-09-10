@@ -6,6 +6,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/build_profile.dart';
+import '../../../core/config/komet_settings.dart';
+import '../../../core/cache/self_presence.dart';
 import '../../../core/config/desktop_density.dart';
 import '../../../core/config/desktop_density_mode.dart';
 import '../../../core/design/komet_tokens.dart';
@@ -82,7 +84,6 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
   ProfileData? _profile;
   String? _version;
   bool _checkingUpdate = false;
-  String _query = '';
   StreamSubscription? _profileSub;
 
   @override
@@ -191,9 +192,6 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
             _Sidebar(
               section: _section,
               profile: _profile,
-              query: _query,
-              onSearch: (value) =>
-                  setState(() => _query = value.trim().toLowerCase()),
               onClose: () => Navigator.of(context).maybePop(),
               onSelect: (section) {
                 setState(() {
@@ -302,16 +300,12 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
 class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.section,
-    required this.query,
-    required this.onSearch,
     required this.profile,
     required this.onSelect,
     required this.onClose,
   });
 
   final DesktopSettingsSection section;
-  final String query;
-  final ValueChanged<String> onSearch;
   final ProfileData? profile;
   final ValueChanged<DesktopSettingsSection> onSelect;
   final VoidCallback onClose;
@@ -326,7 +320,7 @@ class _Sidebar extends StatelessWidget {
             profile!.lastName ?? '',
           ].where((s) => s.trim().isNotEmpty).join(' ');
     return SizedBox(
-      width: 232,
+      width: 256,
       child: ColoredBox(
         color: cs.surfaceContainerLow,
         child: Column(
@@ -398,22 +392,10 @@ class _Sidebar extends StatelessWidget {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              child: TextField(
-                onChanged: onSearch,
-                decoration: const InputDecoration(
-                  labelText: 'Поиск разделов',
-                  prefixIcon: Icon(Symbols.search, size: 20),
-                  isDense: true,
-                ),
-              ),
-            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-                children:
-                    [
+                children: [
                           _NavTile(
                             icon: Symbols.palette,
                             label: 'Оформление',
@@ -472,11 +454,7 @@ class _Sidebar extends StatelessWidget {
                             selected: section == DesktopSettingsSection.about,
                             onTap: () => onSelect(DesktopSettingsSection.about),
                           ),
-                        ]
-                        .where(
-                          (tile) => tile.label.toLowerCase().contains(query),
-                        )
-                        .toList(),
+                        ],
               ),
             ),
           ],
@@ -527,6 +505,9 @@ class _NavTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     label,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: selected
                           ? KometTokens.of(context).onSelected
@@ -659,6 +640,44 @@ class _AccountPane extends StatelessWidget {
                               ),
                             ),
                           ),
+                        ValueListenableBuilder<bool>(
+                          valueListenable: KometSettings.selfOnlineCheck,
+                          builder: (context, enabled, _) {
+                            if (!enabled) return const SizedBox.shrink();
+                            return ValueListenableBuilder<bool>(
+                              valueListenable: SelfPresence.isOnline,
+                              builder: (context, online, _) => Padding(
+                                padding: const EdgeInsets.only(top: 7),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: online
+                                            ? const Color(0xFF35B979)
+                                            : cs.outline,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      online
+                                          ? 'Онлайн · self-check'
+                                          : 'Офлайн · self-check',
+                                      style: TextStyle(
+                                        color: cs.onSurfaceVariant,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
