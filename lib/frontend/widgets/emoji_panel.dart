@@ -359,11 +359,7 @@ class _EmojiSectionView extends StatelessWidget {
             : Center(
                 child: Text(
                   animoji.emoji,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    height: 1,
-                    fontFamilyFallback: kEmojiFontFallback,
-                  ),
+                  style: emojiTextStyle(size: 28),
                 ),
               ),
       ),
