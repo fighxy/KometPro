@@ -374,7 +374,9 @@ class _SearchContactSheetState extends State<_SearchContactSheet> {
             name:
                 ContactCache.get(result.id) ??
                 result.name ??
-                'User #${result.id}',
+                AppLocalizations.of(
+                  context,
+                )!.contactIdFallback('${result.id}'),
             imageUrl: result.avatarUrl ?? '',
             chatType: 'DIALOG',
             dialogPeerId: result.id,
@@ -432,7 +434,10 @@ class _SearchContactSheetState extends State<_SearchContactSheet> {
         MaterialPageRoute(
           builder: (_) => ChatInfoScreen(
             chatId: chatId,
-            name: ContactCache.get(id) ?? info.displayName ?? 'User #$id',
+            name:
+                ContactCache.get(id) ??
+                info.displayName ??
+                AppLocalizations.of(context)!.contactIdFallback('$id'),
             imageUrl: info.avatarUrl ?? '',
             chatType: 'DIALOG',
             dialogPeerId: id,
