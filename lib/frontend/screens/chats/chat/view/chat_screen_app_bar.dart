@@ -107,6 +107,7 @@ extension _ChatAppBarBuild on _ChatScreenState {
                                 widget.chatType == 'DIALOG' &&
                                 widget.chatId != 0 &&
                                 !_peerIsBot,
+                            onSearch: _openSearch,
                             onClose: widget.onClose,
                             onOpenInfo: _commentsMode ? () {} : _openChatInfo,
                             onOpenScheduled: _openScheduledMessages,
