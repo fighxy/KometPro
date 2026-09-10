@@ -224,8 +224,10 @@ class _DesktopChatChromeState extends State<DesktopChatChrome> {
   }
 
   Color _fill(ColorScheme cs) {
-    if (widget.selected) return cs.secondaryContainer;
-    if (widget.active) return cs.primaryContainer;
+    if (widget.selected) {
+      return cs.secondaryContainer.withValues(alpha: 0.58);
+    }
+    if (widget.active) return cs.primaryContainer.withValues(alpha: 0.68);
     if (widget.pinned) {
       return _hovered ? cs.surfaceContainerHigh : cs.surfaceContainerLow;
     }
