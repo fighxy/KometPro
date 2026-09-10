@@ -103,6 +103,16 @@ class _EmojiPanelState extends State<EmojiPanel> {
         ),
       );
     }
+    final all = animojiModule.animojis;
+    if (all.isNotEmpty) {
+      sections.add(
+        _EmojiSection(
+          title: 'Анимированные',
+          icon: Symbols.animation,
+          items: all,
+        ),
+      );
+    }
     for (final group in UnicodeEmojiCatalog.groups()) {
       sections.add(
         _EmojiSection(
@@ -111,16 +121,6 @@ class _EmojiPanelState extends State<EmojiPanel> {
           items: [
             for (final emoji in group.emojis) Animoji(id: 0, emoji: emoji),
           ],
-        ),
-      );
-    }
-    final all = animojiModule.animojis;
-    if (all.isNotEmpty) {
-      sections.add(
-        _EmojiSection(
-          title: 'Анимированные',
-          icon: Symbols.animation,
-          items: all,
         ),
       );
     }
@@ -351,11 +351,7 @@ class _EmojiSectionView extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(5),
         child: animated
-            ? LottieImage(
-                url: animoji.iconUrl,
-                lottieUrl: animoji.lottieUrl,
-                memCacheWidth: 120,
-              )
+            ? _HoverAnimatedEmoji(animoji: animoji)
             : Center(
                 child: Text(
                   animoji.emoji,
@@ -365,4 +361,34 @@ class _EmojiSectionView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HoverAnimatedEmoji extends StatefulWidget {
+  const _HoverAnimatedEmoji({required this.animoji});
+
+  final Animoji animoji;
+
+  @override
+  State<_HoverAnimatedEmoji> createState() => _HoverAnimatedEmojiState();
+}
+
+class _HoverAnimatedEmojiState extends State<_HoverAnimatedEmoji> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit: (_) => setState(() => _hovered = false),
+    child: AnimatedScale(
+      scale: _hovered ? 1.08 : 1,
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      child: LottieImage(
+        url: widget.animoji.iconUrl,
+        lottieUrl: _hovered ? widget.animoji.lottieUrl : null,
+        memCacheWidth: 96,
+        shimmer: false,
+      ),
+    ),
+  );
 }
