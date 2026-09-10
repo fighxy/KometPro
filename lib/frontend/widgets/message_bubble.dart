@@ -1316,7 +1316,7 @@ class MessageBubble extends StatelessWidget {
           mainAxisAlignment: isMe
               ? MainAxisAlignment.end
               : MainAxisAlignment.start,
-          spacing: 8,
+          spacing: 6,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             if (showAvatar)
