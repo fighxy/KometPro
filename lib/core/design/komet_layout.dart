@@ -9,7 +9,7 @@ class KometLayout {
   static const double toolbar = 56;
   static const double textWidth = 640;
   static const double mediaWidth = 720;
-  static const double threadWidth = 800;
+  static const double threadWidth = 720;
 
   static bool dockInspector(double width, double listWidth, double scale) =>
       width >= inspectorBreakpoint &&
