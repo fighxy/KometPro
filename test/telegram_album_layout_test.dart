@@ -43,6 +43,27 @@ void main() {
     expect(layout.width / layout.height, greaterThan(0.7));
   });
 
+  test('panorama keeps a usable preview height', () {
+    final layout = layoutTelegramAlbum([_s(4000, 200)], maxWidth: 280);
+    expect(layout.width, closeTo(280, 0.1));
+    expect(layout.height, closeTo(100, 0.1));
+    _assertPacked(layout);
+  });
+
+  test('tiny photo grows to a useful click target', () {
+    final layout = layoutTelegramAlbum([_s(20, 20)], maxWidth: 280);
+    expect(layout.width, closeTo(100, 0.1));
+    expect(layout.height, closeTo(100, 0.1));
+    _assertPacked(layout);
+  });
+
+  test('single photo never exceeds a narrow parent width', () {
+    final layout = layoutTelegramAlbum([_s(1920, 1080)], maxWidth: 96);
+    expect(layout.width, lessThanOrEqualTo(96));
+    expect(layout.height, lessThanOrEqualTo(96 * 1.15));
+    _assertPacked(layout);
+  });
+
   test('two similar landscapes stack like Telegram', () {
     final layout = layoutTelegramAlbum(
       [_s(1600, 900), _s(1920, 1080)],

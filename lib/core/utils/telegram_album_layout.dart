@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'media_frame_size.dart';
+
 class AlbumMediaSize {
   final double width;
   final double height;
@@ -97,18 +99,17 @@ AlbumLayout layoutTelegramAlbum(
 }
 
 AlbumLayout _layoutSingle(AlbumMediaSize item, double maxW, double maxH) {
-  var w = item.width;
-  var h = item.height;
-  if (w <= 0 || h <= 0) {
-    w = maxW * 0.75;
-    h = maxW * 0.75;
-  }
-  final down = math.min(1.0, math.min(maxW / w, maxH / h));
-  w *= down;
-  h *= down;
-  if (w / h < 0.95 && w < maxW * 0.72) {
-    w = maxW;
-  }
+  final size = fitMediaFrame(
+    item.width,
+    item.height,
+    maxWidth: maxW,
+    maxHeight: maxH,
+    minSize: 100,
+    minPreviewHeight: 100,
+    widenPortrait: true,
+  );
+  final w = size.width;
+  final h = size.height;
   return AlbumLayout(
     width: w,
     height: h,

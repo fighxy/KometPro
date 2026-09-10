@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -8,6 +6,7 @@ import '../../../../backend/modules/messages.dart';
 import '../../../../core/config/app_colors.dart';
 import '../../../../core/config/komet_settings.dart';
 import '../../../../core/utils/format.dart';
+import '../../../../core/utils/media_frame_size.dart';
 import '../../../../core/utils/text_format.dart';
 import '../../../../models/attachment.dart';
 import '../../formatted_message_text.dart';
@@ -71,29 +70,15 @@ class BubbleContext {
   static const double captionPaddingTop = 6.0;
   static const double compactTimePadding = 8.0;
 
-  /// Fit a media frame into [photoMinSize]…[photoMaxSize] without
-  /// stretching. Independent clamps on width and height squash 16:9
-  /// video into a square and turn panoramas into the wrong crop box.
-  static Size fitMediaSize(double width, double height) {
-    var w = width;
-    var h = height;
-    if (w <= 0 || h <= 0) {
-      return const Size(photoMaxSize * 0.75, photoMaxSize * 0.75);
-    }
-    final down = math.min(1.0, math.min(photoMaxSize / w, photoMaxSize / h));
-    w *= down;
-    h *= down;
-    final longer = math.max(w, h);
-    if (longer < photoMinSize) {
-      final up = photoMinSize / longer;
-      w *= up;
-      h *= up;
-    }
-    if (w / h < 0.95 && w < photoMaxSize * 0.72) {
-      w = photoMaxSize;
-    }
-    return Size(w, h);
-  }
+  /// Fits media into the standard bubble bounds without stretching it.
+  static Size fitMediaSize(double width, double height) => fitMediaFrame(
+    width,
+    height,
+    maxWidth: photoMaxSize,
+    maxHeight: photoMaxSize,
+    minSize: photoMinSize,
+    widenPortrait: true,
+  );
 
   final BuildContext context;
   final ColorScheme cs;

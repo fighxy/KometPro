@@ -65,16 +65,26 @@ class PhotoBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportWidth = MediaQuery.sizeOf(context).width;
+        final availableWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : viewportWidth;
+        final maxWidth = availableWidth.clamp(
+          1.0,
+          BubbleContext.photoMaxSize,
+        ).toDouble();
+        return _buildAtWidth(maxWidth);
+      },
+    );
+  }
+
+  Widget _buildAtWidth(double maxWidth) {
     final hasMessageCaption = ctx.contentText?.isNotEmpty ?? false;
     final resolvedCaption = hasMessageCaption ? ctx.caption() : null;
     final hasCaption = resolvedCaption != null;
-    final maxW = MediaQuery.sizeOf(context).width;
-    final layout = layoutOf(
-      photos,
-      maxWidth: photos.length == 1
-          ? BubbleContext.photoMaxSize
-          : (maxW * 0.80).clamp(240.0, BubbleContext.photoMaxSize),
-    );
+    final layout = layoutOf(photos, maxWidth: maxWidth);
     final clip = albumClipRadius(
       _bubbleRadius(),
       hasCaption: hasCaption,
@@ -260,7 +270,7 @@ class PhotoBubble extends StatelessWidget {
       memWidth: cachePx,
       fit: BoxFit.cover,
     );
-    final framed = _needsSideBlur(photo, tileWidth, tileHeight)
+    final framed = _needsBackdropFill(photo, tileWidth, tileHeight)
         ? _blurFilledMedia(
             _buildPhotoImage(
               ctx,
@@ -292,7 +302,7 @@ class PhotoBubble extends StatelessWidget {
     );
   }
 
-  bool _needsSideBlur(
+  bool _needsBackdropFill(
     PhotoAttachment photo,
     double tileWidth,
     double tileHeight,
@@ -301,7 +311,9 @@ class PhotoBubble extends StatelessWidget {
     final pw = photo.width?.toDouble() ?? 0;
     final ph = photo.height?.toDouble() ?? 0;
     final photoRatio = pw > 0 && ph > 0 ? pw / ph : 1.0;
-    return photoRatio < (tileWidth / tileHeight) * 0.92;
+    final frameRatio = tileWidth / tileHeight;
+    return photoRatio < frameRatio * 0.92 ||
+        photoRatio > frameRatio / 0.92;
   }
 
   Widget _blurFilledMedia(Widget backdrop, Widget foreground) {
