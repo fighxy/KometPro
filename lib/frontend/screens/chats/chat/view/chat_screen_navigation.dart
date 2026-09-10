@@ -225,7 +225,9 @@ extension _ChatNavigation on _ChatScreenState {
       openContactDialogProfile(
         context,
         contactId: senderId,
-        name: ContactCache.get(senderId) ?? 'User #$senderId',
+        name:
+            ContactCache.get(senderId) ??
+            AppLocalizations.of(context)!.contactIdFallback('$senderId'),
         avatarUrl: ContactCache.getAvatar(senderId),
       ),
     );
@@ -245,7 +247,7 @@ extension _ChatNavigation on _ChatScreenState {
         name:
             forwarded.originalSenderName ??
             ContactCache.get(senderId) ??
-            'User #$senderId',
+            AppLocalizations.of(context)!.contactIdFallback('$senderId'),
         avatarUrl:
             forwarded.originalSenderAvatar ?? ContactCache.getAvatar(senderId),
       ),
