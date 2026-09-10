@@ -37,6 +37,7 @@ import 'message_actions_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_qr_sheet.dart';
 import 'security_screen.dart';
+import 'spoof_screen.dart';
 import 'theme_settings_screen.dart';
 
 enum DesktopSettingsSection {
@@ -287,7 +288,7 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
       case DesktopSettingsSection.notifications:
         return const NotificationsScreen();
       case DesktopSettingsSection.privacy:
-        return const SecurityScreen();
+        return _PrivacyPane(onOpen: _openSub);
       case DesktopSettingsSection.devices:
         return const DevicesScreen();
       case DesktopSettingsSection.network:
@@ -975,6 +976,39 @@ class _ScalePreview extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PrivacyPane extends StatelessWidget {
+  const _PrivacyPane({required this.onOpen});
+
+  final void Function(String title, Widget page) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (BuildProfile.spoofUi)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 8, 28, 0),
+            child: SettingsCard(
+              children: [
+                SettingsNavTile(
+                  icon: Symbols.phonelink_setup,
+                  label: l10n.profileMenuSpoof,
+                  onTap: () => onOpen(
+                    l10n.profileMenuSpoof,
+                    const SpoofScreen(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const Expanded(child: SecurityScreen()),
+      ],
     );
   }
 }
