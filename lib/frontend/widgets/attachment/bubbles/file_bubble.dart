@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/backend/app_services.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/utils/download_progress.dart';
 import '../../../../core/utils/download_history.dart';
 import '../../../../core/utils/file_download.dart';
@@ -37,7 +38,7 @@ class FileBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMe = ctx.isMe;
-    final name = file.name ?? 'File';
+    final name = file.name ?? AppLocalizations.of(context)!.downloadsFile;
     final size = file.size ?? 0;
     final sizeStr = formatBytes(size);
     final fileId = file.fileId;
