@@ -9,6 +9,9 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get commonRetry => 'Повторить';
+
+  @override
   String get loginTitle => 'Войдите в Komet';
 
   @override
@@ -267,7 +270,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get spoofFieldAppVersion => 'Версия приложения';
 
   @override
-  String get spoofFieldBuildNumber => 'Build Number';
+  String get spoofFieldBuildNumber => 'Номер сборки';
 
   @override
   String get spoofFieldArchitecture => 'Архитектура';
@@ -331,7 +334,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profileMenuSpoof => 'Подмена данных';
 
   @override
-  String get infoTitle => 'Info';
+  String get infoTitle => 'Информация';
 
   @override
   String get infoAccountSection => 'Аккаунт';
@@ -879,10 +882,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get appearanceVisualStyleMaterialYou => 'Material You';
 
   @override
-  String get appearanceVisualStyleGlossy => 'Glossy';
+  String get appearanceVisualStyleGlossy => 'Глянцевый';
 
   @override
-  String get appearanceVisualStyleLiquidGlass => 'Liquid Glass';
+  String get appearanceVisualStyleLiquidGlass => 'Жидкое стекло';
 
   @override
   String get appearanceGlassMaterial => 'Стекло';
@@ -904,7 +907,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get appearanceChatChromeNone => 'Нет';
 
   @override
-  String get appearanceChatChromeTransparent => 'Frost blur';
+  String get appearanceChatChromeTransparent => 'Матовое размытие';
 
   @override
   String get appearanceComposerTitle => 'Вид панели ввода';
@@ -913,10 +916,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get appearanceComposerSubtitle => 'Стиль и фон панели ввода сообщений';
 
   @override
-  String get appearanceComposerBackgroundStandard => 'Default';
+  String get appearanceComposerBackgroundStandard => 'Стандартный';
 
   @override
-  String get appearanceComposerBackgroundFrost => 'Frost blur';
+  String get appearanceComposerBackgroundFrost => 'Матовое размытие';
 
   @override
   String get appearanceNavPillTitle => 'Вид переключателей';
@@ -926,10 +929,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Переключатель разделов на экране чатов';
 
   @override
-  String get appearanceNavPillGlossy => 'Glossy';
+  String get appearanceNavPillGlossy => 'Глянцевая';
 
   @override
-  String get appearanceNavPillFrost => 'G-FrostBlur';
+  String get appearanceNavPillFrost => 'Матовое размытие';
 
   @override
   String get playbackPillAt => 'в';
@@ -973,10 +976,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get appearanceBubbleShapeSubtitle => 'Скругление углов пузырей';
 
   @override
-  String get appearanceBubbleShapeMobile => 'TG Mobile';
+  String get appearanceBubbleShapeMobile => 'Telegram для телефона';
 
   @override
-  String get appearanceBubbleShapeDesktop => 'TG Desktop';
+  String get appearanceBubbleShapeDesktop => 'Telegram для компьютера';
 
   @override
   String get appearanceBubbleBehaviorTitle => 'Поведение сообщения';
