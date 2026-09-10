@@ -38,6 +38,7 @@ class ChatHeaderRow extends StatelessWidget {
   final ValueListenable<int> scheduledCount;
   final ValueListenable<int> otherUnread;
   final bool showCall;
+  final VoidCallback onSearch;
   final VoidCallback? onClose;
   final VoidCallback onOpenInfo;
   final VoidCallback onOpenScheduled;
@@ -65,6 +66,7 @@ class ChatHeaderRow extends StatelessWidget {
     required this.scheduledCount,
     required this.otherUnread,
     required this.showCall,
+    required this.onSearch,
     required this.onClose,
     required this.onOpenInfo,
     required this.onOpenScheduled,
@@ -111,7 +113,7 @@ class ChatHeaderRow extends StatelessWidget {
                 },
                 child: Center(
                   child: Icon(
-                    embedded ? Symbols.close : Symbols.arrow_back,
+                    embedded ? Symbols.chevron_left : Symbols.arrow_back,
                     color: cs.onSurface,
                     weight: 500,
                     size: 24,
@@ -239,6 +241,15 @@ class ChatHeaderRow extends StatelessWidget {
                           )
                         : const SizedBox.shrink(),
                   ),
+                  IconButton(
+                    tooltip: 'Поиск в переписке',
+                    icon: Icon(
+                      Symbols.search,
+                      weight: 500,
+                      color: cs.onSurface,
+                    ),
+                    onPressed: onSearch,
+                  ),
                   if (showCall)
                     IconButton(
                       icon: Icon(
@@ -280,7 +291,7 @@ class ChatHeaderRow extends StatelessWidget {
           cs,
           IconButton(
             icon: Icon(
-              embedded ? Symbols.close : Symbols.arrow_back,
+              embedded ? Symbols.chevron_left : Symbols.arrow_back,
               weight: 400,
               color: cs.onSurface,
             ),
@@ -392,6 +403,11 @@ class ChatHeaderRow extends StatelessWidget {
                   onPressed: onOpenScheduled,
                 )
               : const SizedBox.shrink(),
+        ),
+        IconButton(
+          tooltip: 'Поиск в переписке',
+          icon: Icon(Symbols.search, weight: 400, color: cs.onSurface),
+          onPressed: onSearch,
         ),
         if (showCall)
           IconButton(
