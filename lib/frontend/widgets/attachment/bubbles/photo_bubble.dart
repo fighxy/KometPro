@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -9,10 +10,12 @@ import '../../../../l10n/app_localizations.dart';
 
 import '../../../../core/config/app_bubble_behavior.dart';
 import '../../../../core/config/app_bubble_shape.dart';
+import '../../../../core/config/desktop_density.dart';
 import '../../../../core/media/preview_image.dart';
 import '../../../../core/utils/bubble_radius.dart';
 import '../../../../core/utils/telegram_album_layout.dart';
 import '../../../../models/attachment.dart';
+import '../../../../models/reaction_info.dart';
 import '../../photo_viewer.dart';
 import '../photo_hero.dart';
 import 'bubble_context.dart';
@@ -32,6 +35,7 @@ class PhotoBubble extends StatelessWidget {
   static AlbumLayout layoutOf(
     List<PhotoAttachment> photos, {
     double maxWidth = BubbleContext.photoMaxSize,
+    double minSingleWidth = 0,
   }) {
     return layoutTelegramAlbum(
       [
@@ -42,11 +46,27 @@ class PhotoBubble extends StatelessWidget {
           ),
       ],
       maxWidth: maxWidth,
+      minSingleWidth: minSingleWidth,
     );
   }
 
   static double layoutWidth(List<PhotoAttachment> photos) =>
       layoutOf(photos).width;
+
+  static double minimumContentWidth({
+    required int captionLength,
+    required bool hasReactions,
+    required bool hasComments,
+    required bool isDesktop,
+  }) {
+    if (captionLength == 0 && !hasReactions && !hasComments) return 0;
+    if (!isDesktop) return 280;
+
+    var width = captionLength >= 80 ? 360.0 : 0.0;
+    if (captionLength > 0 && width == 0) width = 320;
+    if (hasReactions || hasComments) width = math.max(width, 340);
+    return width;
+  }
 
   BorderRadius _bubbleRadius() {
     final shape = ctx.shape;
@@ -84,7 +104,23 @@ class PhotoBubble extends StatelessWidget {
     final hasMessageCaption = ctx.contentText?.isNotEmpty ?? false;
     final resolvedCaption = hasMessageCaption ? ctx.caption() : null;
     final hasCaption = resolvedCaption != null;
-    final layout = layoutOf(photos, maxWidth: maxWidth);
+    final captionLength = ctx.contentText?.trim().runes.length ?? 0;
+    final hasReactions =
+        ReactionInfo.fromMap(ctx.reactionInfo)?.isEmpty == false;
+    final preferredContentWidth = minimumContentWidth(
+      captionLength: captionLength,
+      hasReactions: hasReactions,
+      hasComments: ctx.hasCommentsFooter,
+      isDesktop: DesktopDensity.enabled,
+    );
+    final minSingleWidth = preferredContentWidth
+        .clamp(0.0, maxWidth)
+        .toDouble();
+    final layout = layoutOf(
+      photos,
+      maxWidth: maxWidth,
+      minSingleWidth: minSingleWidth,
+    );
     final clip = albumClipRadius(
       _bubbleRadius(),
       hasCaption: hasCaption,

@@ -88,6 +88,7 @@ class BubbleContext {
   final MessageType contentType;
   final bool hasPhotoWithCaption;
   final bool hasMultiplePhotosNoCaption;
+  final bool hasCommentsFooter;
   final Map? reactionInfo;
 
   final CachedMessage message;
@@ -114,6 +115,7 @@ class BubbleContext {
     required this.contentType,
     required this.hasPhotoWithCaption,
     required this.hasMultiplePhotosNoCaption,
+    this.hasCommentsFooter = false,
     required this.message,
     required this.isMe,
     required this.myId,
@@ -150,6 +152,7 @@ class BubbleContext {
     contentType: contentType,
     hasPhotoWithCaption: hasPhotoWithCaption,
     hasMultiplePhotosNoCaption: hasMultiplePhotosNoCaption,
+    hasCommentsFooter: hasCommentsFooter,
     message: message,
     isMe: isMe,
     myId: myId,

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komet/core/utils/telegram_album_layout.dart';
+import 'package:komet/frontend/widgets/attachment/bubbles/photo_bubble.dart';
 
 AlbumMediaSize _s(double w, double h) => AlbumMediaSize(w, h);
 
@@ -29,6 +30,71 @@ void _assertPacked(AlbumLayout layout) {
 }
 
 void main() {
+  group('photo content width', () {
+    test('keeps photo-only messages compact', () {
+      expect(
+        PhotoBubble.minimumContentWidth(
+          captionLength: 0,
+          hasReactions: false,
+          hasComments: false,
+          isDesktop: true,
+        ),
+        0,
+      );
+    });
+
+    test('uses readable desktop widths for captions and footers', () {
+      expect(
+        PhotoBubble.minimumContentWidth(
+          captionLength: 30,
+          hasReactions: false,
+          hasComments: false,
+          isDesktop: true,
+        ),
+        320,
+      );
+      expect(
+        PhotoBubble.minimumContentWidth(
+          captionLength: 80,
+          hasReactions: false,
+          hasComments: false,
+          isDesktop: true,
+        ),
+        360,
+      );
+      expect(
+        PhotoBubble.minimumContentWidth(
+          captionLength: 30,
+          hasReactions: true,
+          hasComments: true,
+          isDesktop: true,
+        ),
+        340,
+      );
+    });
+
+    test('uses one safe mobile minimum for content cards', () {
+      expect(
+        PhotoBubble.minimumContentWidth(
+          captionLength: 1,
+          hasReactions: false,
+          hasComments: false,
+          isDesktop: false,
+        ),
+        280,
+      );
+      expect(
+        PhotoBubble.minimumContentWidth(
+          captionLength: 0,
+          hasReactions: false,
+          hasComments: true,
+          isDesktop: false,
+        ),
+        280,
+      );
+    });
+  });
+
   test('single photo keeps its aspect inside the max box', () {
     final layout = layoutTelegramAlbum([_s(1920, 1080)], maxWidth: 280);
     expect(layout.tiles, hasLength(1));
@@ -54,6 +120,28 @@ void main() {
     final layout = layoutTelegramAlbum([_s(20, 20)], maxWidth: 280);
     expect(layout.width, closeTo(100, 0.1));
     expect(layout.height, closeTo(100, 0.1));
+    _assertPacked(layout);
+  });
+
+  test('caption can request a readable single-photo width', () {
+    final layout = layoutTelegramAlbum(
+      [_s(180, 120)],
+      maxWidth: 400,
+      minSingleWidth: 360,
+    );
+    expect(layout.width, closeTo(360, 0.1));
+    expect(layout.height, closeTo(240, 0.1));
+    _assertPacked(layout);
+  });
+
+  test('caption width is capped by a narrow parent', () {
+    final layout = layoutTelegramAlbum(
+      [_s(180, 120)],
+      maxWidth: 260,
+      minSingleWidth: 360,
+    );
+    expect(layout.width, closeTo(260, 0.1));
+    expect(layout.height, lessThanOrEqualTo(260 * 1.15));
     _assertPacked(layout);
   });
 

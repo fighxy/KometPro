@@ -56,6 +56,7 @@ AlbumLayout layoutTelegramAlbum(
   List<AlbumMediaSize> items, {
   required double maxWidth,
   double? maxHeight,
+  double minSingleWidth = 0,
 }) {
   if (items.isEmpty) {
     return const AlbumLayout(width: 0, height: 0, tiles: []);
@@ -63,7 +64,7 @@ AlbumLayout layoutTelegramAlbum(
 
   final capH = maxHeight ?? maxWidth * 1.15;
   if (items.length == 1) {
-    return _layoutSingle(items.first, maxWidth, capH);
+    return _layoutSingle(items.first, maxWidth, capH, minSingleWidth);
   }
 
   final ratios = [for (final item in items) item.ratio];
@@ -98,13 +99,19 @@ AlbumLayout layoutTelegramAlbum(
   return _layoutMulti(ratios, maxWidth, capH);
 }
 
-AlbumLayout _layoutSingle(AlbumMediaSize item, double maxW, double maxH) {
+AlbumLayout _layoutSingle(
+  AlbumMediaSize item,
+  double maxW,
+  double maxH,
+  double minWidth,
+) {
   final size = fitMediaFrame(
     item.width,
     item.height,
     maxWidth: maxW,
     maxHeight: maxH,
     minSize: 100,
+    minFrameWidth: minWidth,
     minPreviewHeight: 100,
     widenPortrait: true,
   );

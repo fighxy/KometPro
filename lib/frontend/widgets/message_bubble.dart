@@ -1175,6 +1175,7 @@ class MessageBubble extends StatelessWidget {
       contentType: contentType,
       hasPhotoWithCaption: hasPhotoCap,
       hasMultiplePhotosNoCaption: hasMultiPhotos,
+      hasCommentsFooter: onCommentsTap != null,
       message: message,
       isMe: isMe,
       myId: myId,

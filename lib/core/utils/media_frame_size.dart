@@ -9,16 +9,23 @@ Size fitMediaFrame(
   required double maxWidth,
   required double maxHeight,
   double minSize = 100,
+  double minFrameWidth = 0,
   double? minPreviewHeight,
   bool widenPortrait = false,
 }) {
   final safeMaxWidth = math.max(1.0, maxWidth);
   final safeMaxHeight = math.max(1.0, maxHeight);
   final safeMinSize = math.min(minSize, math.min(safeMaxWidth, safeMaxHeight));
+  final safeMinFrameWidth = minFrameWidth
+      .clamp(0.0, safeMaxWidth)
+      .toDouble();
 
   if (sourceWidth <= 0 || sourceHeight <= 0) {
     final fallback = math.min(
-      math.max(safeMinSize, safeMaxWidth * 0.75),
+      math.max(
+        safeMinFrameWidth,
+        math.max(safeMinSize, safeMaxWidth * 0.75),
+      ),
       math.min(safeMaxWidth, safeMaxHeight),
     );
     return Size(fallback, fallback);
@@ -50,6 +57,16 @@ Size fitMediaFrame(
     // only this exceptional case to the shallow preview frame.
     width = safeMaxWidth;
     height = previewFloor;
+  }
+
+  if (width < safeMinFrameWidth) {
+    final upscale = math.min(
+      safeMinFrameWidth / width,
+      safeMaxHeight / height,
+    );
+    width *= upscale;
+    height *= upscale;
+    width = math.max(width, safeMinFrameWidth);
   }
 
   if (widenPortrait &&
