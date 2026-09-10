@@ -27,6 +27,7 @@ import 'package:komet/frontend/komet_app.dart' show KometApp;
 import '../../../core/config/app_frost.dart';
 import '../../../core/config/build_profile.dart';
 import '../../../core/config/app_shape.dart';
+import '../../../core/config/desktop_density.dart';
 
 class LoginScreen extends StatefulWidget {
   final int? returnToAccountId;
@@ -738,17 +739,24 @@ class _LoginScreenState extends State<LoginScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
+                      maxWidth: DesktopDensity.enabled
+                          ? 520
+                          : constraints.maxWidth,
                     ),
-                    child: IntrinsicHeight(
-                      child: Column(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: IntrinsicHeight(
+                          child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 44),
+                          SizedBox(height: DesktopDensity.enabled ? 20 : 44),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -788,7 +796,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 74),
+                          SizedBox(height: DesktopDensity.enabled ? 32 : 74),
                           Center(
                             child: Column(
                               children: [
@@ -1018,6 +1026,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 16),
                         ],
+                          ),
+                        ),
                       ),
                     ),
                   ),

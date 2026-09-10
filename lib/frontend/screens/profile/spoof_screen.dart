@@ -30,7 +30,9 @@ import '../auth/login_screen.dart';
 enum SpoofingMethod { partial, full }
 
 class SpoofScreen extends StatefulWidget {
-  const SpoofScreen({super.key});
+  const SpoofScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<SpoofScreen> createState() => _SpoofScreenState();
@@ -432,10 +434,12 @@ class _SpoofScreenState extends State<SpoofScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: cs.surface,
-      appBar: ConnectionTitleBar(
-        titleText: l10n.spoofScreenTitle,
-        backgroundColor: cs.surface,
-      ),
+      appBar: widget.embedded
+          ? null
+          : ConnectionTitleBar(
+              titleText: l10n.spoofScreenTitle,
+              backgroundColor: cs.surface,
+            ),
       body: _isLoading
           ? const Center(child: SmallSpinner(size: 36))
           : SafeArea(

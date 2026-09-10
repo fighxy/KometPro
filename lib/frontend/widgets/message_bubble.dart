@@ -1634,11 +1634,10 @@ class MessageBubble extends StatelessWidget {
         _contentType == MessageType.voice;
     final ctx = makeCtx(metaInFooter: carriesMeta);
 
-    return IntrinsicWidth(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           _buildContent(ctx),
           Padding(
             padding: inset,
@@ -1659,9 +1658,20 @@ class MessageBubble extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
+      ],
     );
+
+    // IntrinsicWidth can collapse a voice message to the minimum intrinsic
+    // width when the footer contains reactions. Give voice controls and the
+    // transcript a stable desktop-friendly measure instead.
+    if (_contentType == MessageType.voice) {
+      final width = math.min(
+        380.0,
+        ChatLayout.maxBubbleWidth(MediaQuery.sizeOf(context).width),
+      );
+      return SizedBox(width: width, child: content);
+    }
+    return IntrinsicWidth(child: content);
   }
 
   Widget _buildContent(BubbleContext ctx) {

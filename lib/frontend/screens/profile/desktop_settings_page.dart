@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +47,7 @@ enum DesktopSettingsSection {
   appearance,
   notifications,
   privacy,
+  spoof,
   devices,
   network,
   storage,
@@ -186,10 +188,11 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final showOwnHeader =
-        _subpage == null &&
+    final showOwnHeader = _subpage == null &&
         (_section == DesktopSettingsSection.account ||
             _section == DesktopSettingsSection.appearance ||
+            _section == DesktopSettingsSection.privacy ||
+            _section == DesktopSettingsSection.spoof ||
             _section == DesktopSettingsSection.about);
     return PopScope(
       canPop: _subpage == null,
@@ -220,17 +223,25 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
             Expanded(
               child: ColoredBox(
                 color: cs.surface,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (showOwnHeader)
-                      _PaneHeader(
-                        title: _titleFor(_section),
-                        showBack: false,
-                        onBack: _closeSub,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Center(
+                    child: SizedBox(
+                      width: math.min(840.0, constraints.maxWidth),
+                      height: constraints.maxHeight,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (showOwnHeader)
+                            _PaneHeader(
+                              title: _titleFor(_section),
+                              showBack: false,
+                              onBack: _closeSub,
+                            ),
+                          Expanded(child: _subpage ?? _paneBody()),
+                        ],
                       ),
-                    Expanded(child: _subpage ?? _paneBody()),
-                  ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -251,6 +262,8 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
         return 'Уведомления';
       case DesktopSettingsSection.privacy:
         return 'Конфиденциальность';
+      case DesktopSettingsSection.spoof:
+        return 'Подмена данных';
       case DesktopSettingsSection.devices:
         return 'Устройства';
       case DesktopSettingsSection.network:
@@ -289,7 +302,9 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
       case DesktopSettingsSection.notifications:
         return const NotificationsScreen();
       case DesktopSettingsSection.privacy:
-        return _PrivacyPane(onOpen: _openSub);
+        return const SecurityScreen(embedded: true);
+      case DesktopSettingsSection.spoof:
+        return const SpoofScreen(embedded: true);
       case DesktopSettingsSection.devices:
         return const DevicesScreen();
       case DesktopSettingsSection.network:
@@ -431,8 +446,16 @@ class _Sidebar extends StatelessWidget {
                             label: 'Конфиденциальность',
                             selected: section == DesktopSettingsSection.privacy,
                             onTap: () =>
-                                onSelect(DesktopSettingsSection.privacy),
+                              onSelect(DesktopSettingsSection.privacy),
                           ),
+                          if (BuildProfile.spoofUi)
+                            _NavTile(
+                              icon: Symbols.phonelink_setup,
+                              label: 'Подмена данных',
+                              selected: section == DesktopSettingsSection.spoof,
+                              onTap: () =>
+                                  onSelect(DesktopSettingsSection.spoof),
+                            ),
                           _NavTile(
                             icon: Symbols.devices,
                             label: 'Устройства',
@@ -983,39 +1006,6 @@ class _ScalePreview extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _PrivacyPane extends StatelessWidget {
-  const _PrivacyPane({required this.onOpen});
-
-  final void Function(String title, Widget page) onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (BuildProfile.spoofUi)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 8, 28, 0),
-            child: SettingsCard(
-              children: [
-                SettingsNavTile(
-                  icon: Symbols.phonelink_setup,
-                  label: l10n.profileMenuSpoof,
-                  onTap: () => onOpen(
-                    l10n.profileMenuSpoof,
-                    const SpoofScreen(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        const Expanded(child: SecurityScreen()),
-      ],
     );
   }
 }

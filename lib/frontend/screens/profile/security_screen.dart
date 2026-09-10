@@ -25,7 +25,9 @@ import '../../../core/config/app_shape.dart';
 const bool _showFamilyProtection = false;
 
 class SecurityScreen extends StatefulWidget {
-  const SecurityScreen({super.key});
+  const SecurityScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<SecurityScreen> createState() => _SecurityScreenState();
@@ -187,7 +189,8 @@ class _SecurityScreenState extends State<SecurityScreen>
             : CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  SliverToBoxAdapter(child: _buildAppBar(context, cs)),
+                  if (!widget.embedded)
+                    SliverToBoxAdapter(child: _buildAppBar(context, cs)),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -235,7 +238,7 @@ class _SecurityScreenState extends State<SecurityScreen>
       physics: const BouncingScrollPhysics(),
       child: Column(
         children: [
-          _buildAppBar(context, cs),
+          if (!widget.embedded) _buildAppBar(context, cs),
           _buildShimmerSection(cs, height: _showFamilyProtection ? 104 : 56),
           const SizedBox(height: 12),
           _buildShimmerSection(cs, height: 340),

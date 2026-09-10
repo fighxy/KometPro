@@ -610,75 +610,95 @@ class _EmptyChatPaneState extends State<_EmptyChatPane> {
       color: cs.surfaceContainerLow,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
+          constraints: const BoxConstraints(maxWidth: 480),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: cs.surfaceContainerHighest,
-                  backgroundImage: (_profile?.baseUrl ?? '').isNotEmpty
-                      ? CachedNetworkImageProvider(_profile!.baseUrl!)
-                      : null,
-                  child: (_profile?.baseUrl ?? '').isEmpty
-                      ? Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'K',
-                          style: TextStyle(
-                            color: cs.onSurfaceVariant,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  name.isEmpty ? 'Komet' : name,
-                  style: TextStyle(
-                    color: cs.onSurface,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.72),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.forum_rounded,
+                    color: cs.onPrimaryContainer,
+                    size: 32,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 18),
                 Text(
-                  'Ctrl+K поиск · Ctrl+N контакты · Ctrl+, настройки',
+                  'Выберите чат',
+                  style: TextStyle(
+                    color: cs.onSurface,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  name.isEmpty
+                      ? 'Откройте переписку слева или воспользуйтесь поиском'
+                      : '$name, откройте переписку слева или воспользуйтесь поиском',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                  style: TextStyle(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Ctrl+K — поиск  ·  Ctrl+N — новый контакт',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: cs.outline, fontSize: 11.5),
                 ),
                 if (_recents.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Недавние',
-                      style: TextStyle(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                  const SizedBox(height: 28),
+                  Material(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+                            child: Text(
+                              'Недавние чаты',
+                              style: TextStyle(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          for (final chat in _recents)
+                            _RecentRow(
+                              chat: chat,
+                              colorScheme: cs,
+                              onTap: () {
+                                final shell = context.findAncestorStateOfType<
+                                    _AdaptiveShellState>();
+                                shell?._onChatSelected(
+                                  DesktopChatSelection(
+                                    chatId: chat.id,
+                                    name: chat.title ?? '',
+                                    imageUrl: chat.iconUrl ?? '',
+                                    chatType: chat.type,
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  for (final chat in _recents)
-                    _RecentRow(
-                      chat: chat,
-                      colorScheme: cs,
-                      onTap: () {
-                        final shell = context
-                            .findAncestorStateOfType<_AdaptiveShellState>();
-                        shell?._onChatSelected(
-                          DesktopChatSelection(
-                            chatId: chat.id,
-                            name: chat.title ?? '',
-                            imageUrl: chat.iconUrl ?? '',
-                            chatType: chat.type,
-                          ),
-                        );
-                      },
-                    ),
                 ],
               ],
             ),

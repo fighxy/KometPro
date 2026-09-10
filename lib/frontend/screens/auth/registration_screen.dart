@@ -4,6 +4,7 @@ import 'package:komet/l10n/app_localizations.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../backend/modules/account.dart';
+import '../../../core/config/desktop_density.dart';
 import 'package:komet/frontend/widgets/app_scope.dart';
 import '../../widgets/auth_limits_sheet.dart';
 import '../../widgets/custom_notification.dart';
@@ -109,7 +110,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           onPressed: _isSubmitting ? null : () => Navigator.pop(context),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: DesktopDensity.enabled
+          ? null
+          : FloatingActionButton(
         onPressed: _canSubmit ? _submit : null,
         backgroundColor: _canSubmit
             ? cs.primaryContainer
@@ -124,9 +127,22 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
-          children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) => Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: DesktopDensity.enabled && constraints.maxWidth > 600
+                  ? 600
+                  : constraints.maxWidth,
+              height: constraints.maxHeight,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  DesktopDensity.enabled ? 32 : 20,
+                  DesktopDensity.enabled ? 20 : 8,
+                  DesktopDensity.enabled ? 32 : 20,
+                  96,
+                ),
+                children: [
             Text(
               l10n.registrationTitle,
               style: TextStyle(
@@ -208,7 +224,34 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               for (final category in widget.presetAvatars)
                 _buildAvatarCategory(cs, category),
             ],
-          ],
+            if (DesktopDensity.enabled) ...[
+              const SizedBox(height: 28),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FloatingActionButton(
+                  onPressed: _canSubmit ? _submit : null,
+                  backgroundColor: _canSubmit
+                      ? cs.primaryContainer
+                      : cs.surfaceContainerHighest,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: _isSubmitting
+                      ? SmallSpinner(size: 22, color: cs.onSurfaceVariant)
+                      : Icon(
+                          Symbols.arrow_forward,
+                          color: _canSubmit
+                              ? cs.onPrimaryContainer
+                              : cs.onSurfaceVariant,
+                        ),
+                ),
+              ),
+            ],
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
