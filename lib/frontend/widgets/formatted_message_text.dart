@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../backend/modules/messages.dart' show ContactCache;
@@ -148,7 +149,9 @@ class _FormattedMessageTextState extends State<FormattedMessageText> {
       openContactDialogProfile(
         context,
         contactId: userId,
-        name: ContactCache.get(userId) ?? 'User #$userId',
+        name:
+            ContactCache.get(userId) ??
+            AppLocalizations.of(context)!.contactIdFallback('$userId'),
         avatarUrl: ContactCache.getAvatar(userId),
       ),
     );
