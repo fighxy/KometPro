@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import '../../../../l10n/app_localizations.dart';
 
 import '../../../../core/config/app_bubble_behavior.dart';
 import '../../../../core/config/app_bubble_shape.dart';
@@ -351,7 +352,7 @@ class PhotoBubble extends StatelessWidget {
               child: IconButton(
                 icon: Icon(Symbols.refresh, color: cs.onSurfaceVariant),
                 onPressed: onRetry,
-                tooltip: 'Retry',
+                tooltip: AppLocalizations.of(ctx.context)!.commonRetry,
               ),
             )
           : Center(
