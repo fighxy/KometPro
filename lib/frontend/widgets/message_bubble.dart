@@ -1202,6 +1202,7 @@ class MessageBubble extends StatelessWidget {
 
     final Widget contentWithReactions = reactionsInside
         ? _contentWithReactionsFooter(
+            context,
             cs,
             makeCtx,
             inset: padding == EdgeInsets.zero
@@ -1599,6 +1600,7 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _contentWithReactionsFooter(
+    BuildContext context,
     ColorScheme cs,
     BubbleContext Function({bool metaInFooter}) makeCtx, {
     required EdgeInsets inset,
@@ -1607,12 +1609,13 @@ class MessageBubble extends StatelessWidget {
     if (listenable != null) {
       return ValueListenableBuilder<Map<String, dynamic>?>(
         valueListenable: listenable,
-        builder: (context, info, _) =>
-            _reactionsFooterLayout(cs, makeCtx, info, inset: inset),
+        builder: (_, info, _) =>
+            _reactionsFooterLayout(context, cs, makeCtx, info, inset: inset),
       );
     }
     final info = message.payload?['reactionInfo'];
     return _reactionsFooterLayout(
+      context,
       cs,
       makeCtx,
       info is Map ? info : null,
@@ -1621,6 +1624,7 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _reactionsFooterLayout(
+    BuildContext context,
     ColorScheme cs,
     BubbleContext Function({bool metaInFooter}) makeCtx,
     Map? info, {
