@@ -334,11 +334,15 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
-        final width = !_transcriptionVisible
+        final preferredWidth = !_transcriptionVisible
             ? BubbleCss.voiceCompactWidth
             : maxW.isFinite
             ? maxW
             : ChatLayout.maxBubbleWidth(MediaQuery.sizeOf(context).width);
+        final width = maxW.isFinite
+            ? math.min(preferredWidth, maxW)
+            : preferredWidth;
+        final narrowControls = width < 210;
         return AnimatedSize(
           duration: const Duration(milliseconds: 240),
           reverseDuration: const Duration(milliseconds: 180),
@@ -365,10 +369,20 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                       inactive: waveInactiveColor,
                     ),
                   ),
-                  const SizedBox(width: BubbleCss.waveTranscribeGap),
-                  _buildTranscribeButton(),
+                  if (!narrowControls) ...[
+                    const SizedBox(width: BubbleCss.waveTranscribeGap),
+                    _buildTranscribeButton(),
+                  ],
                 ],
               ),
+              if (narrowControls)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: _buildTranscribeButton(),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.only(
                   left: BubbleCss.playSize + BubbleCss.playWaveGap,
