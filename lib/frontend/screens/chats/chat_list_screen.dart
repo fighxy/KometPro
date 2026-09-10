@@ -4136,7 +4136,18 @@ class _ChatListScreenState extends State<ChatListScreen>
   void _openSearch() => unawaited(
     pushSwipeable(
       context,
-      (_) => SearchScreen(onChatSelected: widget.onChatSelected),
+      (_) => SearchScreen(
+        onChatSelected: widget.onChatSelected == null
+            ? null
+            : (chatId, name, imageUrl, chatType) => widget.onChatSelected!(
+                DesktopChatSelection(
+                  chatId: chatId,
+                  name: name,
+                  imageUrl: imageUrl,
+                  chatType: chatType,
+                ),
+              ),
+      ),
     ),
   );
 

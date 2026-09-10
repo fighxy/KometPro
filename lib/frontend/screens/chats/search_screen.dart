@@ -20,7 +20,8 @@ import 'chat_screen.dart';
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key, this.onChatSelected});
 
-  final ValueChanged<DesktopChatSelection>? onChatSelected;
+  final void Function(int chatId, String name, String imageUrl, String chatType)?
+  onChatSelected;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -182,24 +183,19 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _openChat(int chatId, String name, String? avatarUrl, String type) {
-    final selection = DesktopChatSelection(
-      chatId: chatId,
-      name: name,
-      imageUrl: avatarUrl ?? '',
-      chatType: type,
-    );
+    final imageUrl = avatarUrl ?? '';
     if (widget.onChatSelected != null) {
-      widget.onChatSelected!(selection);
+      widget.onChatSelected!(chatId, name, imageUrl, type);
       Navigator.of(context).pop();
       return;
     }
     pushSwipeable(
       context,
       (_) => ChatScreen(
-        chatId: selection.chatId,
-        name: selection.name,
-        imageUrl: selection.imageUrl,
-        chatType: selection.chatType,
+        chatId: chatId,
+        name: name,
+        imageUrl: imageUrl,
+        chatType: type,
       ),
     );
   }
