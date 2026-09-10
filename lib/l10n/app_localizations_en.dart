@@ -9,6 +9,9 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get commonRetry => 'Retry';
+
+  @override
   String get loginTitle => 'Sign in to Komet';
 
   @override
