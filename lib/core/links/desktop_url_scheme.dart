@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../desktop/linux_desktop_integration.dart';
 import '../utils/logger.dart';
 
 const List<String> _schemes = ['komet', 'max'];
@@ -37,27 +38,29 @@ abstract class DesktopUrlScheme {
   }
 
   static Future<void> _registerLinux() async {
-    final home = Platform.environment['HOME'];
-    if (home == null || home.isEmpty) return;
-
-    final exe = Platform.resolvedExecutable;
-    final appsDir = Directory('$home/.local/share/applications');
+    final exe = LinuxDesktopIntegration.launchExecutable;
+    final appsDir = LinuxDesktopIntegration.applicationsDirectory;
+    if (appsDir == null) return;
     await appsDir.create(recursive: true);
 
-    const fileName = 'komet-url-handler.desktop';
+    const fileName = 'ru.komet.app.desktop';
     final mimeTypes = _schemes.map((s) => 'x-scheme-handler/$s').join(';');
     final desktop = '[Desktop Entry]\n'
         'Type=Application\n'
         'Name=Komet\n'
-        'Exec="$exe" %u\n'
+        'Exec=${LinuxDesktopIntegration.quoteDesktopArgument(exe)} %u\n'
         'Terminal=false\n'
         'NoDisplay=true\n'
+        'Icon=ru.komet.app\n'
         'MimeType=$mimeTypes;\n';
 
     final file = File('${appsDir.path}/$fileName');
     if (!file.existsSync() || await file.readAsString() != desktop) {
       await file.writeAsString(desktop);
     }
+
+    final legacy = File('${appsDir.path}/komet-url-handler.desktop');
+    if (await legacy.exists()) await legacy.delete();
 
     for (final scheme in _schemes) {
       await _run('xdg-mime', ['default', fileName, 'x-scheme-handler/$scheme']);

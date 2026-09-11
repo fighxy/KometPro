@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Komet
+Comment=Desktop messenger for MAX
+Exec=komet %U
+Icon=ru.komet.app
+Terminal=false
+Categories=Network;Chat;InstantMessaging;
+StartupWMClass=ru.komet.app
+MimeType=x-scheme-handler/komet;x-scheme-handler/max;

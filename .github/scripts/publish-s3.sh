@@ -64,6 +64,8 @@ content_type_for() {
     *.ipa) echo "application/octet-stream" ;;
     *.zip) echo "application/zip" ;;
     *.tar.gz) echo "application/gzip" ;;
+    *.AppImage) echo "application/vnd.appimage" ;;
+    *.zsync) echo "application/octet-stream" ;;
     *.json) echo "application/json" ;;
     *) echo "application/octet-stream" ;;
   esac

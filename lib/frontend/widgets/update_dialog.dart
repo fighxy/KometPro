@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../core/utils/update_checker.dart';
@@ -137,6 +139,25 @@ class _UpdateProgressDialogState extends State<_UpdateProgressDialog> {
       },
     );
     if (!mounted) return;
+    if (result.ok && result.relaunchPath != null) {
+      try {
+        await Process.start(
+          result.relaunchPath!,
+          const [],
+          mode: ProcessStartMode.detached,
+        );
+        if (!mounted) return;
+        Navigator.pop(context);
+        exit(0);
+      } catch (_) {
+        if (!mounted) return;
+        Navigator.pop(context);
+        final l10n = AppLocalizations.of(context)!;
+        showCustomNotification(context, l10n.updateDownloadFailed);
+        await openExternalUrl(context, widget.info.url);
+      }
+      return;
+    }
     Navigator.pop(context);
     if (!result.ok) {
       final l10n = AppLocalizations.of(context)!;

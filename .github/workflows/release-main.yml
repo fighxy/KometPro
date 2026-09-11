@@ -132,9 +132,9 @@ jobs:
           retention-days: 7
 
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup Flutter
@@ -154,10 +154,17 @@ jobs:
         run: flutter pub get
       - name: Build Linux
         run: flutter build linux --release
+      - name: Verify native dependencies
+        run: |
+          if ldd build/linux/x64/release/bundle/Komet | grep -F 'not found'; then
+            exit 1
+          fi
       - name: Package Linux
         run: |
           mkdir -p dist
           tar -C build/linux/x64/release/bundle -czf dist/Komet-linux-x64.tar.gz .
+          VERSION=$(awk '/^version:/ {print $2}' pubspec.yaml | cut -d+ -f1)
+          VERSION="$VERSION" bash .github/scripts/package-appimage.sh
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
@@ -323,6 +330,8 @@ jobs:
             - **`Komet-windows-x64.zip`** — портативная сборка для Windows 10/11 (x64). Распаковать и запустить `Komet.exe`.
 
             ### Linux
+            - **`Komet-linux-x86_64.AppImage`** — рекомендуемая портативная сборка для 64-битного Linux. Сделать исполняемой и запустить.
+            - `Komet-linux-x86_64.AppImage.zsync` — служебный файл для дельта-обновлений AppImage.
             - **`Komet-linux-x64.tar.gz`** — сборка для 64-битного Linux. Требуются `libgtk-3`, `libsecret-1`, `libjsoncpp`. Распаковать и запустить бинарник.
 
             ### macOS
