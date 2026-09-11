@@ -10,6 +10,7 @@ import '../../../backend/modules/messages.dart'
     show CachedMessage, ContactCache;
 import '../../../backend/modules/shared_content.dart';
 import '../../../core/cache/info_cache.dart';
+import '../../../core/media/preview_image.dart';
 import '../../../core/media/voice_audio_controller.dart';
 import '../../../core/utils/download_history.dart';
 import '../../../core/utils/download_progress.dart';
@@ -703,7 +704,7 @@ class _SharedMediaTabState extends State<SharedMediaTab>
   }
 }
 
-class _MediaTile extends StatelessWidget {
+class _MediaTile extends StatefulWidget {
   final SharedMediaItem item;
   final VoidCallback onGoTo;
   final void Function(String messageId, int time) onGoToMessage;
@@ -716,14 +717,21 @@ class _MediaTile extends StatelessWidget {
     required this.sourceName,
   });
 
+  @override
+  State<_MediaTile> createState() => _MediaTileState();
+}
+
+class _MediaTileState extends State<_MediaTile> {
+  int _thumbnailAttempt = 0;
+
   void _menu(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     _showItemMenu(context, [
       _MenuAction(Symbols.arrow_forward, l10n.sharedGoToMessage, () async {
-        onGoTo();
+        widget.onGoTo();
       }),
       _MenuAction(Symbols.download, l10n.sharedDownload, () async {
-        await _downloadAttachment(context, item, sourceName);
+        await _downloadAttachment(context, widget.item, widget.sourceName);
       }),
     ]);
   }
@@ -731,12 +739,31 @@ class _MediaTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final att = item.attachment;
+    final att = widget.item.attachment;
     final video = att is VideoAttachment ? att : null;
     final duration = video?.duration ?? 0;
-    final thumb = att.baseUrl?.isNotEmpty == true
-        ? att.baseUrl
-        : att.previewData;
+    final thumbnail = video?.thumbnail;
+    final preview = dataUriImage(
+      att,
+      thumbnail?.startsWith('data:') == true ? thumbnail : att.previewData,
+    );
+    final previewUrl = att.previewData?.startsWith('http') == true
+        ? att.previewData
+        : null;
+    final remoteThumb = thumbnail?.startsWith('http') == true
+        ? thumbnail
+        : (att.baseUrl?.isNotEmpty == true ? att.baseUrl : previewUrl);
+    final fallback = preview == null
+        ? IconButton(
+            icon: Icon(
+              Symbols.refresh,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.55),
+            ),
+            onPressed: remoteThumb == null
+                ? null
+                : () => _retryThumbnail(remoteThumb),
+          )
+        : Image(image: preview, fit: BoxFit.cover);
 
     return GestureDetector(
       onTap: () => _open(context),
@@ -746,17 +773,17 @@ class _MediaTile extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Container(color: cs.surfaceContainerHighest),
-            if (thumb != null && thumb.isNotEmpty)
+            if (remoteThumb != null)
               CachedNetworkImage(
-                imageUrl: thumb,
+                key: ValueKey('$remoteThumb:$_thumbnailAttempt'),
+                imageUrl: remoteThumb,
                 fit: BoxFit.cover,
                 memCacheWidth: 300,
                 fadeInDuration: const Duration(milliseconds: 120),
-                errorWidget: (_, _, _) => Icon(
-                  video != null ? Symbols.movie : Symbols.image,
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
+                placeholder: (_, _) => fallback,
+                errorWidget: (_, _, _) => fallback,
               ),
+            if (remoteThumb == null) fallback,
             if (video != null) ...[
               const DecoratedBox(
                 decoration: BoxDecoration(
@@ -795,7 +822,14 @@ class _MediaTile extends StatelessWidget {
     );
   }
 
+  Future<void> _retryThumbnail(String url) async {
+    await CachedNetworkImage.evictFromCache(url);
+    if (!mounted) return;
+    setState(() => _thumbnailAttempt++);
+  }
+
   Future<void> _open(BuildContext context) async {
+    final item = widget.item;
     final att = item.attachment;
     if (att is VideoAttachment) {
       final sources = await messagesModule.getVideoSources(
@@ -809,11 +843,37 @@ class _MediaTile extends StatelessWidget {
         showCustomNotification(context, 'Не удалось загрузить видео');
         return;
       }
-      pushSwipeable(
-        context,
-        (_) => PhotoViewerScreen.video(
-          attachment: att,
-          initialVideoSources: sources,
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PhotoViewerScreen.video(
+            attachment: att,
+            initialVideoSources: sources,
+            chatId: item.chatId,
+            message: CachedMessage(
+              id: item.messageId,
+              accountId: 0,
+              chatId: item.chatId,
+              senderId: item.senderId,
+              text: item.text,
+              time: item.time,
+            ),
+            actions: PhotoViewerActions(
+              goToMessage: widget.onGoToMessage,
+            ),
+            sourceName: widget.sourceName,
+          ),
+        ),
+      );
+      return;
+    }
+    final url = att.baseUrl ?? att.previewData ?? '';
+    if (url.isEmpty) return;
+
+    final photo = att is PhotoAttachment ? att : PhotoAttachment(baseUrl: url);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PhotoViewerScreen(
+          photos: [photo],
           chatId: item.chatId,
           message: CachedMessage(
             id: item.messageId,
@@ -823,33 +883,11 @@ class _MediaTile extends StatelessWidget {
             text: item.text,
             time: item.time,
           ),
-          actions: PhotoViewerActions(goToMessage: onGoToMessage),
-          sourceName: sourceName,
+          actions: PhotoViewerActions(
+            goToMessage: widget.onGoToMessage,
+          ),
+          sourceName: widget.sourceName,
         ),
-      );
-      return;
-    }
-    final url = att.baseUrl ?? att.previewData ?? '';
-    if (url.isEmpty) return;
-
-    final photo = att is PhotoAttachment && (att.baseUrl ?? '').isNotEmpty
-        ? att
-        : PhotoAttachment(baseUrl: url);
-    pushSwipeable(
-      context,
-      (_) => PhotoViewerScreen(
-        photos: [photo],
-        chatId: item.chatId,
-        message: CachedMessage(
-          id: item.messageId,
-          accountId: 0,
-          chatId: item.chatId,
-          senderId: item.senderId,
-          text: item.text,
-          time: item.time,
-        ),
-        actions: PhotoViewerActions(goToMessage: onGoToMessage),
-        sourceName: sourceName,
       ),
     );
   }

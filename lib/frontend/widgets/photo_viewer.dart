@@ -13,6 +13,7 @@ import '../../backend/modules/messages.dart';
 import '../../backend/modules/shared_content.dart';
 import '../../core/cache/info_cache.dart';
 import '../../core/config/app_frost.dart';
+import '../../core/media/preview_image.dart';
 import '../../core/utils/download_history.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/media_cache.dart';
@@ -548,7 +549,10 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
       final file = File(localPath);
       return await file.exists() ? file : null;
     }
-    final url = photo.baseUrl ?? '';
+    final previewUrl = photo.previewData?.startsWith('http') == true
+        ? photo.previewData
+        : null;
+    final url = photo.baseUrl ?? previewUrl ?? '';
     if (url.isEmpty) return null;
     return MediaCache.getOrDownload(_cacheNameFor(photo, url), url);
   }
@@ -729,8 +733,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
       backgroundColor: Colors.black,
       body: CallbackShortcuts(
         bindings: {
-          const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _step(1),
-          const SingleActivator(LogicalKeyboardKey.arrowRight): () => _step(-1),
+          const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _step(-1),
+          const SingleActivator(LogicalKeyboardKey.arrowRight): () => _step(1),
           const SingleActivator(LogicalKeyboardKey.keyR, control: true):
               _rotate,
         },
@@ -748,17 +752,20 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                     curve: Curves.easeOut,
                     child: Stack(
                       children: [
-                        if (_index < _items.length - 1)
+                        if (_index > 0)
                           Align(
                             alignment: Alignment.centerLeft,
-                            child: _arrow(Symbols.chevron_left, () => _step(1)),
+                            child: _arrow(
+                              Symbols.chevron_left,
+                              () => _step(-1),
+                            ),
                           ),
-                        if (_index > 0)
+                        if (_index < _items.length - 1)
                           Align(
                             alignment: Alignment.centerRight,
                             child: _arrow(
                               Symbols.chevron_right,
-                              () => _step(-1),
+                              () => _step(1),
                             ),
                           ),
                         Positioned(
@@ -824,7 +831,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         child: PageView.builder(
           key: ValueKey(_pager),
           controller: _controller,
-          reverse: true,
           physics: _swipeEnabled ? null : const NeverScrollableScrollPhysics(),
           itemCount: _items.length,
           onPageChanged: _onPageChanged,
@@ -1050,17 +1056,21 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   }
 
   Widget _buildImage(PhotoAttachment photo) {
+    final preview = dataUriImage(photo, photo.previewData);
+    final fallback = preview == null
+        ? _broken()
+        : Image(image: preview, fit: BoxFit.contain);
     final localPath = photo.localPath;
     if (localPath != null) {
       return Image.file(
         File(localPath),
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => _broken(),
+        errorBuilder: (_, _, _) => fallback,
       );
     }
 
     final url = photo.baseUrl ?? '';
-    if (url.isEmpty) return _broken();
+    if (url.isEmpty) return fallback;
 
     return CachedNetworkImage(
       imageUrl: url,
@@ -1068,7 +1078,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
       fadeInDuration: const Duration(milliseconds: 120),
       placeholder: (_, _) =>
           const Center(child: SmallSpinner(size: 36, color: Colors.white)),
-      errorWidget: (_, _, _) => _broken(),
+      errorWidget: (_, _, _) => fallback,
     );
   }
 

@@ -1484,7 +1484,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     } else if (widget.chatType == 'CHANNEL') {
       btns = [muteBtn, leaveBtn];
     } else {
-      btns = [chatBtn, muteBtn, leaveBtn];
+      btns = [if (!widget.openedFromChat) chatBtn, muteBtn, leaveBtn];
     }
 
     return Column(
@@ -1552,7 +1552,11 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
 
   void _openChat() {
     if (widget.openedFromChat) {
-      Navigator.of(context).pop();
+      if (widget.onClose != null) {
+        widget.onClose!();
+      } else {
+        Navigator.of(context).maybePop();
+      }
       return;
     }
     pushSwipeable(
