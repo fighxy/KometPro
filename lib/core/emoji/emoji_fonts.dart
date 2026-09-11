@@ -27,16 +27,14 @@ extension EmojiTextStyle on TextStyle {
   TextStyle withEmojiFallback() {
     final existing = fontFamilyFallback;
     if (existing != null &&
-        existing.length >= kEmojiFontFallback.length &&
-        existing.take(kEmojiFontFallback.length).toList().join() ==
-            kEmojiFontFallback.join()) {
+        kEmojiFontFallback.every(existing.contains)) {
       return this;
     }
     return copyWith(
-      fontFamily: platformEmojiFont,
       fontFamilyFallback: [
-        ...kEmojiFontFallback,
         if (existing != null) ...existing,
+        for (final family in kEmojiFontFallback)
+          if (existing == null || !existing.contains(family)) family,
       ],
     );
   }

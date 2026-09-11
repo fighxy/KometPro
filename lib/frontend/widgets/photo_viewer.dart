@@ -718,6 +718,17 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     action();
   }
 
+  void _closeFromKeyboard() {
+    if (!_zoomed) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _resetZoom();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.of(context).padding;
@@ -733,6 +744,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
       backgroundColor: Colors.black,
       body: CallbackShortcuts(
         bindings: {
+          const SingleActivator(LogicalKeyboardKey.escape):
+              _closeFromKeyboard,
           const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _step(-1),
           const SingleActivator(LogicalKeyboardKey.arrowRight): () => _step(1),
           const SingleActivator(LogicalKeyboardKey.keyR, control: true):
