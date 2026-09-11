@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../backend/modules/messages.dart' show ContactCache;
+import '../../core/config/app_fonts.dart';
 import '../../core/utils/link_opener.dart';
 import '../../core/utils/text_entities.dart';
 import '../../core/utils/text_format.dart';
@@ -381,12 +382,33 @@ class _FormattedMessageTextState extends State<FormattedMessageText> {
     );
   }
 
-  Widget _paragraph(List<InlineSpan> spans) => Text.rich(
-    TextSpan(style: widget.style, children: spans),
-    textAlign: widget.textAlign,
-    maxLines: widget.maxLines,
-    overflow: widget.overflow ?? TextOverflow.clip,
-  );
+  Widget _paragraph(List<InlineSpan> spans) {
+    final configuredFamily =
+        Theme.of(context).textTheme.bodyLarge?.fontFamily ??
+        displayFontOf(context);
+    final existingFallback =
+        widget.style.fontFamilyFallback ?? const <String>[];
+    final fallback = <String>[
+      if (configuredFamily != 'Inter' && !existingFallback.contains('Inter'))
+        'Inter',
+      if (configuredFamily != 'Outfit' && !existingFallback.contains('Outfit'))
+        'Outfit',
+      ...existingFallback,
+      for (final family in kEmojiFontFallback)
+        if (!existingFallback.contains(family)) family,
+    ];
+    final paragraphStyle = widget.style.copyWith(
+      fontFamily: widget.style.fontFamily ?? configuredFamily,
+      fontFamilyFallback: fallback,
+    );
+
+    return Text.rich(
+      TextSpan(style: paragraphStyle, children: spans),
+      textAlign: widget.textAlign,
+      maxLines: widget.maxLines,
+      overflow: widget.overflow ?? TextOverflow.clip,
+    );
+  }
 
   Widget _quoteBlock(List<InlineSpan> spans, Color baseColor) {
     final glyphSize = (widget.style.fontSize ?? 16) * 0.85;
