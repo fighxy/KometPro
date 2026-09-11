@@ -382,7 +382,7 @@ class _FormattedMessageTextState extends State<FormattedMessageText> {
   }
 
   Widget _paragraph(List<InlineSpan> spans) => Text.rich(
-    TextSpan(style: widget.style.withEmojiFallback(), children: spans),
+    TextSpan(style: widget.style, children: spans),
     textAlign: widget.textAlign,
     maxLines: widget.maxLines,
     overflow: widget.overflow ?? TextOverflow.clip,

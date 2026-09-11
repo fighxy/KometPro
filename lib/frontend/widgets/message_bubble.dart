@@ -1986,10 +1986,6 @@ class MessageBubble extends StatelessWidget {
       height: 1.3,
       fontWeight: FontWeight.w400,
       fontFamily: activeFontFamily,
-      fontFamilyFallback: kEmojiFontFallback,
-      fontVariations: activeFontFamily == 'Inter'
-          ? const [FontVariation('wght', 400)]
-          : null,
     );
     final ranges = message.formatRanges;
     final decryptedText = decryption?.plaintext;
