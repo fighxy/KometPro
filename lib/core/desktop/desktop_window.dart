@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'linux_desktop_integration.dart';
+
 /// Single source of truth for Windows window chrome.
 class DesktopWindow {
   DesktopWindow._();
@@ -59,7 +61,9 @@ class DesktopWindow {
       if (pending != null && pending != 0) openChatId.value = pending;
     } catch (_) {}
     try {
-      final enabled = await _channel.invokeMethod<bool>('getAutoStart');
+      final enabled = Platform.isLinux
+          ? await LinuxDesktopIntegration.getAutoStart()
+          : await _channel.invokeMethod<bool>('getAutoStart');
       if (enabled != null) autoStart.value = enabled;
     } catch (_) {}
     if (micaEnabled.value) {
@@ -107,11 +111,24 @@ class DesktopWindow {
   }
 
   static Future<void> setAutoStart(bool value) async {
-    autoStart.value = value;
     try {
-      await _channel.invokeMethod<void>('setAutoStart', value);
+      if (Platform.isLinux) {
+        await LinuxDesktopIntegration.setAutoStart(value);
+      } else {
+        await _channel.invokeMethod<void>('setAutoStart', value);
+      }
+      autoStart.value = value;
     } catch (_) {
-      autoStart.value = !value;
+      autoStart.value = await _readAutoStartFallback();
+    }
+  }
+
+  static Future<bool> _readAutoStartFallback() async {
+    if (!Platform.isLinux) return autoStart.value;
+    try {
+      return await LinuxDesktopIntegration.getAutoStart();
+    } catch (_) {
+      return autoStart.value;
     }
   }
 

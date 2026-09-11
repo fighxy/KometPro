@@ -6,6 +6,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../desktop/linux_desktop_integration.dart';
 import 'update_checker.dart';
 
 enum UpdateInstallStatus {
@@ -19,8 +20,9 @@ enum UpdateInstallStatus {
 class UpdateInstallResult {
   final UpdateInstallStatus status;
   final String? error;
+  final String? relaunchPath;
 
-  const UpdateInstallResult(this.status, {this.error});
+  const UpdateInstallResult(this.status, {this.error, this.relaunchPath});
 
   bool get ok => status == UpdateInstallStatus.done;
 }
@@ -36,12 +38,18 @@ class _DigestSink implements Sink<Digest> {
 }
 
 abstract class UpdateInstaller {
-  static bool get isSupported => Platform.isAndroid;
+  static bool get isSupported =>
+      Platform.isAndroid ||
+      (Platform.isLinux &&
+          (Platform.environment['APPIMAGE']?.trim().isNotEmpty ?? false));
 
   static Future<UpdateInstallResult> downloadAndInstall(
     AppUpdateInfo info, {
     void Function(double progress)? onProgress,
   }) async {
+    if (Platform.isLinux) {
+      return _downloadAndInstallAppImage(info, onProgress);
+    }
     final asset = await resolveApk(info);
     if (asset == null) {
       return const UpdateInstallResult(UpdateInstallStatus.noAsset);
@@ -91,6 +99,53 @@ abstract class UpdateInstaller {
     return info.assetWithSuffix('-$flavor-universal.apk');
   }
 
+  static Future<UpdateInstallResult> _downloadAndInstallAppImage(
+    AppUpdateInfo info,
+    void Function(double progress)? onProgress,
+  ) async {
+    final appImage = Platform.environment['APPIMAGE']?.trim();
+    final asset = info.assetWithSuffix('-linux-x86_64.AppImage');
+    if (appImage == null || appImage.isEmpty || asset == null) {
+      return const UpdateInstallResult(UpdateInstallStatus.noAsset);
+    }
+    if (asset.sha256.isEmpty) {
+      return const UpdateInstallResult(
+        UpdateInstallStatus.corrupted,
+        error: 'Missing SHA-256 digest',
+      );
+    }
+
+    final part = File('$appImage.update-$pid.part');
+    try {
+      await _downloadTo(asset, part, onProgress);
+      final chmod = await Process.run('chmod', ['0755', part.path]);
+      if (chmod.exitCode != 0) {
+        throw FileSystemException('Could not mark update executable', part.path);
+      }
+      await part.rename(LinuxDesktopIntegration.launchExecutable);
+      return UpdateInstallResult(
+        UpdateInstallStatus.done,
+        relaunchPath: LinuxDesktopIntegration.launchExecutable,
+      );
+    } on _ChecksumMismatch catch (e) {
+      return UpdateInstallResult(
+        UpdateInstallStatus.corrupted,
+        error: e.toString(),
+      );
+    } catch (e) {
+      return UpdateInstallResult(
+        UpdateInstallStatus.installFailed,
+        error: e.toString(),
+      );
+    } finally {
+      if (await part.exists()) {
+        try {
+          await part.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
   static Future<File> _download(
     UpdateAsset asset,
     String tag,
@@ -100,6 +155,19 @@ abstract class UpdateInstaller {
     final safeTag = tag.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     final file = File('${dir.path}/komet-update-$safeTag.apk');
     final part = File('${file.path}.part');
+
+    await _downloadTo(asset, part, onProgress);
+    if (await file.exists()) await file.delete();
+    await part.rename(file.path);
+    return file;
+  }
+
+  static Future<void> _downloadTo(
+    UpdateAsset asset,
+    File part,
+    void Function(double progress)? onProgress,
+  ) async {
+    await part.parent.create(recursive: true);
 
     final client = HttpClient();
     try {
@@ -139,10 +207,6 @@ abstract class UpdateInstaller {
       if (asset.sha256.isNotEmpty && actual != asset.sha256) {
         throw _ChecksumMismatch(asset.sha256, actual);
       }
-
-      if (await file.exists()) await file.delete();
-      await part.rename(file.path);
-      return file;
     } catch (e) {
       if (await part.exists()) {
         try {

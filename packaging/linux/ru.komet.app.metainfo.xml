@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>ru.komet.app</id>
+  <name>Komet</name>
+  <summary>Desktop messenger for MAX</summary>
+  <description>
+    <p>Komet is a cross-platform desktop client for messaging, calls, media, and communities on MAX.</p>
+  </description>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <developer id="github.com.fighxy">
+    <name>Komet contributors</name>
+  </developer>
+  <url type="homepage">https://github.com/fighxy/KometPro</url>
+  <content_rating type="oars-1.1" />
+  <launchable type="desktop-id">ru.komet.app.desktop</launchable>
+  <provides>
+    <binary>komet</binary>
+  </provides>
+</component>
