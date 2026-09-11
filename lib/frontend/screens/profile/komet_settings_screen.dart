@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -95,8 +97,12 @@ class KometSettingsScreen extends StatelessWidget {
                     valueListenable: DesktopWindow.autoStart,
                     builder: (context, value, _) => SettingsToggleTile(
                       icon: Symbols.rocket_launch,
-                      label: 'Запускать с Windows',
-                      subtitle: 'Komet стартует вместе с системой',
+                      label: Platform.isLinux
+                          ? 'Запускать с Linux'
+                          : 'Запускать с Windows',
+                      subtitle: Platform.isLinux
+                          ? 'Komet стартует вместе с системой в трее'
+                          : 'Komet стартует вместе с системой',
                       value: value,
                       onChanged: DesktopWindow.setAutoStart,
                     ),

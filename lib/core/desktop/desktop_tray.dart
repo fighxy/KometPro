@@ -74,7 +74,7 @@ class DesktopTray with WindowListener, TrayListener {
     unawaited(_refreshIcon());
   }
 
-  Future<void> init() async {
+  Future<void> init({bool startHidden = false}) async {
     if (_started || !isSupported) return;
     _started = true;
     await DesktopWindow.load();
@@ -89,8 +89,14 @@ class DesktopTray with WindowListener, TrayListener {
       ),
       () async {
         await windowManager.setPreventClose(true);
-        await DesktopWindow.forceShow();
-        if (DesktopWindow.isPlausibleOffset(bounds.offset)) {
+        if (startHidden) {
+          _hidden = true;
+          await windowManager.hide();
+          await DesktopWindow.skipTaskbar();
+        } else {
+          await DesktopWindow.forceShow();
+        }
+        if (!startHidden && DesktopWindow.isPlausibleOffset(bounds.offset)) {
           try {
             await windowManager.setPosition(bounds.offset!);
           } catch (_) {}
@@ -111,6 +117,7 @@ class DesktopTray with WindowListener, TrayListener {
       }
     } catch (e) {
       logger.w('DesktopTray: иконка трея не встала: $e');
+      if (_hidden) await reveal();
     }
   }
 

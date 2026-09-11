@@ -101,6 +101,7 @@ dependencies:
   window_manager: ^0.4.3
   tray_manager: ^0.2.4
   desktop_drop: ^0.8.4
+  dbus: ^0.7.13
 
 dev_dependencies:
   flutter_test:

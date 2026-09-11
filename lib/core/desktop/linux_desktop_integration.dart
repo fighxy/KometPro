@@ -64,7 +64,7 @@ abstract final class LinuxDesktopIntegration {
       '[Desktop Entry]\n'
       'Type=Application\n'
       'Name=Komet\n'
-      'Exec=${quoteDesktopArgument(launchExecutable)}\n'
+      'Exec=${quoteDesktopArgument(launchExecutable)} --hidden\n'
       'Terminal=false\n'
       'X-GNOME-Autostart-enabled=true\n';
 }

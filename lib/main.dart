@@ -68,6 +68,7 @@ import 'backend/modules/webapp.dart';
 import 'backend/modules/digital_id.dart';
 import 'core/links/deep_link_service.dart';
 import 'core/push/fkm_controller.dart';
+import 'core/push/linux_notifier.dart';
 import 'core/push/windows_notifier.dart';
 import 'core/desktop/desktop_tray.dart';
 import 'core/storage/app_database.dart';
@@ -189,6 +190,7 @@ void main(List<String> args) async {
   attachInfoCacheApi(api);
   chats.attachGlobalPushHandlers(api);
   unawaited(FkmController.instance.init(api));
+  unawaited(LinuxNotifier.instance.init(api));
   unawaited(WindowsNotifier.instance.init(api));
   FoldersModule.attachGlobalPushHandlers(api);
   TranscriptionPushHandler.attach(api);
@@ -302,7 +304,7 @@ void main(List<String> args) async {
   await DeviceContactsService.loadFromStartup();
   await trafficCaptureFuture;
   await debugLogFuture;
-  await DesktopTray.instance.init();
+  await DesktopTray.instance.init(startHidden: args.contains('--hidden'));
   runApp(
     KometApp(
       initialLocale: initialLocale,
@@ -315,4 +317,3 @@ void main(List<String> args) async {
     ),
   );
 }
-
