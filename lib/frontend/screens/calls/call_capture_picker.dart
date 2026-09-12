@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../../core/calls/call_session.dart';
+import '../../../core/utils/logger.dart';
 import '../../widgets/custom_notification.dart';
 
 String captureText(BuildContext context, String ru, String en) =>
@@ -37,19 +38,45 @@ class _CaptureSourcePickerState extends State<_CaptureSourcePicker> {
     setState(() {
       _loading = true;
       _error = null;
-      _selected = null;
     });
     try {
       final sources = await desktopCapturer.getSources(
         types: [SourceType.Window, SourceType.Screen],
         thumbnailSize: ThumbnailSize(320, 180),
       );
-      if (mounted) setState(() => _sources = sources);
+      sources.sort((a, b) {
+        final type = a.type.index.compareTo(b.type.index);
+        return type != 0
+            ? type
+            : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+      logger.i(
+        '[call][video] capture sources windows='
+        '${sources.where((s) => s.type == SourceType.Window).length} '
+        'screens=${sources.where((s) => s.type == SourceType.Screen).length}',
+      );
+      if (mounted) {
+        setState(() {
+          _sources = sources;
+          if (!sources.any((source) => source.id == _selected)) {
+            _selected = null;
+          }
+        });
+      }
     } catch (e) {
+      logger.w('[call][video] capture source enumeration failed: $e');
       if (mounted) setState(() => _error = e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _confirm(DesktopCapturerSource source) {
+    logger.i(
+      '[call][video] capture source confirmed type=${source.type} '
+      'id=${source.id.hashCode.toUnsigned(32).toRadixString(16)}',
+    );
+    Navigator.pop(context, source);
   }
 
   @override
@@ -198,6 +225,27 @@ class _CaptureSourcePickerState extends State<_CaptureSourcePicker> {
                       },
                     ),
             ),
+            if (selected != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: cs.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        captureText(
+                          context,
+                          'Выбрано: ${selected.name}',
+                          'Selected: ${selected.name}',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -209,7 +257,7 @@ class _CaptureSourcePickerState extends State<_CaptureSourcePicker> {
         FilledButton(
           onPressed: selected == null || _loading
               ? null
-              : () => Navigator.pop(context, selected),
+              : () => _confirm(selected),
           child: Text(captureText(context, 'Показать', 'Share')),
         ),
       ],

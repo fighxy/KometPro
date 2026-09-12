@@ -62,7 +62,9 @@ class _CallVideoViewState extends State<CallVideoView> {
     final renderer = widget.renderer;
     return renderer.textureId != null &&
         renderer.srcObject != null &&
-        renderer.value.width > 0;
+        renderer.renderVideo &&
+        renderer.value.width > 0 &&
+        renderer.value.height > 0;
   }
 
   void _onRenderer() {
@@ -89,11 +91,19 @@ class _CallVideoViewState extends State<CallVideoView> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_armed) return widget.placeholder ?? const SizedBox.expand();
-    return RTCVideoView(
-      widget.renderer,
-      objectFit: widget.objectFit,
-      mirror: widget.mirror,
+    final attached =
+        widget.renderer.textureId != null && widget.renderer.srcObject != null;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (attached)
+          RTCVideoView(
+            widget.renderer,
+            objectFit: widget.objectFit,
+            mirror: widget.mirror,
+          ),
+        if (!_armed) widget.placeholder ?? const SizedBox.expand(),
+      ],
     );
   }
 }

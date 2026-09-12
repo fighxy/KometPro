@@ -38,9 +38,6 @@ class CallForegroundService : Service() {
                 return
             }
             val service = running
-            if (enabled && service == null) {
-                throw IllegalStateException("Call service is not ready for screen capture")
-            }
             screenShare = enabled
             if (service != null) {
                 service.startAsForeground(caller, throwOnError = true)

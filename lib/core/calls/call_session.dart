@@ -100,6 +100,7 @@ class CallSession {
   final Map<int, CallParticipant> _participants = {};
   final Map<int, MediaStream> _participantStreams = {};
   final Map<int, MediaStream> _participantScreens = {};
+  final List<MediaStream> _retiredParticipantStreams = [];
   final Set<int> _screenSlots = {};
   final _participantStreamUpdates = StreamController<int>.broadcast();
 
@@ -164,6 +165,8 @@ class CallSession {
   final Map<int, int> _slotParticipant = {};
   Timer? _layoutDebounce;
   Timer? _videoStatsTimer;
+  Future<void> _slotRebindTail = Future.value();
+  int _slotRevision = 0;
   List<String> _lastLayout = const [];
   bool _layoutSent = false;
 
@@ -732,7 +735,17 @@ class CallSession {
       'screen=${p.screenSharing} raw=${msg['mediaSettings']}',
     );
     _maybeAdoptPeer(id, msg);
+    if (!p.videoEnabled) unawaited(_removeParticipantStream(id, screen: false));
+    if (!p.screenSharing) unawaited(_removeParticipantStream(id, screen: true));
     _notifyInfo();
+  }
+
+  Future<void> _removeParticipantStream(int id, {required bool screen}) async {
+    final streams = screen ? _participantScreens : _participantStreams;
+    final stream = streams.remove(id);
+    if (stream == null) return;
+    if (!_participantStreamUpdates.isClosed) _participantStreamUpdates.add(id);
+    _retiredParticipantStreams.add(stream);
   }
 
   void _onParticipantJoined(Map<String, dynamic> msg) {
@@ -900,6 +913,7 @@ class CallSession {
         _notifyInfo();
         if (connected) {
           _iceRestarts = 0;
+          _startVideoDiagnostics(pc);
           if (role == CallRole.joiner || _topology == 'SERVER') {
             _setState(CallSessionState.active);
           }
@@ -1210,19 +1224,39 @@ class CallSession {
   }
 
   void _onSfuSlots(Map<String, int> slots) {
-    _slotParticipant.clear();
-    _screenSlots.clear();
+    final participants = <int, int>{};
+    final screens = <int>{};
     slots.forEach((key, slot) {
       if (slot < 0) return;
       final id = _participantIdFrom(key.split(':').first);
-      if (id != null) _slotParticipant[slot] = id;
-      if (key.endsWith(':sSCREEN')) _screenSlots.add(slot);
+      if (id != null) participants[slot] = id;
+      if (key.endsWith(':sSCREEN')) screens.add(slot);
     });
-    unawaited(_rebindSlotTracks());
+    final unchanged =
+        participants.length == _slotParticipant.length &&
+        participants.entries.every((e) => _slotParticipant[e.key] == e.value) &&
+        screens.length == _screenSlots.length &&
+        screens.containsAll(_screenSlots);
+    if (unchanged) return;
+    _slotParticipant
+      ..clear()
+      ..addAll(participants);
+    _screenSlots
+      ..clear()
+      ..addAll(screens);
+    logger.i(
+      '[call][video] SFU slots changed: participants=${participants.length} '
+      'screens=${screens.length}',
+    );
+    final revision = ++_slotRevision;
+    _slotRebindTail = _slotRebindTail.catchError((_) {}).then((_) async {
+      if (_ended || revision != _slotRevision) return;
+      await _rebindSlotTracks();
+    });
   }
 
   Future<void> _rebindSlotTracks() async {
-    await _clearParticipantStreams();
+    await _clearParticipantStreams(dispose: false);
     await _collectReceivers();
     _notifyInfo();
   }
@@ -1654,14 +1688,7 @@ class CallSession {
     Timer(const Duration(seconds: 5), () {
       if (_pc == pc && !_ended) unawaited(_dumpIceStats(pc));
     });
-    _videoStatsTimer?.cancel();
-    _videoStatsTimer = Timer.periodic(const Duration(seconds: 5), (t) {
-      if (_pc != pc || _ended) {
-        t.cancel();
-        return;
-      }
-      unawaited(_dumpVideoStats(pc));
-    });
+    _startVideoDiagnostics(pc);
 
     if (_accepted) await _sendMediaSettings();
     unawaited(_collectReceivers());
@@ -1714,13 +1741,18 @@ class CallSession {
     try {
       final rows = <String>[];
       for (final r in await pc.getStats()) {
-        if (r.type != 'inbound-rtp') continue;
+        if (r.type != 'inbound-rtp' && r.type != 'outbound-rtp') continue;
         final v = r.values;
         if (v['kind'] != 'video' && v['mediaType'] != 'video') continue;
         rows.add(
-          '[ssrc=${v['ssrc']} bytes=${v['bytesReceived']} '
-          'packets=${v['packetsReceived']} decoded=${v['framesDecoded']} '
-          '${v['frameWidth']}x${v['frameHeight']}]',
+          '[${r.type == 'inbound-rtp' ? 'in' : 'out'} '
+          'ssrc=${v['ssrc']} bytes=${v['bytesReceived'] ?? v['bytesSent']} '
+          'packets=${v['packetsReceived'] ?? v['packetsSent']} '
+          'lost=${v['packetsLost']} frames='
+          '${v['framesDecoded'] ?? v['framesEncoded'] ?? v['framesSent']} '
+          'dropped=${v['framesDropped']} '
+          '${v['frameWidth']}x${v['frameHeight']} fps='
+          '${v['framesPerSecond']} key=${v['keyFramesDecoded'] ?? v['keyFramesEncoded']}]',
         );
       }
       var transportBytes = 0;
@@ -1737,12 +1769,24 @@ class CallSession {
         }
       }
       logger.i(
-        '[call][sfu] inbound video: ${rows.join(' ')} '
+        '[call][video] stats: ${rows.join(' ')} '
         '| transport=$transportBytes audio=$audioBytes',
       );
     } catch (e) {
-      logger.w('[call][sfu] video stats failed: $e');
+      logger.w('[call][video] stats failed: $e');
     }
+  }
+
+  void _startVideoDiagnostics(RTCPeerConnection pc) {
+    _videoStatsTimer?.cancel();
+    _videoStatsTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_pc != pc || _ended) {
+        timer.cancel();
+        return;
+      }
+      unawaited(_dumpVideoStats(pc));
+    });
+    unawaited(_dumpVideoStats(pc));
   }
 
   Future<void> _dumpIceStats(RTCPeerConnection pc) async {
@@ -1941,16 +1985,19 @@ class CallSession {
   }
 
   Future<void> _onRemoteTrack(RTCTrackEvent event) async {
-    logger.t(
-      '[call] remote track: ${event.track.kind} id=${event.track.id} '
-      'streams=${event.streams.length}',
+    logger.i(
+      '[call][video] remote track kind=${event.track.kind} '
+      'id=${event.track.id} mid=${event.transceiver?.mid} '
+      'streams=${event.streams.map((s) => s.id).join(',')}',
     );
     await _bindParticipantTrack(event.track);
-    if (event.streams.isNotEmpty) {
+    if (event.track.kind != 'video') return;
+    if (event.streams.isNotEmpty &&
+        event.streams.first.getVideoTracks().isNotEmpty) {
       _remoteStreamRef = event.streams.first;
       _remoteStream.add(event.streams.first);
     } else {
-      await _collectReceivers();
+      await _pushRemoteTrack(event.track);
     }
   }
 
@@ -2281,21 +2328,95 @@ class CallSession {
 
   Future<void> setCameraDevice(String? deviceId) => _mediaOperation(() async {
     if (_cameraDeviceId == deviceId && _localVideo) return;
-    final previous = _cameraDeviceId;
-    final wasEnabled = _localVideo;
-    if (wasEnabled) await _stopCamera();
-    _cameraDeviceId = deviceId;
+    final pc = _pc;
+    if (pc == null || _ended) return;
+    final epoch = _captureEpoch;
+    final previousStream = _cameraStream;
+    final previousDevice = _cameraDeviceId;
+    final previousMirror = cameraMirrored;
+    MediaStream? stream;
+    var senderChanged = false;
     try {
-      await _startCamera();
-    } catch (_) {
-      _cameraDeviceId = previous;
-      if (wasEnabled && !_ended) {
-        try {
-          await _startCamera();
-        } catch (e) {
-          logger.w('[call] previous camera unavailable: $e');
+      if (deviceId != null) {
+        final devices = await navigator.mediaDevices.enumerateDevices();
+        if (!devices.any(
+          (device) =>
+              device.kind == 'videoinput' && device.deviceId == deviceId,
+        )) {
+          throw StateError('Камера отключена. Выберите доступное устройство.');
         }
       }
+      stream = await navigator.mediaDevices.getUserMedia({
+        'video': {
+          if (deviceId != null) ...{
+            'deviceId': deviceId,
+            'optional': [
+              {'sourceId': deviceId},
+            ],
+          } else
+            'facingMode': 'user',
+          'width': 1280,
+          'height': 720,
+          'frameRate': 30,
+        },
+        'audio': false,
+      });
+      if (!_captureValid(epoch, pc)) {
+        await _disposeStream(stream);
+        return;
+      }
+      final tracks = stream.getVideoTracks();
+      if (tracks.isEmpty) throw StateError('Камера не предоставила видеопоток');
+      await _verifyCaptureFrames(stream);
+      if (!_captureValid(epoch, pc)) {
+        await _disposeStream(stream);
+        return;
+      }
+      final track = tracks.first;
+      if (_videoSender == null) {
+        _videoSender = await pc.addTrack(track, stream);
+      } else {
+        await _videoSender!.replaceTrack(track);
+      }
+      senderChanged = true;
+      _cameraStream = stream;
+      _cameraDeviceId = deviceId;
+      cameraMirrored = track.getSettings()['facingMode'] != 'environment';
+      _localVideo = true;
+      mediaError = null;
+      _watchCapture();
+      final captured = stream;
+      track.onEnded = () {
+        if (identical(_cameraStream, captured)) {
+          unawaited(
+            setVideoEnabled(false).catchError((Object e) {
+              logger.w('[call] camera ended: $e');
+            }),
+          );
+        }
+      };
+      _notifyInfo();
+      await _publishMedia();
+      if (previousStream != null && !identical(previousStream, stream)) {
+        await _disposeStream(previousStream);
+      }
+    } catch (e, st) {
+      logger.e('[call][video] camera switch failed', error: e, stackTrace: st);
+      if (senderChanged) {
+        try {
+          await _videoSender?.replaceTrack(
+            previousStream?.getVideoTracks().firstOrNull,
+          );
+        } catch (_) {}
+      }
+      if (identical(_cameraStream, stream)) {
+        _cameraStream = previousStream;
+        _cameraDeviceId = previousDevice;
+        cameraMirrored = previousMirror;
+        _localVideo = previousStream != null;
+      }
+      await _disposeStream(stream);
+      if (_captureValid(epoch, pc)) await _restoreMediaSettings();
       rethrow;
     }
   });
@@ -2339,6 +2460,7 @@ class CallSession {
   Future<void> _verifyCaptureFrames(MediaStream stream) async {
     final renderer = RTCVideoRenderer();
     final ready = Completer<void>();
+    final started = DateTime.now();
     renderer.onFirstFrameRendered = () {
       if (!ready.isCompleted) ready.complete();
     };
@@ -2352,6 +2474,12 @@ class CallSession {
             'Нет изображения от источника. Проверьте разрешения, подключение камеры или восстановите окно.',
           );
         },
+      );
+      final track = stream.getVideoTracks().firstOrNull;
+      logger.i(
+        '[call][video] capture first frame in '
+        '${DateTime.now().difference(started).inMilliseconds}ms '
+        'stream=${stream.id} track=${track?.id} settings=${track?.getSettings()}',
       );
     } finally {
       renderer.onFirstFrameRendered = null;
@@ -2473,9 +2601,10 @@ class CallSession {
           );
         }
       };
-      if (announce) await _publishMedia();
       _notifyInfo();
-    } catch (_) {
+      if (announce) await _publishMedia();
+    } catch (e, st) {
+      logger.e('[call][video] camera start failed', error: e, stackTrace: st);
       if (identical(_cameraStream, stream)) {
         _cameraStream = null;
         _localVideo = false;
@@ -2504,14 +2633,34 @@ class CallSession {
   }
 
   Future<void> _startScreenShare(DesktopCapturerSource? source) async {
-    if (_localScreen) await _stopScreenShare();
     final pc = _pc;
     if (pc == null || _ended) return;
     final epoch = _captureEpoch;
+    final previousStream = _screenStream;
+    final previousName = _screenSourceName;
+    final previousId = _screenSourceId;
+    final previousType = _screenSourceType;
     MediaStream? stream;
+    DesktopCapturerSource? selectedSource = source;
+    var senderChanged = false;
+    var bridgeEnabled = false;
     try {
       if (_isDesktop && source == null) {
         throw StateError('Выберите окно или экран для демонстрации');
+      }
+      if (_isDesktop && source != null) {
+        final current = await desktopCapturer.getSources(
+          types: [source.type],
+          thumbnailSize: ThumbnailSize(1, 1),
+        );
+        selectedSource = current
+            .where((candidate) => candidate.id == source.id)
+            .firstOrNull;
+        if (selectedSource == null) {
+          throw StateError(
+            'Выбранное окно или экран больше недоступны. Обновите список источников.',
+          );
+        }
       }
       if (defaultTargetPlatform == TargetPlatform.android) {
         if (!await Helper.requestCapturePermission()) {
@@ -2519,12 +2668,15 @@ class CallSession {
         }
       }
       if (!_captureValid(epoch, pc)) return;
-      await CallBridge.instance.setScreenShare(true);
+      if (previousStream == null) {
+        await CallBridge.instance.setScreenShare(true);
+        bridgeEnabled = true;
+      }
       stream = await navigator.mediaDevices.getDisplayMedia({
-        'video': source == null
+        'video': selectedSource == null
             ? true
             : {
-                'deviceId': {'exact': source.id},
+                'deviceId': {'exact': selectedSource.id},
                 'mandatory': {'frameRate': 30.0},
               },
         'audio': false,
@@ -2551,15 +2703,19 @@ class CallSession {
       } else {
         await _screenSender!.replaceTrack(track);
       }
+      senderChanged = true;
       if (!_captureValid(epoch, pc)) {
+        await _screenSender?.replaceTrack(
+          previousStream?.getVideoTracks().firstOrNull,
+        );
         await _disposeStream(stream);
-        await CallBridge.instance.setScreenShare(false);
+        if (bridgeEnabled) await CallBridge.instance.setScreenShare(false);
         return;
       }
       _screenStream = stream;
-      _screenSourceName = source?.name;
-      _screenSourceId = source?.id;
-      _screenSourceType = source?.type;
+      _screenSourceName = selectedSource?.name;
+      _screenSourceId = selectedSource?.id;
+      _screenSourceType = selectedSource?.type;
       _localScreen = true;
       mediaError = null;
       _watchCapture();
@@ -2573,18 +2729,39 @@ class CallSession {
           );
         }
       };
-      await _publishMedia();
+      logger.i(
+        '[call][video] screen capture started type=${selectedSource?.type} '
+        'source=${selectedSource?.id.hashCode.toUnsigned(32).toRadixString(16)} '
+        'track=${track.id} settings=${track.getSettings()}',
+      );
       _notifyInfo();
-    } catch (_) {
-      if (identical(_screenStream, stream)) _screenStream = null;
-      _localScreen = false;
-      _screenSourceName = null;
-      await _disposeStream(stream);
-      await CallBridge.instance.setScreenShare(false);
-      if (_captureValid(epoch, pc)) {
+      await _publishMedia();
+      if (previousStream != null && !identical(previousStream, stream)) {
+        await _disposeStream(previousStream);
+      }
+    } catch (e, st) {
+      logger.e(
+        '[call][video] screen capture start failed',
+        error: e,
+        stackTrace: st,
+      );
+      if (senderChanged) {
         try {
-          await _screenSender?.replaceTrack(null);
+          await _screenSender?.replaceTrack(
+            previousStream?.getVideoTracks().firstOrNull,
+          );
         } catch (_) {}
+      }
+      if (identical(_screenStream, stream)) {
+        _screenStream = previousStream;
+        _screenSourceName = previousName;
+        _screenSourceId = previousId;
+        _screenSourceType = previousType;
+        _localScreen = previousStream != null;
+      }
+      await _disposeStream(stream);
+      if (bridgeEnabled) await CallBridge.instance.setScreenShare(false);
+      if (_captureValid(epoch, pc)) {
         await _restoreMediaSettings();
       }
       rethrow;
@@ -2607,23 +2784,31 @@ class CallSession {
     if (!_ended) await _sendMediaSettings();
   }
 
-  Future<void> _clearParticipantStreams() async {
+  Future<void> _clearParticipantStreams({bool dispose = true}) async {
     final entries = [
       ..._participantStreams.values,
       ..._participantScreens.values,
+      if (dispose) ..._retiredParticipantStreams,
     ];
     final ids = {..._participantStreams.keys, ..._participantScreens.keys};
     _participantStreams.clear();
     _participantScreens.clear();
+    if (dispose) {
+      _retiredParticipantStreams.clear();
+    } else {
+      _retiredParticipantStreams.addAll(entries);
+    }
     for (final id in ids) {
       if (!_participantStreamUpdates.isClosed) {
         _participantStreamUpdates.add(id);
       }
     }
-    for (final stream in entries) {
-      try {
-        await stream.dispose();
-      } catch (_) {}
+    if (dispose) {
+      for (final stream in entries) {
+        try {
+          await stream.dispose();
+        } catch (_) {}
+      }
     }
   }
 
@@ -2762,6 +2947,23 @@ class CallSession {
       _peerMuted = muted;
       _peerVideo = video;
       _peerScreen = screen;
+      final participant = _peerId;
+      if (participant != null) {
+        if (!video) {
+          unawaited(_removeParticipantStream(participant, screen: false));
+        }
+        if (!screen) {
+          unawaited(_removeParticipantStream(participant, screen: true));
+        }
+      }
+      if (_topology != 'SERVER' && !video && !screen) {
+        final remote = _remoteStreamRef;
+        _remoteStreamRef = null;
+        if (_ownRemoteStream && remote != null) {
+          _ownRemoteStream = false;
+          unawaited(remote.dispose().catchError((_) {}));
+        }
+      }
       _notifyInfo();
       if (video || screen) unawaited(_collectReceivers());
     }
