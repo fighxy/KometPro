@@ -33,7 +33,19 @@ class CallForegroundService : Service() {
         private var running: CallForegroundService? = null
 
         fun setScreenShare(ctx: Context, enabled: Boolean, caller: String) {
+            if (!enabled && running == null) {
+                screenShare = false
+                return
+            }
+            val service = running
+            if (enabled && service == null) {
+                throw IllegalStateException("Call service is not ready for screen capture")
+            }
             screenShare = enabled
+            if (service != null) {
+                service.startAsForeground(caller, throwOnError = true)
+                return
+            }
             val intent = Intent(ctx, CallForegroundService::class.java).apply {
                 action = ACTION_SCREEN_SHARE
                 putExtra(CallConst.EXTRA_CALLER, caller)
@@ -123,7 +135,7 @@ class CallForegroundService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startAsForeground(caller: String) {
+    private fun startAsForeground(caller: String, throwOnError: Boolean = false) {
         val immutable = android.app.PendingIntent.FLAG_UPDATE_CURRENT or
             android.app.PendingIntent.FLAG_IMMUTABLE
         val open = Intent(this, MainActivity::class.java).apply {
@@ -162,6 +174,7 @@ class CallForegroundService : Service() {
         } catch (e: Exception) {
             Log.w("KometFcm", "startForeground failed: ${e.message}")
             stopSelf()
+            if (throwOnError) throw e
         }
     }
 }

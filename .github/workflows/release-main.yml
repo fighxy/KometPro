@@ -120,9 +120,7 @@ jobs:
         run: flutter build windows --release
       - name: Package Windows
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/Komet-windows-x64.zip
+        run: ./.github/scripts/package-windows.ps1
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
@@ -276,6 +274,7 @@ jobs:
 
   release:
     needs: [android, windows, linux, macos, ios]
+    if: ${{ always() && !cancelled() && needs.windows.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -292,8 +291,9 @@ jobs:
         id: ver
         run: |
           PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          echo "version=${PUBSPEC_VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${PUBSPEC_VERSION}+${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          echo "name=Komet ${PUBSPEC_VERSION} (сборка ${GITHUB_RUN_NUMBER})" >> "$GITHUB_OUTPUT"
+          echo "name=KometPro ${PUBSPEC_VERSION} (сборка ${GITHUB_RUN_NUMBER})" >> "$GITHUB_OUTPUT"
 
       - name: List artifacts
         run: ls -lhR dist
@@ -309,6 +309,10 @@ jobs:
           fail_on_unmatched_files: true
           body: |
             Автоматическая сборка из ветки `${{ github.ref_name }}` @ `${{ github.sha }}`.
+
+            Версия приложения: **${{ steps.ver.outputs.version }}**.
+            Статус сборок: Windows — ${{ needs.windows.result }}, Android — ${{ needs.android.result }}, Linux — ${{ needs.linux.result }}, macOS — ${{ needs.macos.result }}, iOS — ${{ needs.ios.result }}.
+            Ниже описаны форматы; доступны только файлы успешно завершённых сборок.
 
             ## Какой файл качать
 
@@ -327,6 +331,8 @@ jobs:
             - `Komet-android-oneme.aab` — App Bundle для Google Play.
 
             ### Windows
+            - **`KometPro-${{ steps.ver.outputs.version }}-windows-x64-setup.exe`** — установщик для текущего пользователя: ярлыки, удаление, обновление поверх предыдущей версии. Для установки отсутствующего WebView2 требуется интернет.
+            - `windows-sha256.txt` — контрольные суммы Windows-файлов.
             - **`Komet-windows-x64.zip`** — портативная сборка для Windows 10/11 (x64). Распаковать и запустить `Komet.exe`.
 
             ### Linux

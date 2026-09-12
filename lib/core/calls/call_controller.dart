@@ -161,7 +161,11 @@ class CallController {
       device: _api?.callsDevice,
       osVersion: _api?.callsOsVersion,
     );
-    final session = CallSession(ws2Config: config, role: CallRole.caller);
+    final session = CallSession(
+      ws2Config: config,
+      role: CallRole.caller,
+      initialVideo: isVideo,
+    );
     return _launch(session, session.start);
   }
 
@@ -186,6 +190,7 @@ class CallController {
       ws2Config: config,
       role: CallRole.joiner,
       isGroup: true,
+      initialVideo: isVideo,
     );
     return _launch(session, session.start);
   }
@@ -204,14 +209,10 @@ class CallController {
       params: call.params,
       role: CallRole.callee,
     );
-    return _launch(
-      session,
-      () async {
-        await session.start();
-        await session.accept();
-      },
-      caller: call.callerName,
-    );
+    return _launch(session, () async {
+      await session.start();
+      await session.accept();
+    }, caller: call.callerName);
   }
 
   Future<void> rejectIncoming(IncomingCall call) async {

@@ -52,9 +52,9 @@ PODS:
     - FlutterMacOS
   - flutter_timezone (0.0.1):
     - Flutter
-  - flutter_webrtc (1.4.0):
+  - flutter_webrtc (1.6.0):
     - Flutter
-    - WebRTC-SDK (= 144.7559.09)
+    - WebRTC-SDK (= 144.7559.10)
   - geolocator_apple (1.2.0):
     - Flutter
     - FlutterMacOS
@@ -93,7 +93,7 @@ PODS:
     - FlutterMacOS
   - wakelock_plus (0.0.1):
     - Flutter
-  - WebRTC-SDK (144.7559.09)
+  - WebRTC-SDK (144.7559.10)
 
 DEPENDENCIES:
   - app_links (from `.symlinks/plugins/app_links/ios`)
@@ -185,7 +185,6 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 643a3eda1ce1c0599413ca31672536d423dee214
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   flutter_timezone: 7c838e17ffd4645d261e87037e5bebf6d38fe544
-  flutter_webrtc: 3ee86aa10e0313c38c93fdb215dd86e77014f96a
   geolocator_apple: ab36aa0e8b7d7a2d7639b3b4e48308394e8cef5e
   media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
@@ -202,7 +201,7 @@ SPEC CHECKSUMS:
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
-  WebRTC-SDK: e6006119cd730d6315d875e4a421b6cc8bb88833
+  WebRTC-SDK: 1d7fc2ae91da6edd63e25f3882ff24f86a8d9d8b
 
 PODFILE CHECKSUM: 527e8cb59c3d722cc71f78b05ab13f192b9335d3
 

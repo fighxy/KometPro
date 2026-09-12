@@ -2,7 +2,7 @@
   <img src="assets/komet.png" width="104" alt="KometPro">
 </p>
 
-# KometPro
+# KometPro 0.6.1
 
 Неофициальный форк [Komet](https://github.com/KometTeam/Komet) — свободного клиента для мессенджера MAX. Форк развивает цельный desktop-first интерфейс, повышает отзывчивость Windows-версии и сохраняет мобильные платформы проекта.
 

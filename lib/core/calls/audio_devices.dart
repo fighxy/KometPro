@@ -44,6 +44,7 @@ class AudioDevices {
       await Helper.selectAudioInput(deviceId);
     } catch (e) {
       logger.w('[call] selectAudioInput($deviceId): $e');
+      rethrow;
     }
   }
 

@@ -1,11 +1,5 @@
-# Komet 0.6 Windows (ux/native-pass)
-# P0: single-instance, tray restore, titlebar theme, hide-on-close, taskbar flash
-# P1: icon rail, density tokens, third column, compact menus, Alt+arrows
-# P2: toast Reply/Read, jump list, Esc cascade, Ctrl+Shift+C/F
-# P3: interface scale 75–150%, mica, autostart, tray badge, no circular reveal
-# Not in this build: Inno/MSIX installer
 name: Build Windows
-run-name: Komet 0.6 Windows — native-pass P0–P3 (rail, scale, toasts, mica)
+run-name: KometPro 0.6.1 — Windows x64 + Inno Setup
 
 on:
   workflow_dispatch:
@@ -17,6 +11,11 @@ on:
       - 'lib/**'
       - 'windows/**'
       - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/scripts/package-windows.ps1'
+      - '.github/actions/setup-rust/**'
+      - 'native/**'
+      - 'third_party/**'
       - '.github/workflows/build-windows.yml'
 
 env:
@@ -51,14 +50,12 @@ jobs:
 
       - name: Package Windows
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/Komet-windows-x64.zip
+        run: ./.github/scripts/package-windows.ps1
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: komet-windows-x64
-          path: dist/Komet-windows-x64.zip
+          path: dist/*
           if-no-files-found: error
           retention-days: 30

@@ -368,12 +368,12 @@ class MainActivity : FlutterActivity() {
                 "setScreenShare" -> {
                     val enabled = call.argument<Boolean>("enabled") ?: false
                     val caller = call.argument<String>("caller") ?: "Звонок"
-                    CallForegroundService.setScreenShare(
-                        applicationContext,
-                        enabled,
-                        caller,
-                    )
-                    result.success(null)
+                    try {
+                        CallForegroundService.setScreenShare(applicationContext, enabled, caller)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("screen_share_service", e.message, null)
+                    }
                 }
                 "dropOngoing" -> {
                     CallForegroundService.stop(applicationContext)
