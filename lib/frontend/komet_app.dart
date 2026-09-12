@@ -876,6 +876,10 @@ class _StartupScreen extends StatefulWidget {
 }
 
 class _StartupScreenState extends State<_StartupScreen> {
+  bool _running = false;
+  bool _keyringLocked = false;
+  Object? _error;
+
   @override
   void initState() {
     super.initState();
@@ -883,6 +887,33 @@ class _StartupScreenState extends State<_StartupScreen> {
   }
 
   Future<void> _tryAutoLogin() async {
+    if (_running) return;
+    _running = true;
+    if (mounted && (_keyringLocked || _error != null)) {
+      setState(() {
+        _keyringLocked = false;
+        _error = null;
+      });
+    }
+    try {
+      await _performAutoLogin();
+    } on SecureStorageLockedException {
+      if (!mounted) return;
+      unawaited(DesktopTray.instance.reveal());
+      _running = false;
+      setState(() => _keyringLocked = true);
+    } catch (error) {
+      logger.w('Auto login failed: $error');
+      if (!mounted) return;
+      unawaited(DesktopTray.instance.reveal());
+      _running = false;
+      setState(() => _error = error);
+    } finally {
+      _running = false;
+    }
+  }
+
+  Future<void> _performAutoLogin() async {
     if (DebugTest.enabled) {
       await Future<void>.delayed(Duration.zero);
       if (!mounted) return;
@@ -942,6 +973,73 @@ class _StartupScreenState extends State<_StartupScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    if (_keyringLocked || _error != null) {
+      final ru = Localizations.localeOf(context).languageCode == 'ru';
+      final locked = _keyringLocked;
+      return Scaffold(
+        backgroundColor: cs.surface,
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    locked ? Icons.lock_outline : Icons.error_outline,
+                    size: 48,
+                    color: cs.primary,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    locked
+                        ? (ru
+                              ? 'Хранилище паролей заблокировано'
+                              : 'Password storage is locked')
+                        : (ru
+                              ? 'Не удалось выполнить автоматический вход'
+                              : 'Automatic sign-in failed'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    locked
+                        ? (ru
+                              ? 'Разблокируйте хранилище Login в приложении '
+                                    '«Пароли и ключи», затем повторите попытку. '
+                                    'Данные аккаунта сохранены.'
+                              : 'Unlock the Login keyring in Passwords and Keys, '
+                                    'then try again. Your account data is safe.')
+                        : (ru
+                              ? 'Проверьте системное хранилище паролей и '
+                                    'повторите попытку.'
+                              : 'Check the system password storage and '
+                                    'try again.'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: _running ? null : _tryAutoLogin,
+                    icon: const Icon(Icons.refresh),
+                    label: Text(ru ? 'Повторить' : 'Try again'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _goToLogin,
+                    child: Text(ru ? 'Перейти ко входу' : 'Go to sign in'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: cs.surface,
       body: Center(child: SmallSpinner(size: 36, color: cs.primary)),

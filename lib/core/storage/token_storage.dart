@@ -2,6 +2,10 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class SecureStorageLockedException implements Exception {
+  const SecureStorageLockedException();
+}
+
 class TokenStorage {
   static const _tokenPrefix = 'auth_token_';
   static const _activeAccountKey = 'active_account_id';
@@ -21,6 +25,23 @@ class TokenStorage {
       error.details == _duplicateKeychainItem ||
       (error.message?.contains('$_duplicateKeychainItem') ?? false);
 
+  static bool _isLocked(PlatformException error) {
+    final value = '${error.code} ${error.message} ${error.details}'
+        .toLowerCase();
+    return value.contains('keyringlocked') ||
+        value.contains('keyring locked') ||
+        value.contains('is locked');
+  }
+
+  static Future<String?> _read(String key) async {
+    try {
+      return await _secure.read(key: key);
+    } on PlatformException catch (error) {
+      if (_isLocked(error)) throw const SecureStorageLockedException();
+      rethrow;
+    }
+  }
+
   static Future<void> _write(String key, String value) async {
     try {
       await _secure.write(key: key, value: value);
@@ -35,7 +56,7 @@ class TokenStorage {
       _write(key, value);
 
   static Future<String?> readSecure(String key) async {
-    return _secure.read(key: key);
+    return _read(key);
   }
 
   static Future<void> deleteSecure(String key) async {
@@ -52,7 +73,7 @@ class TokenStorage {
 
   static Future<String?> readToken(int accountId) async {
     final key = '$_tokenPrefix$accountId';
-    final secured = await _secure.read(key: key);
+    final secured = await _read(key);
     if (secured != null) return secured;
 
     final prefs = await SharedPreferences.getInstance();
