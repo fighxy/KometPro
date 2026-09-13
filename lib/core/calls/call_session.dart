@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../config/app_microphone.dart';
+import '../config/app_audio_output.dart';
 import '../config/app_pulse_source.dart';
 import '../config/call_no_mute.dart';
 import '../utils/logger.dart';
@@ -137,8 +138,10 @@ class CallSession {
   RTCRtpSender? _audioSender;
   RTCRtpSender? _videoSender;
   RTCRtpSender? _screenSender;
+  RTCRtpTransceiver? _directVideoTransceiver;
   bool _directScreenSubstitution = false;
   String? _micDeviceId = AppMicrophone.deviceId;
+  String? _audioOutputDeviceId = AppAudioOutput.deviceId;
   String? _pulseSource = AppPulseSource.name;
   bool _monitorCapture = false;
 
@@ -253,6 +256,7 @@ class CallSession {
   bool get isMuted => _muted;
   bool get audioTransmitting => !_muted || CallNoMute.enabled;
   String? get micDeviceId => _micDeviceId;
+  String? get audioOutputDeviceId => _audioOutputDeviceId;
   String? get pulseSource => _pulseSource;
   bool get isSpeaker => _speakerOn;
   bool get peerMuted => _peerMuted;
@@ -438,6 +442,7 @@ class CallSession {
     _audioSender = null;
     _videoSender = null;
     _screenSender = null;
+    _directVideoTransceiver = null;
     _directScreenSubstitution = false;
     _remoteDescSet = false;
     _pendingCandidates.clear();
@@ -886,10 +891,13 @@ class CallSession {
     _pc = pc;
     await _addLocalMedia(pc);
 
-    await pc.addTransceiver(
-      kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
-      init: RTCRtpTransceiverInit(direction: TransceiverDirection.RecvOnly),
-    );
+    if (_videoSender == null) {
+      _directVideoTransceiver = await pc.addTransceiver(
+        kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
+        init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendRecv),
+      );
+      _videoSender = _directVideoTransceiver!.sender;
+    }
 
     await _setupKometProbe(pc);
 
@@ -1182,8 +1190,20 @@ class CallSession {
     _notifyInfo();
   }
 
+  Future<void> setAudioOutput(String? deviceId) async {
+    final previous = _audioOutputDeviceId;
+    try {
+      _audioOutputDeviceId = await AudioDevices.selectOutput(deviceId);
+      await AppAudioOutput.save(_audioOutputDeviceId ?? '');
+    } catch (_) {
+      _audioOutputDeviceId = previous;
+      rethrow;
+    } finally {
+      _notifyInfo();
+    }
+  }
+
   Future<void> _prepareAudioSession() async {
-    if (!_canRouteAudio) return;
     if (defaultTargetPlatform == TargetPlatform.android) {
       try {
         await Helper.setAndroidAudioConfiguration(
@@ -1197,11 +1217,30 @@ class CallSession {
   }
 
   Future<void> applyAudioRoute() async {
-    if (!_canRouteAudio) return;
+    if (_canRouteAudio) {
+      try {
+        await Helper.setSpeakerphoneOn(_speakerOn);
+      } catch (e) {
+        logger.w('[call] setSpeakerphoneOn($_speakerOn) недоступен: $e');
+      }
+      return;
+    }
+    if (!_isDesktop) return;
     try {
-      await Helper.setSpeakerphoneOn(_speakerOn);
+      _audioOutputDeviceId = await AudioDevices.selectOutput(
+        _audioOutputDeviceId,
+      );
     } catch (e) {
-      logger.w('[call] setSpeakerphoneOn($_speakerOn) недоступен: $e');
+      logger.w('[call][audio] saved output unavailable: $e');
+      if (_audioOutputDeviceId != null) {
+        _audioOutputDeviceId = null;
+        await AppAudioOutput.save('');
+        try {
+          await AudioDevices.selectOutput(null);
+        } catch (fallbackError) {
+          logger.w('[call][audio] default output unavailable: $fallbackError');
+        }
+      }
     }
   }
 
@@ -1418,6 +1457,7 @@ class CallSession {
     ];
     _videoSender = null;
     _screenSender = null;
+    _directVideoTransceiver = null;
     final used = <String>{};
     for (final item in media) {
       final tracks = item.stream.getVideoTracks();
@@ -1595,6 +1635,7 @@ class CallSession {
       _audioSender = null;
       _videoSender = null;
       _screenSender = null;
+      _directVideoTransceiver = null;
     }
     _setState(CallSessionState.connecting);
     final pc = await _createPc(_iceServers);
@@ -1626,6 +1667,7 @@ class CallSession {
     _audioSender = null;
     _videoSender = null;
     _screenSender = null;
+    _directVideoTransceiver = null;
     _remoteDescSet = false;
     _pendingCandidates.clear();
     await _clearParticipantStreams();
@@ -1880,21 +1922,34 @@ class CallSession {
       }
       var transportBytes = 0;
       var audioBytes = 0;
+      final audioRows = <String>[];
       for (final r in reports) {
         final v = r.values;
         if (r.type == 'transport') {
           final b = v['bytesReceived'];
           if (b is num) transportBytes += b.toInt();
-        } else if (r.type == 'inbound-rtp' &&
+        } else if ((r.type == 'inbound-rtp' || r.type == 'outbound-rtp') &&
             (v['kind'] == 'audio' || v['mediaType'] == 'audio')) {
-          final b = v['bytesReceived'];
-          if (b is num) audioBytes += b.toInt();
+          if (r.type == 'inbound-rtp') {
+            final b = v['bytesReceived'];
+            if (b is num) audioBytes += b.toInt();
+          }
+          audioRows.add(
+            '[${r.type == 'inbound-rtp' ? 'in' : 'out'} '
+            'mid=${v['mid']} ssrc=${v['ssrc']} '
+            'bytes=${v['bytesReceived'] ?? v['bytesSent']} '
+            'packets=${v['packetsReceived'] ?? v['packetsSent']} '
+            'lost=${v['packetsLost']} jitter=${v['jitter']} '
+            'level=${v['audioLevel']} concealed=${v['concealedSamples']} '
+            'samples=${v['totalSamplesReceived']}]',
+          );
         }
       }
       logger.i(
         '[call][video] stats: ${rows.join(' ')} '
         '| transport=$transportBytes audio=$audioBytes',
       );
+      logger.i('[call][audio] stats: ${audioRows.join(' ')}');
     } catch (e) {
       logger.w('[call][video] stats failed: $e');
     }
@@ -2111,9 +2166,13 @@ class CallSession {
     logger.i(
       '[call][video] remote track kind=${event.track.kind} '
       'id=${event.track.id} mid=${event.transceiver?.mid} '
+      'enabled=${event.track.enabled} '
       'streams=${event.streams.map((s) => s.id).join(',')}',
     );
-    if (event.track.kind != 'video') return;
+    if (event.track.kind != 'video') {
+      unawaited(applyAudioRoute());
+      return;
+    }
     final source = _sourceStreamForTrack(event.track, event.streams);
     if (source != null) {
       _remoteTrackStreams[event.track.id!] = source;
@@ -2652,31 +2711,47 @@ class CallSession {
   }
 
   Future<void> _applyVideoQuality() async {
-    await _configureVideoSender(_videoSender, maxBitrate: 3000000);
-    await _configureVideoSender(_screenSender, maxBitrate: 6000000);
+    await _configureVideoSender(
+      _videoSender,
+      maxBitrate: 3000000,
+      maxFramerate: 30,
+      maintainFramerate: false,
+    );
+    await _configureVideoSender(
+      _screenSender,
+      maxBitrate: _isDesktop ? 6000000 : 3000000,
+      maxFramerate: _isDesktop ? 30 : 20,
+      maintainFramerate: true,
+      scaleResolutionDownBy: _isDesktop ? 1 : 2,
+    );
   }
 
   Future<void> _configureVideoSender(
     RTCRtpSender? sender, {
     required int maxBitrate,
+    required int maxFramerate,
+    required bool maintainFramerate,
+    double scaleResolutionDownBy = 1,
   }) async {
     if (sender?.track?.kind != 'video') return;
     try {
       final parameters = sender!.parameters;
-      parameters.degradationPreference =
-          RTCDegradationPreference.MAINTAIN_RESOLUTION;
+      parameters.degradationPreference = maintainFramerate
+          ? RTCDegradationPreference.MAINTAIN_FRAMERATE
+          : RTCDegradationPreference.BALANCED;
       for (final encoding in parameters.encodings ?? const <RTCRtpEncoding>[]) {
         encoding.active = true;
         encoding.maxBitrate = maxBitrate;
-        encoding.maxFramerate = 30;
-        encoding.scaleResolutionDownBy = 1;
+        encoding.maxFramerate = maxFramerate;
+        encoding.scaleResolutionDownBy = scaleResolutionDownBy;
         encoding.priority = RTCPriorityType.high;
         encoding.networkPriority = RTCPriorityType.high;
       }
       final applied = await sender.setParameters(parameters);
       logger.i(
         '[call][video] RTP quality applied=$applied '
-        'track=${sender.track?.id} maxBitrate=$maxBitrate',
+        'track=${sender.track?.id} maxBitrate=$maxBitrate '
+        'maxFramerate=$maxFramerate scale=$scaleResolutionDownBy',
       );
     } catch (e) {
       logger.w('[call][video] RTP quality unavailable: $e');
@@ -2954,10 +3029,20 @@ class CallSession {
       }
       stream = await navigator.mediaDevices.getDisplayMedia({
         'video': selectedSource == null
-            ? true
+            ? {
+                'mandatory': {
+                  'maxWidth': 1280,
+                  'maxHeight': 1280,
+                  'maxFrameRate': 20.0,
+                },
+              }
             : {
                 'deviceId': {'exact': selectedSource.id},
-                'mandatory': {'frameRate': 30.0},
+                'mandatory': {
+                  'frameRate': 30.0,
+                  'maxWidth': 1920,
+                  'maxHeight': 1080,
+                },
               },
         'audio': false,
       });
@@ -3292,14 +3377,6 @@ class CallSession {
         }
         if (!screen) {
           unawaited(_removeParticipantStream(participant, screen: true));
-        }
-      }
-      if (_topology != 'SERVER' && !video && !screen) {
-        final remote = _remoteStreamRef;
-        _remoteStreamRef = null;
-        if (_ownRemoteStream && remote != null) {
-          _ownRemoteStream = false;
-          _retiredParticipantStreams.add(remote);
         }
       }
       _notifyInfo();

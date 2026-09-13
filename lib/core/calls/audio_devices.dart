@@ -11,6 +11,13 @@ class AudioInputDevice {
   final String label;
 }
 
+class AudioOutputDevice {
+  const AudioOutputDevice({required this.id, required this.label});
+
+  final String id;
+  final String label;
+}
+
 class AudioDevices {
   AudioDevices._();
 
@@ -33,6 +40,29 @@ class AudioDevices {
     }
   }
 
+  static Future<List<AudioOutputDevice>> outputs() async {
+    try {
+      final devices = await navigator.mediaDevices.enumerateDevices();
+      final outputs = <AudioOutputDevice>[];
+      final seen = <String>{};
+      for (final device in devices) {
+        if (device.kind != 'audiooutput') continue;
+        if (device.deviceId.isEmpty || !seen.add(device.deviceId)) continue;
+        outputs.add(
+          AudioOutputDevice(id: device.deviceId, label: device.label.trim()),
+        );
+      }
+      logger.i(
+        '[call][audio] outputs=${outputs.length} '
+        '${outputs.map((device) => device.label).join(' | ')}',
+      );
+      return outputs;
+    } catch (e) {
+      logger.w('[call][audio] enumerate outputs failed: $e');
+      return const [];
+    }
+  }
+
   static bool get switchesInsideEngine =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -46,6 +76,28 @@ class AudioDevices {
       logger.w('[call] selectAudioInput($deviceId): $e');
       rethrow;
     }
+  }
+
+  static Future<String?> selectOutput(String? deviceId) async {
+    final devices = await outputs();
+    if (devices.isEmpty) {
+      throw StateError('Устройства вывода звука не найдены');
+    }
+    final selected = deviceId == null
+        ? devices.where((device) => device.id == 'default').firstOrNull ??
+              devices.first
+        : devices.where((device) => device.id == deviceId).firstOrNull;
+    if (selected == null) {
+      throw StateError(
+        'Устройство вывода отключено. Обновите список устройств.',
+      );
+    }
+    await Helper.selectAudioOutput(selected.id);
+    logger.i(
+      '[call][audio] output selected id=${selected.id.hashCode.toUnsigned(32).toRadixString(16)} '
+      'label=${selected.label}',
+    );
+    return deviceId == null ? null : selected.id;
   }
 
   static Object micConstraints(

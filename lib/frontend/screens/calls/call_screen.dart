@@ -27,6 +27,7 @@ import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/sheet_helpers.dart';
 import '../../widgets/small_spinner.dart';
 import 'call_mic_sheet.dart';
+import 'call_audio_output_sheet.dart';
 import 'call_capture_picker.dart';
 import 'call_participants_sheet.dart';
 import 'komet_hub.dart';
@@ -76,6 +77,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   final Map<String, RTCVideoRenderer> _tileRenderers = {};
   final Set<String> _pendingTileRenderers = {};
   final Map<RTCVideoRenderer, Future<void>> _rendererTails = {};
+  final Map<RTCVideoRenderer, Future<bool>> _rendererInitializations = {};
+  final Map<RTCVideoRenderer, Future<void>> _rendererReleases = {};
   final Map<RTCVideoRenderer, String?> _rendererTargets = {};
   final Map<RTCVideoRenderer, String> _rendererSizes = {};
   StreamSubscription<int>? _tileStreamSub;
@@ -120,9 +123,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   Future<void> _createTileRenderer(int id, bool screen, String key) async {
     final renderer = RTCVideoRenderer();
     try {
-      await renderer.initialize();
-      if (!mounted) {
-        await renderer.dispose();
+      final initialized = await _initializeRenderer(renderer, key);
+      if (!initialized || !mounted || _disposing) {
+        await _releaseRenderer(renderer);
         return;
       }
       final label = 'participant:$id:${screen ? 'screen' : 'camera'}';
@@ -132,14 +135,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         _session?.streamOf(id, screen: screen),
         label,
       );
-      if (!mounted) {
+      if (!mounted || _disposing) {
         await _releaseRenderer(renderer);
         return;
       }
       _tileRenderers[key] = renderer;
       setState(() {});
-    } catch (_) {
-      await renderer.dispose();
+    } catch (e, st) {
+      logger.e(
+        '[call][video] renderer $key setup failed',
+        error: e,
+        stackTrace: st,
+      );
+      await _releaseRenderer(renderer);
     } finally {
       _pendingTileRenderers.remove(key);
     }
@@ -153,7 +161,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final participant = peer == null
         ? null
         : session.streamOf(peer, screen: session.peerScreen);
-    final direct = session.topology == 'SERVER'
+    final direct = session.topology == 'SERVER' || !session.peerHasVideo
         ? null
         : candidate ?? session.remoteStream;
     final stream = participant ?? direct;
@@ -234,18 +242,48 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     return next;
   }
 
-  Future<void> _releaseRenderer(RTCVideoRenderer renderer) async {
-    _rendererTargets[renderer] = null;
-    try {
-      await (_rendererTails[renderer] ?? Future.value());
-      await renderer.setSrcObject(stream: null);
-    } catch (_) {}
-    renderer.onFirstFrameRendered = null;
-    renderer.onResize = null;
-    _rendererTails.remove(renderer);
-    _rendererTargets.remove(renderer);
-    _rendererSizes.remove(renderer);
-    await renderer.dispose();
+  Future<bool> _initializeRenderer(RTCVideoRenderer renderer, String label) {
+    return _rendererInitializations.putIfAbsent(renderer, () async {
+      try {
+        await renderer.initialize();
+        return true;
+      } catch (e, st) {
+        logger.e(
+          '[call][video] renderer $label initialize failed',
+          error: e,
+          stackTrace: st,
+        );
+        return false;
+      }
+    });
+  }
+
+  Future<void> _releaseRenderer(RTCVideoRenderer renderer) {
+    return _rendererReleases.putIfAbsent(renderer, () async {
+      _rendererTargets[renderer] = null;
+      final initialized =
+          await (_rendererInitializations[renderer] ??
+              Future<bool>.value(false));
+      try {
+        await (_rendererTails[renderer] ?? Future.value());
+        if (initialized) await renderer.setSrcObject(stream: null);
+      } catch (_) {}
+      renderer.onFirstFrameRendered = null;
+      renderer.onResize = null;
+      _rendererTails.remove(renderer);
+      _rendererTargets.remove(renderer);
+      _rendererSizes.remove(renderer);
+      if (!initialized) return;
+      try {
+        await renderer.dispose();
+      } catch (e, st) {
+        logger.w(
+          '[call][video] renderer dispose failed',
+          error: e,
+          stackTrace: st,
+        );
+      }
+    });
   }
 
   RTCVideoRenderer? _tileRenderer(CallParticipant p, {bool screen = false}) {
@@ -321,18 +359,24 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _initRenderer() async {
-    await _remoteRenderer.initialize();
-    await _localRenderer.initialize();
-    if (!mounted) {
-      await _remoteRenderer.dispose();
-      await _localRenderer.dispose();
+    final readiness = await Future.wait([
+      _initializeRenderer(_remoteRenderer, 'remote'),
+      _initializeRenderer(_localRenderer, 'local'),
+    ]);
+    final remoteReady = readiness[0];
+    final localReady = readiness[1];
+    if (!mounted || _disposing) {
+      await Future.wait([
+        _releaseRenderer(_remoteRenderer),
+        _releaseRenderer(_localRenderer),
+      ]);
       return;
     }
-    _rendererReady = true;
-    _localRendererReady = true;
-    _configureRenderer(_remoteRenderer, 'remote');
-    _configureRenderer(_localRenderer, 'local');
-    if (_pendingStream != null) {
+    _rendererReady = remoteReady;
+    _localRendererReady = localReady;
+    if (remoteReady) _configureRenderer(_remoteRenderer, 'remote');
+    if (localReady) _configureRenderer(_localRenderer, 'local');
+    if (remoteReady && _pendingStream != null) {
       await _setRendererSource(_remoteRenderer, _pendingStream, 'remote');
       _pendingStream = null;
     }
@@ -698,16 +742,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     _tileRenderers.clear();
     _dotsController.dispose();
     _videoController.dispose();
-    if (_rendererReady) {
-      unawaited(_releaseRenderer(_remoteRenderer));
-    } else {
-      unawaited(_remoteRenderer.dispose());
-    }
-    if (_localRendererReady) {
-      unawaited(_releaseRenderer(_localRenderer));
-    } else {
-      unawaited(_localRenderer.dispose());
-    }
+    unawaited(_releaseRenderer(_remoteRenderer));
+    unawaited(_releaseRenderer(_localRenderer));
     super.dispose();
   }
 
@@ -742,6 +778,16 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final session = _session;
     if (session == null) return;
     showCallMicrophoneSheet(
+      context,
+      session: session,
+      scheme: _darkScheme(context),
+    );
+  }
+
+  void _showAudioOutputs() {
+    final session = _session;
+    if (session == null) return;
+    showCallAudioOutputSheet(
       context,
       session: session,
       scheme: _darkScheme(context),
@@ -1313,6 +1359,21 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                       size: 26,
                     ),
                   ),
+                  if (_session?.isDesktop == true)
+                    IconButton(
+                      onPressed: _showAudioOutputs,
+                      tooltip: captureText(
+                        context,
+                        'Вывод звука',
+                        'Sound output',
+                      ),
+                      icon: Icon(
+                        Symbols.speaker,
+                        color: cs.onSurface,
+                        weight: 500,
+                        size: 26,
+                      ),
+                    ),
                   IconButton(
                     onPressed: _showInfoSheet,
                     tooltip: l10n.callInfoTitle,
