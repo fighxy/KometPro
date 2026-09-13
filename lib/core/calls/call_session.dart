@@ -1355,8 +1355,17 @@ class CallSession {
       }
       final slot = matches.isNotEmpty ? matches.first : available.first;
       used.add(slot.mid);
+      logger.i(
+        '[call][sfu] attach ${item.screen ? 'screen' : 'camera'} '
+        'track=${track.id} enabled=${track.enabled} mid=${slot.mid} '
+        'previous=${slot.sender.track?.id}',
+      );
       await slot.sender.replaceTrack(track);
       await slot.setDirection(TransceiverDirection.SendOnly);
+      logger.i(
+        '[call][sfu] attached ${item.screen ? 'screen' : 'camera'} '
+        'mid=${slot.mid} senderTrack=${slot.sender.track?.id}',
+      );
       if (item.screen) {
         _screenSender = slot.sender;
       } else {
@@ -1569,6 +1578,10 @@ class CallSession {
       final tracks = camera.getVideoTracks();
       if (tracks.isNotEmpty) {
         _videoSender = await pc.addTrack(tracks.first, camera);
+        logger.i(
+          '[call][video] republished camera track=${tracks.first.id} '
+          'senderTrack=${_videoSender?.track?.id} topology=$_topology',
+        );
       }
     }
     final screen = _screenStream;
@@ -1576,6 +1589,10 @@ class CallSession {
       final tracks = screen.getVideoTracks();
       if (tracks.isNotEmpty) {
         _screenSender = await pc.addTrack(tracks.first, screen);
+        logger.i(
+          '[call][video] republished screen track=${tracks.first.id} '
+          'senderTrack=${_screenSender?.track?.id} topology=$_topology',
+        );
       }
     }
   }
@@ -1746,13 +1763,16 @@ class CallSession {
         if (v['kind'] != 'video' && v['mediaType'] != 'video') continue;
         rows.add(
           '[${r.type == 'inbound-rtp' ? 'in' : 'out'} '
-          'ssrc=${v['ssrc']} bytes=${v['bytesReceived'] ?? v['bytesSent']} '
+          'mid=${v['mid']} track=${v['trackIdentifier']} ssrc=${v['ssrc']} '
+          'bytes=${v['bytesReceived'] ?? v['bytesSent']} '
           'packets=${v['packetsReceived'] ?? v['packetsSent']} '
           'lost=${v['packetsLost']} frames='
           '${v['framesDecoded'] ?? v['framesEncoded'] ?? v['framesSent']} '
           'dropped=${v['framesDropped']} '
           '${v['frameWidth']}x${v['frameHeight']} fps='
-          '${v['framesPerSecond']} key=${v['keyFramesDecoded'] ?? v['keyFramesEncoded']}]',
+          '${v['framesPerSecond']} key=${v['keyFramesDecoded'] ?? v['keyFramesEncoded']} '
+          'nack=${v['nackCount']} pli=${v['pliCount']} fir=${v['firCount']} '
+          'quality=${v['qualityLimitationReason']}]',
         );
       }
       var transportBytes = 0;
@@ -2336,6 +2356,7 @@ class CallSession {
     final previousMirror = cameraMirrored;
     MediaStream? stream;
     var senderChanged = false;
+    final started = DateTime.now();
     try {
       if (deviceId != null) {
         final devices = await navigator.mediaDevices.enumerateDevices();
@@ -2346,6 +2367,11 @@ class CallSession {
           throw StateError('Камера отключена. Выберите доступное устройство.');
         }
       }
+      logger.i(
+        '[call][video] camera switch capture requested device='
+        '${deviceId?.hashCode.toUnsigned(32).toRadixString(16) ?? 'default'} '
+        'topology=$_topology',
+      );
       stream = await navigator.mediaDevices.getUserMedia({
         'video': {
           if (deviceId != null) ...{
@@ -2367,7 +2393,7 @@ class CallSession {
       }
       final tracks = stream.getVideoTracks();
       if (tracks.isEmpty) throw StateError('Камера не предоставила видеопоток');
-      await _verifyCaptureFrames(stream);
+      _logCaptureCreated('camera switch', stream, started);
       if (!_captureValid(epoch, pc)) {
         await _disposeStream(stream);
         return;
@@ -2397,6 +2423,7 @@ class CallSession {
       };
       _notifyInfo();
       await _publishMedia();
+      _scheduleCaptureDiagnostics('camera switch', stream, _videoSender);
       if (previousStream != null && !identical(previousStream, stream)) {
         await _disposeStream(previousStream);
       }
@@ -2457,33 +2484,39 @@ class CallSession {
     }
   }
 
-  Future<void> _verifyCaptureFrames(MediaStream stream) async {
-    final renderer = RTCVideoRenderer();
-    final ready = Completer<void>();
-    final started = DateTime.now();
-    renderer.onFirstFrameRendered = () {
-      if (!ready.isCompleted) ready.complete();
-    };
-    try {
-      await renderer.initialize();
-      await renderer.setSrcObject(stream: stream);
-      await ready.future.timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw StateError(
-            'Нет изображения от источника. Проверьте разрешения, подключение камеры или восстановите окно.',
-          );
-        },
-      );
-      final track = stream.getVideoTracks().firstOrNull;
-      logger.i(
-        '[call][video] capture first frame in '
-        '${DateTime.now().difference(started).inMilliseconds}ms '
-        'stream=${stream.id} track=${track?.id} settings=${track?.getSettings()}',
-      );
-    } finally {
-      renderer.onFirstFrameRendered = null;
-      await renderer.dispose();
+  void _logCaptureCreated(String source, MediaStream stream, DateTime started) {
+    final track = stream.getVideoTracks().firstOrNull;
+    logger.i(
+      '[call][video] $source capture created in '
+      '${DateTime.now().difference(started).inMilliseconds}ms '
+      'stream=${stream.id} track=${track?.id} enabled=${track?.enabled} '
+      'settings=${track?.getSettings()}',
+    );
+  }
+
+  void _scheduleCaptureDiagnostics(
+    String source,
+    MediaStream stream,
+    RTCRtpSender? sender,
+  ) {
+    for (final delay in const [Duration(seconds: 1), Duration(seconds: 5)]) {
+      Timer(delay, () {
+        if (_ended) return;
+        final track = stream.getVideoTracks().firstOrNull;
+        final active =
+            identical(_cameraStream, stream) ||
+            identical(_screenStream, stream);
+        logger.i(
+          '[call][video] $source capture health after ${delay.inSeconds}s '
+          'active=$active stream=${stream.id} track=${track?.id} '
+          'enabled=${track?.enabled} senderTrack=${sender?.track?.id} '
+          'senderAttached=${track != null && sender?.track?.id == track.id} '
+          'cameraSender=${_videoSender?.track?.id} '
+          'screenSender=${_screenSender?.track?.id} '
+          'topology=$_topology pc=${_pc?.connectionState} '
+          'ice=${_pc?.iceConnectionState} settings=${track?.getSettings()}',
+        );
+      });
     }
   }
 
@@ -2538,6 +2571,7 @@ class CallSession {
     if (pc == null || _ended) return;
     final epoch = _captureEpoch;
     MediaStream? stream;
+    final started = DateTime.now();
     try {
       final device = _cameraDeviceId;
       if (device != null) {
@@ -2548,6 +2582,11 @@ class CallSession {
           throw StateError('Камера отключена. Выберите доступное устройство.');
         }
       }
+      logger.i(
+        '[call][video] camera capture requested device='
+        '${device?.hashCode.toUnsigned(32).toRadixString(16) ?? 'default'} '
+        'topology=$_topology',
+      );
       stream = await navigator.mediaDevices.getUserMedia({
         'video': {
           if (device != null) ...{
@@ -2569,7 +2608,7 @@ class CallSession {
       }
       final tracks = stream.getVideoTracks();
       if (tracks.isEmpty) throw StateError('Камера не предоставила видеопоток');
-      await _verifyCaptureFrames(stream);
+      _logCaptureCreated('camera', stream, started);
       if (!_captureValid(epoch, pc)) {
         await _disposeStream(stream);
         return;
@@ -2603,6 +2642,7 @@ class CallSession {
       };
       _notifyInfo();
       if (announce) await _publishMedia();
+      _scheduleCaptureDiagnostics('camera', stream, _videoSender);
     } catch (e, st) {
       logger.e('[call][video] camera start failed', error: e, stackTrace: st);
       if (identical(_cameraStream, stream)) {
@@ -2644,6 +2684,7 @@ class CallSession {
     DesktopCapturerSource? selectedSource = source;
     var senderChanged = false;
     var bridgeEnabled = false;
+    final started = DateTime.now();
     try {
       if (_isDesktop && source == null) {
         throw StateError('Выберите окно или экран для демонстрации');
@@ -2662,6 +2703,11 @@ class CallSession {
           );
         }
       }
+      logger.i(
+        '[call][video] screen capture requested type=${selectedSource?.type} '
+        'source=${selectedSource?.id.hashCode.toUnsigned(32).toRadixString(16)} '
+        'topology=$_topology platform=$defaultTargetPlatform',
+      );
       if (defaultTargetPlatform == TargetPlatform.android) {
         if (!await Helper.requestCapturePermission()) {
           throw StateError('Демонстрация экрана отменена');
@@ -2690,7 +2736,7 @@ class CallSession {
       if (tracks.isEmpty) {
         throw StateError('Источник не предоставил видеопоток');
       }
-      await _verifyCaptureFrames(stream);
+      _logCaptureCreated('screen', stream, started);
       if (!_captureValid(epoch, pc)) {
         await _disposeStream(stream);
         await CallBridge.instance.setScreenShare(false);
@@ -2736,6 +2782,7 @@ class CallSession {
       );
       _notifyInfo();
       await _publishMedia();
+      _scheduleCaptureDiagnostics('screen', stream, _screenSender);
       if (previousStream != null && !identical(previousStream, stream)) {
         await _disposeStream(previousStream);
       }

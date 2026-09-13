@@ -84,6 +84,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _disposing = false;
   int _rendererSequence = 0;
   MediaStream? _pendingStream;
+  bool _holdingRemoteVideo = false;
 
   Color? _seedKey;
   ColorScheme? _scheme;
@@ -144,7 +145,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _syncRemotePreview() {
+  void _syncRemotePreview({MediaStream? candidate}) {
     if (!_rendererReady) return;
     final session = _session;
     if (session == null) return;
@@ -152,7 +153,24 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final participant = peer == null
         ? null
         : session.streamOf(peer, screen: session.peerScreen);
-    final stream = participant ?? session.remoteStream;
+    final direct = session.topology == 'SERVER'
+        ? null
+        : candidate ?? session.remoteStream;
+    final stream = participant ?? direct;
+    if (stream == null &&
+        session.peerHasVideo &&
+        _remoteRenderer.srcObject?.getVideoTracks().isNotEmpty == true) {
+      if (!_holdingRemoteVideo) {
+        _holdingRemoteVideo = true;
+        logger.i(
+          '[call][video] renderer remote keeps current track while '
+          'waiting for ${session.peerScreen ? 'screen' : 'camera'} mapping '
+          'topology=${session.topology}',
+        );
+      }
+      return;
+    }
+    _holdingRemoteVideo = false;
     unawaited(_setRendererSource(_remoteRenderer, stream, 'remote'));
   }
 
@@ -184,7 +202,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   ) {
     final track = stream?.getVideoTracks().firstOrNull;
     final source = track == null ? null : stream;
-    final target = source == null ? null : '${source.id}:${track!.id}';
+    final target = track?.id;
     if (_rendererTargets.containsKey(renderer) &&
         _rendererTargets[renderer] == target) {
       return _rendererTails[renderer] ?? Future.value();
@@ -329,8 +347,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       return;
     }
     if (stream.getVideoTracks().isEmpty) return;
-    unawaited(_setRendererSource(_remoteRenderer, stream, 'remote'));
-    _syncRemotePreview();
+    _syncRemotePreview(candidate: stream);
     if (mounted) setState(() {});
   }
 
