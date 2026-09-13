@@ -138,6 +138,7 @@ class CallSession {
   bool _monitorCapture = false;
 
   Completer<void>? _gatherDone;
+  RTCPeerConnection? _gatherPc;
   bool _gotConnection = false;
 
   bool _reconnecting = false;
@@ -884,7 +885,9 @@ class CallSession {
       logger.i('[call] ice gathering $s');
       if (s != RTCIceGatheringState.RTCIceGatheringStateComplete) return;
       final done = _gatherDone;
-      if (done != null && !done.isCompleted) done.complete();
+      if (identical(pc, _gatherPc) && done != null && !done.isCompleted) {
+        done.complete();
+      }
     };
     pc.onTrack = (event) => unawaited(_onRemoteTrack(event));
     pc.onDataChannel = (channel) {
@@ -1756,14 +1759,23 @@ class CallSession {
 
   Future<void> _dumpVideoStats(RTCPeerConnection pc) async {
     try {
+      final reports = await pc.getStats();
+      final senderTracks = <String, String>{};
+      for (final transceiver in await pc.getTransceivers()) {
+        final mid = transceiver.mid;
+        final track = transceiver.sender.track;
+        if (track != null) senderTracks[mid] = track.id!;
+      }
       final rows = <String>[];
-      for (final r in await pc.getStats()) {
+      for (final r in reports) {
         if (r.type != 'inbound-rtp' && r.type != 'outbound-rtp') continue;
         final v = r.values;
         if (v['kind'] != 'video' && v['mediaType'] != 'video') continue;
+        final mid = v['mid']?.toString();
         rows.add(
           '[${r.type == 'inbound-rtp' ? 'in' : 'out'} '
-          'mid=${v['mid']} track=${v['trackIdentifier']} ssrc=${v['ssrc']} '
+          'mid=$mid track=${v['trackIdentifier'] ?? senderTracks[mid]} '
+          'ssrc=${v['ssrc']} '
           'bytes=${v['bytesReceived'] ?? v['bytesSent']} '
           'packets=${v['packetsReceived'] ?? v['packetsSent']} '
           'lost=${v['packetsLost']} frames='
@@ -1777,7 +1789,7 @@ class CallSession {
       }
       var transportBytes = 0;
       var audioBytes = 0;
-      for (final r in await pc.getStats()) {
+      for (final r in reports) {
         final v = r.values;
         if (r.type == 'transport') {
           final b = v['bytesReceived'];
@@ -2010,15 +2022,12 @@ class CallSession {
       'id=${event.track.id} mid=${event.transceiver?.mid} '
       'streams=${event.streams.map((s) => s.id).join(',')}',
     );
-    await _bindParticipantTrack(event.track);
     if (event.track.kind != 'video') return;
-    if (event.streams.isNotEmpty &&
-        event.streams.first.getVideoTracks().isNotEmpty) {
-      _remoteStreamRef = event.streams.first;
-      _remoteStream.add(event.streams.first);
-    } else {
-      await _pushRemoteTrack(event.track);
+    if (_topology == 'SERVER') {
+      await _bindParticipantTrack(event.track);
+      return;
     }
+    await _pushRemoteTrack(event.track);
   }
 
   int? _participantFromTrackId(String? trackId) {
@@ -2080,6 +2089,12 @@ class CallSession {
       _ownRemoteStream = true;
     }
     _remoteStreamRef = stream;
+    for (final old in stream.getVideoTracks().toList()) {
+      if (old.id == track.id) continue;
+      try {
+        await stream.removeTrack(old);
+      } catch (_) {}
+    }
     if (!stream.getTracks().any((t) => t.id == track.id)) {
       try {
         await stream.addTrack(track);
@@ -2110,17 +2125,18 @@ class CallSession {
 
   Future<void> _collectReceivers() async {
     final pc = _pc;
-    if (pc == null) return;
+    if (pc == null || _topology != 'SERVER') return;
     try {
       for (final tr in await pc.getTransceivers()) {
         final track = tr.receiver.track;
-        if (track != null) {
+        if (track != null && track.kind == 'video') {
           logger.t('[call] receiver track: ${track.kind} id=${track.id}');
           await _bindParticipantTrack(track);
-          await _pushRemoteTrack(track);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      logger.w('[call][video] receiver collection failed: $e');
+    }
   }
 
   Future<void> _createAndSendOffer({bool iceRestart = false}) async {
@@ -2255,7 +2271,7 @@ class CallSession {
 
   Future<void> _awaitIceGathering(
     RTCPeerConnection pc, {
-    Duration timeout = const Duration(seconds: 5),
+    Duration timeout = const Duration(seconds: 10),
   }) async {
     if (pc.iceGatheringState ==
         RTCIceGatheringState.RTCIceGatheringStateComplete) {
@@ -2263,22 +2279,24 @@ class CallSession {
     }
     final done = Completer<void>();
     _gatherDone = done;
+    _gatherPc = pc;
     try {
       await done.future.timeout(timeout);
-      logger.i('[call][sfu] relay candidate gathered');
+      logger.i('[call][sfu] ICE gathering completed');
     } catch (_) {
-      logger.w('[call][sfu] no relay candidate within $timeout');
+      logger.w(
+        '[call][sfu] ICE gathering incomplete after $timeout; '
+        'sending the candidates gathered so far',
+      );
     } finally {
-      _gatherDone = null;
+      if (identical(pc, _gatherPc)) {
+        _gatherDone = null;
+        _gatherPc = null;
+      }
     }
   }
 
   void _onLocalCandidate(RTCIceCandidate candidate) {
-    final line = candidate.candidate;
-    if (line != null && line.contains(' typ relay')) {
-      final done = _gatherDone;
-      if (done != null && !done.isCompleted) done.complete();
-    }
     if (_topology == 'SERVER') return;
     final peerId = _peerId;
     if (peerId == null || candidate.candidate == null) return;
@@ -2490,8 +2508,20 @@ class CallSession {
       '[call][video] $source capture created in '
       '${DateTime.now().difference(started).inMilliseconds}ms '
       'stream=${stream.id} track=${track?.id} enabled=${track?.enabled} '
-      'settings=${track?.getSettings()}',
+      'settings=${_diagnosticTrackSettings(track)}',
     );
+  }
+
+  Map<String, dynamic> _diagnosticTrackSettings(MediaStreamTrack? track) {
+    if (track == null) return const {};
+    final settings = Map<String, dynamic>.from(track.getSettings());
+    for (final key in const ['deviceId', 'groupId', 'sourceId']) {
+      final value = settings[key];
+      if (value is String && value.isNotEmpty) {
+        settings[key] = value.hashCode.toUnsigned(32).toRadixString(16);
+      }
+    }
+    return settings;
   }
 
   void _scheduleCaptureDiagnostics(
@@ -2514,7 +2544,8 @@ class CallSession {
           'cameraSender=${_videoSender?.track?.id} '
           'screenSender=${_screenSender?.track?.id} '
           'topology=$_topology pc=${_pc?.connectionState} '
-          'ice=${_pc?.iceConnectionState} settings=${track?.getSettings()}',
+          'ice=${_pc?.iceConnectionState} '
+          'settings=${_diagnosticTrackSettings(track)}',
         );
       });
     }
@@ -2778,7 +2809,7 @@ class CallSession {
       logger.i(
         '[call][video] screen capture started type=${selectedSource?.type} '
         'source=${selectedSource?.id.hashCode.toUnsigned(32).toRadixString(16)} '
-        'track=${track.id} settings=${track.getSettings()}',
+        'track=${track.id} settings=${_diagnosticTrackSettings(track)}',
       );
       _notifyInfo();
       await _publishMedia();
@@ -3008,7 +3039,7 @@ class CallSession {
         _remoteStreamRef = null;
         if (_ownRemoteStream && remote != null) {
           _ownRemoteStream = false;
-          unawaited(remote.dispose().catchError((_) {}));
+          _retiredParticipantStreams.add(remote);
         }
       }
       _notifyInfo();

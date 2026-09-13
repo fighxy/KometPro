@@ -1148,8 +1148,13 @@ class _ChatListScreenState extends State<ChatListScreen>
     if (!DesktopDensity.enabled) return;
     await DesktopWindow.setJumpList([
       for (final chat in _chats.take(8))
-        (id: chat.id, title: (chat.title ?? 'Чат').trim().isEmpty ? 'Чат' : chat.title!),
+        (id: chat.id, title: _jumpListTitle(chat.title)),
     ]);
+  }
+
+  String _jumpListTitle(String? title) {
+    final trimmed = title?.trim();
+    return trimmed == null || trimmed.isEmpty ? 'Чат' : trimmed;
   }
 
   DesktopChatSelection? _adjacentSelection(int? currentId, int delta) {
