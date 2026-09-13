@@ -137,6 +137,7 @@ class CallSession {
   RTCRtpSender? _audioSender;
   RTCRtpSender? _videoSender;
   RTCRtpSender? _screenSender;
+  bool _directScreenSubstitution = false;
   String? _micDeviceId = AppMicrophone.deviceId;
   String? _pulseSource = AppPulseSource.name;
   bool _monitorCapture = false;
@@ -201,6 +202,8 @@ class CallSession {
 
   bool get localVideo => _localVideo;
   bool get localScreen => _localScreen;
+  bool get _signaledVideo => _directScreenSubstitution || _localVideo;
+  bool get _signaledScreen => !_directScreenSubstitution && _localScreen;
   MediaStream? get localVideoStream =>
       _localScreen ? _screenStream : _cameraStream;
   MediaStream? get localCameraStream => _cameraStream;
@@ -333,9 +336,9 @@ class CallSession {
         'change-media-settings',
         extra: {
           'mediaSettings': {
-            'isVideoEnabled': _localVideo,
+            'isVideoEnabled': _signaledVideo,
             'isAudioEnabled': !_muted,
-            'isScreenSharingEnabled': _localScreen,
+            'isScreenSharingEnabled': _signaledScreen,
             'isAnimojiEnabled': false,
           },
         },
@@ -435,6 +438,7 @@ class CallSession {
     _audioSender = null;
     _videoSender = null;
     _screenSender = null;
+    _directScreenSubstitution = false;
     _remoteDescSet = false;
     _pendingCandidates.clear();
     _accepted = false;
@@ -1677,8 +1681,21 @@ class CallSession {
     final topo = msg['topology']?.toString();
     if (topo == null) return;
     logger.i('[call] topology-changed -> $topo');
+    if (topo == 'SERVER' &&
+        !isGroup &&
+        _topology == 'DIRECT' &&
+        (_pc?.connectionState ==
+                RTCPeerConnectionState.RTCPeerConnectionStateConnected ||
+            _pc?.iceConnectionState ==
+                RTCIceConnectionState.RTCIceConnectionStateConnected ||
+            _pc?.iceConnectionState ==
+                RTCIceConnectionState.RTCIceConnectionStateCompleted)) {
+      logger.i('[call] keeping connected one-to-one call on DIRECT topology');
+      return;
+    }
     info.topology = topo;
     final switchingToSfu = topo == 'SERVER' && _topology != 'SERVER';
+    if (switchingToSfu) _directScreenSubstitution = false;
     _topology = topo;
     _notifyInfo();
     if (switchingToSfu) await _setupSfu();
@@ -2449,8 +2466,8 @@ class CallSession {
     logger.i('[call] accept-call sent (activate=$activate)');
     await _signaling?.acceptCall(
       isAudioEnabled: !_muted,
-      isVideoEnabled: _localVideo,
-      isScreenSharingEnabled: _localScreen,
+      isVideoEnabled: _signaledVideo,
+      isScreenSharingEnabled: _signaledScreen,
     );
     if (activate) _setState(CallSessionState.active);
   }
@@ -2458,8 +2475,8 @@ class CallSession {
   Future<void> sendAudioEnabledSignal(bool enabled) async {
     await _signaling?.changeMediaSettings(
       isAudioEnabled: enabled,
-      isVideoEnabled: _localVideo,
-      isScreenSharingEnabled: _localScreen,
+      isVideoEnabled: _signaledVideo,
+      isScreenSharingEnabled: _signaledScreen,
     );
   }
 
@@ -2477,8 +2494,8 @@ class CallSession {
   Future<void> _sendMediaSettings() async {
     await _signaling?.changeMediaSettings(
       isAudioEnabled: !_muted,
-      isVideoEnabled: _localVideo,
-      isScreenSharingEnabled: _localScreen,
+      isVideoEnabled: _signaledVideo,
+      isScreenSharingEnabled: _signaledScreen,
     );
   }
 
@@ -2550,9 +2567,13 @@ class CallSession {
         return;
       }
       final track = tracks.first;
-      if (_videoSender == null && _topology != 'SERVER') {
+      final senderWasAdded =
+          _videoSender == null &&
+          !_directScreenSubstitution &&
+          _topology != 'SERVER';
+      if (senderWasAdded) {
         _videoSender = await pc.addTrack(track, stream);
-      } else if (_videoSender != null) {
+      } else if (!_directScreenSubstitution && _videoSender != null) {
         await _videoSender!.replaceTrack(track);
       }
       senderChanged = true;
@@ -2573,8 +2594,12 @@ class CallSession {
         }
       };
       _notifyInfo();
-      await _publishMedia();
-      _scheduleCaptureDiagnostics('camera switch', stream, _videoSender);
+      await _publishMedia(renegotiate: senderWasAdded);
+      _scheduleCaptureDiagnostics(
+        'camera switch',
+        stream,
+        _directScreenSubstitution ? _screenSender : _videoSender,
+      );
       if (previousStream != null && !identical(previousStream, stream)) {
         await _disposeStream(previousStream);
       }
@@ -2620,10 +2645,10 @@ class CallSession {
   bool _captureValid(int epoch, RTCPeerConnection pc) =>
       !_ended && epoch == _captureEpoch && identical(pc, _pc);
 
-  Future<void> _publishMedia() async {
+  Future<void> _publishMedia({bool renegotiate = true}) async {
     await _sendMediaSettings();
     await _applyVideoQuality();
-    if (_topology != 'SERVER') await _createAndSendOffer();
+    if (renegotiate && _topology != 'SERVER') await _createAndSendOffer();
   }
 
   Future<void> _applyVideoQuality() async {
@@ -2812,10 +2837,12 @@ class CallSession {
       }
       final track = tracks.first;
       final sender = _videoSender;
-      if (sender == null && _topology != 'SERVER') {
+      final senderWasAdded =
+          sender == null && !_directScreenSubstitution && _topology != 'SERVER';
+      if (senderWasAdded) {
         final added = await pc.addTrack(track, stream);
         if (_captureValid(epoch, pc)) _videoSender = added;
-      } else if (sender != null) {
+      } else if (!_directScreenSubstitution && sender != null) {
         await sender.replaceTrack(track);
       }
       if (!_captureValid(epoch, pc)) {
@@ -2838,8 +2865,12 @@ class CallSession {
         }
       };
       _notifyInfo();
-      if (announce) await _publishMedia();
-      _scheduleCaptureDiagnostics('camera', stream, _videoSender);
+      if (announce) await _publishMedia(renegotiate: senderWasAdded);
+      _scheduleCaptureDiagnostics(
+        'camera',
+        stream,
+        _directScreenSubstitution ? _screenSender : _videoSender,
+      );
     } catch (e, st) {
       logger.e('[call][video] camera start failed', error: e, stackTrace: st);
       if (identical(_cameraStream, stream)) {
@@ -2863,7 +2894,9 @@ class CallSession {
     _localVideo = false;
     await _disposeStream(stream);
     try {
-      await _videoSender?.replaceTrack(null);
+      if (!_directScreenSubstitution) {
+        await _videoSender?.replaceTrack(null);
+      }
     } catch (_) {}
     _notifyInfo();
     if (!_ended) await _sendMediaSettings();
@@ -2877,6 +2910,10 @@ class CallSession {
     final previousName = _screenSourceName;
     final previousId = _screenSourceId;
     final previousType = _screenSourceType;
+    final previousVideoSender = _videoSender;
+    final previousScreenSender = _screenSender;
+    final previousVideoTrack = previousVideoSender?.track;
+    final previousDirectSubstitution = _directScreenSubstitution;
     MediaStream? stream;
     DesktopCapturerSource? selectedSource = source;
     var senderChanged = false;
@@ -2940,17 +2977,42 @@ class CallSession {
         return;
       }
       final track = tracks.first;
-      if (_screenSender == null && _topology != 'SERVER') {
+      final useDirectSubstitution = !isGroup && _topology != 'SERVER';
+      var senderWasAdded = false;
+      if (useDirectSubstitution) {
+        final sender = _screenSender ?? _videoSender;
+        if (sender == null) {
+          final added = await pc.addTrack(track, stream);
+          if (_captureValid(epoch, pc)) _screenSender = added;
+          senderWasAdded = true;
+        } else {
+          await sender.replaceTrack(track);
+          _screenSender = sender;
+        }
+        _videoSender = null;
+        _directScreenSubstitution = true;
+        logger.i(
+          '[call][video] one-to-one DIRECT sender switched to screen '
+          'track=${track.id}',
+        );
+      } else if (_screenSender == null && _topology != 'SERVER') {
         final added = await pc.addTrack(track, stream);
         if (_captureValid(epoch, pc)) _screenSender = added;
+        senderWasAdded = true;
       } else if (_screenSender != null) {
         await _screenSender!.replaceTrack(track);
       }
       senderChanged = true;
       if (!_captureValid(epoch, pc)) {
-        await _screenSender?.replaceTrack(
-          previousStream?.getVideoTracks().firstOrNull,
+        final restoreTrack = previousDirectSubstitution
+            ? previousStream?.getVideoTracks().firstOrNull
+            : previousVideoTrack;
+        await (_screenSender ?? previousScreenSender)?.replaceTrack(
+          restoreTrack,
         );
+        _videoSender = previousVideoSender;
+        _screenSender = previousScreenSender;
+        _directScreenSubstitution = previousDirectSubstitution;
         await _disposeStream(stream);
         if (bridgeEnabled) await CallBridge.instance.setScreenShare(false);
         return;
@@ -2978,7 +3040,7 @@ class CallSession {
         'track=${track.id} settings=${_diagnosticTrackSettings(track)}',
       );
       _notifyInfo();
-      await _publishMedia();
+      await _publishMedia(renegotiate: senderWasAdded);
       _scheduleCaptureDiagnostics('screen', stream, _screenSender);
       if (previousStream != null && !identical(previousStream, stream)) {
         await _disposeStream(previousStream);
@@ -2991,11 +3053,17 @@ class CallSession {
       );
       if (senderChanged) {
         try {
-          await _screenSender?.replaceTrack(
-            previousStream?.getVideoTracks().firstOrNull,
+          final restoreTrack = previousDirectSubstitution
+              ? previousStream?.getVideoTracks().firstOrNull
+              : previousVideoTrack;
+          await (_screenSender ?? previousScreenSender)?.replaceTrack(
+            restoreTrack,
           );
         } catch (_) {}
       }
+      _videoSender = previousVideoSender;
+      _screenSender = previousScreenSender;
+      _directScreenSubstitution = previousDirectSubstitution;
       if (identical(_screenStream, stream)) {
         _screenStream = previousStream;
         _screenSourceName = previousName;
@@ -3014,15 +3082,32 @@ class CallSession {
 
   Future<void> _stopScreenShare() async {
     final stream = _screenStream;
+    final directSubstitution = _directScreenSubstitution;
+    final sender = _screenSender;
     _screenStream = null;
     _screenSourceName = null;
     _screenSourceId = null;
     _screenSourceType = null;
     _localScreen = false;
+    if (directSubstitution) {
+      try {
+        final cameraTrack = _cameraStream?.getVideoTracks().firstOrNull;
+        await sender?.replaceTrack(cameraTrack);
+      } catch (_) {}
+      _videoSender = sender;
+      _screenSender = null;
+      _directScreenSubstitution = false;
+      await _applyVideoQuality();
+      logger.i(
+        '[call][video] one-to-one DIRECT sender restored to camera '
+        'track=${_videoSender?.track?.id}',
+      );
+    } else {
+      try {
+        await _screenSender?.replaceTrack(null);
+      } catch (_) {}
+    }
     await _disposeStream(stream);
-    try {
-      await _screenSender?.replaceTrack(null);
-    } catch (_) {}
     await CallBridge.instance.setScreenShare(false);
     _notifyInfo();
     if (!_ended) await _sendMediaSettings();
