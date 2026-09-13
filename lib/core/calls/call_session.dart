@@ -96,10 +96,14 @@ class CallSession {
   bool _ownRemoteStream = false;
   final List<RTCIceCandidate> _pendingCandidates = [];
   Future<void> _tail = Future.value();
+  Map<String, dynamic>? _pendingProducerUpdate;
+  bool _processingProducerUpdate = false;
 
   final Map<int, CallParticipant> _participants = {};
   final Map<int, MediaStream> _participantStreams = {};
   final Map<int, MediaStream> _participantScreens = {};
+  final Map<String, MediaStream> _remoteTrackStreams = {};
+  final Set<String> _borrowedRemoteStreamIds = {};
   final List<MediaStream> _retiredParticipantStreams = [];
   final Set<int> _screenSlots = {};
   final _participantStreamUpdates = StreamController<int>.broadcast();
@@ -137,8 +141,6 @@ class CallSession {
   String? _pulseSource = AppPulseSource.name;
   bool _monitorCapture = false;
 
-  Completer<void>? _gatherDone;
-  RTCPeerConnection? _gatherPc;
   bool _gotConnection = false;
 
   bool _reconnecting = false;
@@ -165,6 +167,7 @@ class CallSession {
   StreamSubscription<Map<String, int>>? _sfuLevelSub;
   final Map<int, int> _slotParticipant = {};
   Timer? _layoutDebounce;
+  int _layoutRetry = 0;
   Timer? _videoStatsTimer;
   Future<void> _slotRebindTail = Future.value();
   int _slotRevision = 0;
@@ -565,7 +568,7 @@ class CallSession {
         await _onTopologyChanged(msg);
         break;
       case 'producer-updated':
-        await _onProducerUpdated(msg);
+        _queueProducerUpdate(msg);
         break;
       case 'session-state':
         _onSessionState(msg);
@@ -573,6 +576,33 @@ class CallSession {
       case 'closed-conversation':
         _end();
         break;
+    }
+  }
+
+  void _queueProducerUpdate(Map<String, dynamic> msg) {
+    _pendingProducerUpdate = Map<String, dynamic>.from(msg);
+    if (_processingProducerUpdate) return;
+    _processingProducerUpdate = true;
+    unawaited(_drainProducerUpdates());
+  }
+
+  Future<void> _drainProducerUpdates() async {
+    try {
+      while (!_ended) {
+        final msg = _pendingProducerUpdate;
+        _pendingProducerUpdate = null;
+        if (msg == null) return;
+        try {
+          await _onProducerUpdated(msg);
+        } catch (e, st) {
+          logger.w('[call][sfu] producer update failed: $e\n$st');
+        }
+      }
+    } finally {
+      _processingProducerUpdate = false;
+      if (!_ended && _pendingProducerUpdate != null) {
+        _queueProducerUpdate(_pendingProducerUpdate!);
+      }
     }
   }
 
@@ -883,11 +913,6 @@ class CallSession {
     pc.onIceCandidate = _onLocalCandidate;
     pc.onIceGatheringState = (s) {
       logger.i('[call] ice gathering $s');
-      if (s != RTCIceGatheringState.RTCIceGatheringStateComplete) return;
-      final done = _gatherDone;
-      if (identical(pc, _gatherPc) && done != null && !done.isCompleted) {
-        done.complete();
-      }
     };
     pc.onTrack = (event) => unawaited(_onRemoteTrack(event));
     pc.onDataChannel = (channel) {
@@ -1264,12 +1289,11 @@ class CallSession {
     _notifyInfo();
   }
 
-  void _scheduleDisplayLayout() {
+  void _scheduleDisplayLayout({
+    Duration delay = const Duration(milliseconds: 300),
+  }) {
     _layoutDebounce?.cancel();
-    _layoutDebounce = Timer(
-      const Duration(milliseconds: 300),
-      () => unawaited(_publishDisplayLayout()),
-    );
+    _layoutDebounce = Timer(delay, () => unawaited(_publishDisplayLayout()));
   }
 
   Future<void> _publishDisplayLayout({bool force = false}) async {
@@ -1296,10 +1320,17 @@ class CallSession {
     if (!force &&
         _layoutSent &&
         keys.length == _lastLayout.length &&
-        keys.every(_lastLayout.contains)) {
+        keys.indexed.every((entry) => _lastLayout[entry.$1] == entry.$2)) {
       return;
     }
-    if (!await commands.sendDisplayLayout(items)) return;
+    if (!await commands.sendDisplayLayout(items)) {
+      if (_layoutRetry < 8) {
+        _layoutRetry++;
+        _scheduleDisplayLayout(delay: const Duration(seconds: 1));
+      }
+      return;
+    }
+    _layoutRetry = 0;
     _lastLayout = keys;
     _layoutSent = true;
   }
@@ -1395,6 +1426,7 @@ class CallSession {
     _screenSlots.clear();
     _lastLayout = const [];
     _layoutSent = false;
+    _layoutRetry = 0;
     final channels = List<RTCDataChannel>.from(_sfuChannels);
     _sfuChannels.clear();
     for (final channel in channels) {
@@ -2023,11 +2055,16 @@ class CallSession {
       'streams=${event.streams.map((s) => s.id).join(',')}',
     );
     if (event.track.kind != 'video') return;
+    final source = _sourceStreamForTrack(event.track, event.streams);
+    if (source != null) {
+      _remoteTrackStreams[event.track.id!] = source;
+      _borrowedRemoteStreamIds.add(source.id);
+    }
     if (_topology == 'SERVER') {
       await _bindParticipantTrack(event.track);
       return;
     }
-    await _pushRemoteTrack(event.track);
+    await _pushRemoteTrack(event.track, event.streams);
   }
 
   int? _participantFromTrackId(String? trackId) {
@@ -2058,6 +2095,15 @@ class CallSession {
         (slot != null && _screenSlots.contains(int.parse(slot.group(1)!))) ||
         (_topology != 'SERVER' && _peerScreen && !_peerVideo);
     final streams = screen ? _participantScreens : _participantStreams;
+    final source = _remoteTrackStreams[track.id];
+    if (source != null && source.getVideoTracks().length == 1) {
+      streams[id] = source;
+      logger.t('[call] remote stream ${source.id} -> participant $id');
+      if (!_participantStreamUpdates.isClosed) {
+        _participantStreamUpdates.add(id);
+      }
+      return;
+    }
     var stream = streams[id];
     if (stream == null) {
       stream = await createLocalMediaStream(
@@ -2082,9 +2128,26 @@ class CallSession {
     if (!_participantStreamUpdates.isClosed) _participantStreamUpdates.add(id);
   }
 
-  Future<void> _pushRemoteTrack(MediaStreamTrack track) async {
+  Future<void> _pushRemoteTrack(
+    MediaStreamTrack track,
+    List<MediaStream> sourceStreams,
+  ) async {
+    final source = _sourceStreamForTrack(track, sourceStreams);
+    if (source != null) {
+      final previous = _remoteStreamRef;
+      final disposePrevious = _ownRemoteStream && !identical(previous, source);
+      _remoteStreamRef = source;
+      _ownRemoteStream = false;
+      _remoteStream.add(source);
+      if (disposePrevious) {
+        try {
+          await previous?.dispose();
+        } catch (_) {}
+      }
+      return;
+    }
     var stream = _remoteStreamRef;
-    if (stream == null) {
+    if (stream == null || !_ownRemoteStream) {
       stream = await createLocalMediaStream('komet_remote');
       _ownRemoteStream = true;
     }
@@ -2101,6 +2164,15 @@ class CallSession {
       } catch (_) {}
     }
     _remoteStream.add(stream);
+  }
+
+  MediaStream? _sourceStreamForTrack(
+    MediaStreamTrack track,
+    List<MediaStream> streams,
+  ) {
+    return streams.where((stream) {
+      return stream.getVideoTracks().any((item) => item.id == track.id);
+    }).firstOrNull;
   }
 
   Future<void> _logSenders() async {
@@ -2271,28 +2343,45 @@ class CallSession {
 
   Future<void> _awaitIceGathering(
     RTCPeerConnection pc, {
-    Duration timeout = const Duration(seconds: 10),
+    Duration timeout = const Duration(seconds: 3),
   }) async {
     if (pc.iceGatheringState ==
         RTCIceGatheringState.RTCIceGatheringStateComplete) {
       return;
     }
-    final done = Completer<void>();
-    _gatherDone = done;
-    _gatherPc = pc;
-    try {
-      await done.future.timeout(timeout);
-      logger.i('[call][sfu] ICE gathering completed');
-    } catch (_) {
-      logger.w(
-        '[call][sfu] ICE gathering incomplete after $timeout; '
-        'sending the candidates gathered so far',
-      );
-    } finally {
-      if (identical(pc, _gatherPc)) {
-        _gatherDone = null;
-        _gatherPc = null;
+    final started = DateTime.now();
+    var candidateCount = 0;
+    var stableSince = started;
+    while (!_ended && identical(pc, _pc)) {
+      if (pc.iceGatheringState ==
+          RTCIceGatheringState.RTCIceGatheringStateComplete) {
+        logger.i('[call][sfu] ICE gathering completed');
+        return;
       }
+      try {
+        final local = await pc.getLocalDescription();
+        final nextCount = _countCandidates(local?.sdp ?? '');
+        if (nextCount != candidateCount) {
+          candidateCount = nextCount;
+          stableSince = DateTime.now();
+        } else if (candidateCount > 0 &&
+            DateTime.now().difference(stableSince) >=
+                const Duration(milliseconds: 400)) {
+          logger.i(
+            '[call][sfu] ICE candidates settled while gathering: '
+            '$candidateCount',
+          );
+          return;
+        }
+      } catch (_) {}
+      if (DateTime.now().difference(started) >= timeout) {
+        logger.w(
+          '[call][sfu] ICE gathering incomplete after $timeout; '
+          'sending $candidateCount candidates gathered so far',
+        );
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
     }
   }
 
@@ -2863,11 +2952,16 @@ class CallSession {
   }
 
   Future<void> _clearParticipantStreams({bool dispose = true}) async {
-    final entries = [
+    final candidates = [
       ..._participantStreams.values,
       ..._participantScreens.values,
       if (dispose) ..._retiredParticipantStreams,
     ];
+    final streamsById = <String, MediaStream>{};
+    for (final stream in candidates) {
+      streamsById[stream.id] = stream;
+    }
+    final entries = streamsById.values.toList(growable: false);
     final ids = {..._participantStreams.keys, ..._participantScreens.keys};
     _participantStreams.clear();
     _participantScreens.clear();
@@ -2883,6 +2977,7 @@ class CallSession {
     }
     if (dispose) {
       for (final stream in entries) {
+        if (_borrowedRemoteStreamIds.contains(stream.id)) continue;
         try {
           await stream.dispose();
         } catch (_) {}
@@ -2926,6 +3021,7 @@ class CallSession {
     _captureEpoch++;
     _captureHealthTimer?.cancel();
     _captureHealthTimer = null;
+    _pendingProducerUpdate = null;
     _setState(CallSessionState.ended);
     _dispose();
   }
@@ -2958,6 +3054,8 @@ class CallSession {
       } catch (_) {}
     }
     await _clearParticipantStreams();
+    _remoteTrackStreams.clear();
+    _borrowedRemoteStreamIds.clear();
     await _signaling?.close();
     if (!_participantStreamUpdates.isClosed) {
       await _participantStreamUpdates.close();

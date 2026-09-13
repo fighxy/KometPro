@@ -196,6 +196,7 @@ class SfuCommandChannel {
   int _sequence = 1;
 
   final Map<int, String> _aliases = {};
+  List<int>? _slotAliases;
   final _slots = StreamController<Map<String, int>>.broadcast();
   final _levels = StreamController<Map<String, int>>.broadcast();
 
@@ -310,16 +311,16 @@ class SfuCommandChannel {
             final key = reader.readString();
             _aliases[reader.readInt()] = key;
           }
+          _emitSlots();
           break;
         case _notifySlots:
           final count = reader.readArrayHeader();
-          final slots = <String, int>{};
+          final aliases = <int>[];
           for (var i = 0; i < count; i++) {
-            final key = _aliases[reader.readInt()];
-            if (key != null) slots[key] = i;
+            aliases.add(reader.readInt());
           }
-          logger.i('[call][sfu] slots: $slots');
-          if (!_slots.isClosed) _slots.add(slots);
+          _slotAliases = aliases;
+          _emitSlots();
           break;
         case _notifyAudioLevels:
           final count = reader.readMapHeader();
@@ -337,9 +338,27 @@ class SfuCommandChannel {
     }
   }
 
+  void _emitSlots() {
+    final aliases = _slotAliases;
+    if (aliases == null) return;
+    final slots = <String, int>{};
+    var unresolved = 0;
+    for (var i = 0; i < aliases.length; i++) {
+      final key = _aliases[aliases[i]];
+      if (key == null) {
+        unresolved++;
+      } else {
+        slots[key] = i;
+      }
+    }
+    logger.i('[call][sfu] slots: $slots unresolved=$unresolved');
+    if (!_slots.isClosed) _slots.add(slots);
+  }
+
   Future<void> dispose() async {
     _command = null;
     _aliases.clear();
+    _slotAliases = null;
     if (!_slots.isClosed) await _slots.close();
     if (!_levels.isClosed) await _levels.close();
   }
