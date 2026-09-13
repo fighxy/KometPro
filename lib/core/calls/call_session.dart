@@ -163,7 +163,7 @@ class CallSession {
 
   final List<RTCDataChannel> _sfuChannels = [];
   SfuCommandChannel? _sfuCommands;
-  StreamSubscription<Map<String, int>>? _sfuSlotSub;
+  StreamSubscription<Map<int, String>>? _sfuSlotSub;
   StreamSubscription<Map<String, int>>? _sfuLevelSub;
   final Map<int, int> _slotParticipant = {};
   Timer? _layoutDebounce;
@@ -1251,15 +1251,50 @@ class CallSession {
     _notifyInfo();
   }
 
-  void _onSfuSlots(Map<String, int> slots) {
+  void _onSfuSlots(Map<int, String> slots) {
     final participants = <int, int>{};
     final screens = <int>{};
-    slots.forEach((key, slot) {
+    slots.forEach((slot, key) {
       if (slot < 0) return;
       final id = _participantIdFrom(key.split(':').first);
-      if (id != null) participants[slot] = id;
-      if (key.endsWith(':sSCREEN')) screens.add(slot);
+      if (id == null || id == ws2Config.userId) return;
+      final participant = _participants[id];
+      if (participant == null ||
+          (!participant.videoEnabled && !participant.screenSharing)) {
+        return;
+      }
+      participants[slot] = id;
+      final requested = slot < _lastLayout.length ? _lastLayout[slot] : null;
+      final requestedId = _participantIdFrom(requested?.split(':').first);
+      final isScreen = requestedId == id
+          ? requested!.endsWith(':sSCREEN')
+          : participant.screenSharing && !participant.videoEnabled;
+      if (isScreen) screens.add(slot);
     });
+    final wantsVideo = _participants.values.any(
+      (participant) =>
+          !participant.isSelf &&
+          (participant.videoEnabled || participant.screenSharing),
+    );
+    if (wantsVideo && participants.length < _lastLayout.length) {
+      for (final entry in _slotParticipant.entries) {
+        if (participants.containsKey(entry.key) ||
+            entry.key >= _lastLayout.length) {
+          continue;
+        }
+        final requested = _lastLayout[entry.key];
+        if (_participantIdFrom(requested.split(':').first) != entry.value) {
+          continue;
+        }
+        participants[entry.key] = entry.value;
+        if (requested.endsWith(':sSCREEN')) screens.add(entry.key);
+      }
+      logger.i(
+        '[call][sfu] incomplete slots retained: '
+        '${participants.length}/${_lastLayout.length}',
+      );
+      _scheduleDisplayLayout(delay: const Duration(seconds: 1), force: true);
+    }
     final unchanged =
         participants.length == _slotParticipant.length &&
         participants.entries.every((e) => _slotParticipant[e.key] == e.value) &&
@@ -1291,9 +1326,13 @@ class CallSession {
 
   void _scheduleDisplayLayout({
     Duration delay = const Duration(milliseconds: 300),
+    bool force = false,
   }) {
     _layoutDebounce?.cancel();
-    _layoutDebounce = Timer(delay, () => unawaited(_publishDisplayLayout()));
+    _layoutDebounce = Timer(
+      delay,
+      () => unawaited(_publishDisplayLayout(force: force)),
+    );
   }
 
   Future<void> _publishDisplayLayout({bool force = false}) async {
@@ -1307,8 +1346,8 @@ class CallSession {
         items.add(
           SfuLayoutItem(
             trackKey: 'u${p.id}:sSCREEN',
-            width: 1920,
-            height: 1080,
+            width: 2560,
+            height: 1440,
           ),
         );
       }
@@ -1688,6 +1727,7 @@ class CallSession {
     await _flushCandidates();
     await _addRemoteCandidatesFromSdp(pc, sdp);
     await _prepareVideoSlot(pc, sdp);
+    await _applyVideoQuality();
 
     final answer = await pc.createAnswer({});
     if (_pc != pc) return;
@@ -2216,6 +2256,7 @@ class CallSession {
     final peerId = _peerId;
     if (pc == null || peerId == null) return;
 
+    await _applyVideoQuality();
     final offer = await pc.createOffer(iceRestart ? {'iceRestart': true} : {});
     final sdp = offer.sdp ?? '';
     await pc.setLocalDescription(RTCSessionDescription(sdp, offer.type));
@@ -2288,6 +2329,7 @@ class CallSession {
       await pc.setRemoteDescription(RTCSessionDescription(desc, type));
       _remoteDescSet = true;
       await _flushCandidates();
+      await _applyVideoQuality();
 
       if (type == 'offer') {
         final answer = await pc.createAnswer({});
@@ -2578,7 +2620,40 @@ class CallSession {
 
   Future<void> _publishMedia() async {
     await _sendMediaSettings();
+    await _applyVideoQuality();
     if (_topology != 'SERVER') await _createAndSendOffer();
+  }
+
+  Future<void> _applyVideoQuality() async {
+    await _configureVideoSender(_videoSender, maxBitrate: 3000000);
+    await _configureVideoSender(_screenSender, maxBitrate: 6000000);
+  }
+
+  Future<void> _configureVideoSender(
+    RTCRtpSender? sender, {
+    required int maxBitrate,
+  }) async {
+    if (sender?.track?.kind != 'video') return;
+    try {
+      final parameters = sender!.parameters;
+      parameters.degradationPreference =
+          RTCDegradationPreference.MAINTAIN_RESOLUTION;
+      for (final encoding in parameters.encodings ?? const <RTCRtpEncoding>[]) {
+        encoding.active = true;
+        encoding.maxBitrate = maxBitrate;
+        encoding.maxFramerate = 30;
+        encoding.scaleResolutionDownBy = 1;
+        encoding.priority = RTCPriorityType.high;
+        encoding.networkPriority = RTCPriorityType.high;
+      }
+      final applied = await sender.setParameters(parameters);
+      logger.i(
+        '[call][video] RTP quality applied=$applied '
+        'track=${sender.track?.id} maxBitrate=$maxBitrate',
+      );
+    } catch (e) {
+      logger.w('[call][video] RTP quality unavailable: $e');
+    }
   }
 
   Future<void> _restoreMediaSettings() async {

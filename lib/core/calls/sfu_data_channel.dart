@@ -179,8 +179,8 @@ class SfuLayoutItem {
 
   const SfuLayoutItem({
     required this.trackKey,
-    this.width = 640,
-    this.height = 360,
+    this.width = 1280,
+    this.height = 720,
   });
 }
 
@@ -197,10 +197,10 @@ class SfuCommandChannel {
 
   final Map<int, String> _aliases = {};
   List<int>? _slotAliases;
-  final _slots = StreamController<Map<String, int>>.broadcast();
+  final _slots = StreamController<Map<int, String>>.broadcast();
   final _levels = StreamController<Map<String, int>>.broadcast();
 
-  Stream<Map<String, int>> get slotUpdates => _slots.stream;
+  Stream<Map<int, String>> get slotUpdates => _slots.stream;
   Stream<Map<String, int>> get audioLevels => _levels.stream;
 
   void bind(RTCDataChannel channel) {
@@ -341,14 +341,14 @@ class SfuCommandChannel {
   void _emitSlots() {
     final aliases = _slotAliases;
     if (aliases == null) return;
-    final slots = <String, int>{};
+    final slots = <int, String>{};
     var unresolved = 0;
     for (var i = 0; i < aliases.length; i++) {
       final key = _aliases[aliases[i]];
       if (key == null) {
         unresolved++;
       } else {
-        slots[key] = i;
+        slots[i] = key;
       }
     }
     logger.i('[call][sfu] slots: $slots unresolved=$unresolved');
