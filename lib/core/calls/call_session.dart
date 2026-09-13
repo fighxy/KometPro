@@ -1345,7 +1345,11 @@ class CallSession {
       if (!p.videoEnabled && !p.screenSharing) continue;
       if (p.screenSharing) {
         items.add(
-          SfuLayoutItem(trackKey: 'u${p.id}', width: 2560, height: 1440),
+          SfuLayoutItem(
+            trackKey: 'u${p.id}',
+            width: _isDesktop ? 1920 : 1280,
+            height: _isDesktop ? 1080 : 720,
+          ),
         );
         requested.add('u${p.id}:sSCREEN');
       } else {

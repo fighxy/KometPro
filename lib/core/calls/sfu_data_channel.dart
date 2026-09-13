@@ -189,7 +189,7 @@ class SfuCommandChannel {
   static const int _fitMode = 0;
 
   static const int _notifyAliases = 1;
-  static const int _notifySlots = 4;
+  static const int _notifySlots = 2;
   static const int _notifyAudioLevels = 6;
 
   RTCDataChannel? _command;
