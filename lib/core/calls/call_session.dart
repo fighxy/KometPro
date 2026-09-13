@@ -1339,27 +1339,24 @@ class CallSession {
     final commands = _sfuCommands;
     if (commands == null || _topology != 'SERVER' || _ended) return;
     final items = <SfuLayoutItem>[];
+    final requested = <String>[];
     for (final p in _participants.values) {
       if (p.isSelf || items.length >= _maxVideoSlots) continue;
       if (!p.videoEnabled && !p.screenSharing) continue;
       if (p.screenSharing) {
         items.add(
-          SfuLayoutItem(
-            trackKey: 'u${p.id}:sSCREEN',
-            width: 2560,
-            height: 1440,
-          ),
+          SfuLayoutItem(trackKey: 'u${p.id}', width: 2560, height: 1440),
         );
-      }
-      if (p.videoEnabled && items.length < _maxVideoSlots) {
-        items.add(SfuLayoutItem(trackKey: 'u${p.id}:sCAMERA'));
+        requested.add('u${p.id}:sSCREEN');
+      } else {
+        items.add(SfuLayoutItem(trackKey: 'u${p.id}'));
+        requested.add('u${p.id}:sCAMERA');
       }
     }
-    final keys = items.map((i) => i.trackKey).toList(growable: false);
     if (!force &&
         _layoutSent &&
-        keys.length == _lastLayout.length &&
-        keys.indexed.every((entry) => _lastLayout[entry.$1] == entry.$2)) {
+        requested.length == _lastLayout.length &&
+        requested.indexed.every((entry) => _lastLayout[entry.$1] == entry.$2)) {
       return;
     }
     if (!await commands.sendDisplayLayout(items)) {
@@ -1370,7 +1367,7 @@ class CallSession {
       return;
     }
     _layoutRetry = 0;
-    _lastLayout = keys;
+    _lastLayout = requested;
     _layoutSent = true;
   }
 
@@ -1408,8 +1405,8 @@ class CallSession {
         .where((t) => mids.contains(t.mid))
         .toList();
     final media = <({MediaStream stream, bool screen})>[
-      if (_cameraStream != null) (stream: _cameraStream!, screen: false),
       if (_screenStream != null) (stream: _screenStream!, screen: true),
+      if (_cameraStream != null) (stream: _cameraStream!, screen: false),
     ];
     _videoSender = null;
     _screenSender = null;
@@ -1647,6 +1644,7 @@ class CallSession {
   }
 
   Future<void> _republishVideo(RTCPeerConnection pc) async {
+    if (_topology == 'SERVER') return;
     final camera = _cameraStream;
     if (camera != null && _videoSender == null) {
       final tracks = camera.getVideoTracks();
@@ -2548,9 +2546,9 @@ class CallSession {
         return;
       }
       final track = tracks.first;
-      if (_videoSender == null) {
+      if (_videoSender == null && _topology != 'SERVER') {
         _videoSender = await pc.addTrack(track, stream);
-      } else {
+      } else if (_videoSender != null) {
         await _videoSender!.replaceTrack(track);
       }
       senderChanged = true;
@@ -2810,10 +2808,10 @@ class CallSession {
       }
       final track = tracks.first;
       final sender = _videoSender;
-      if (sender == null) {
+      if (sender == null && _topology != 'SERVER') {
         final added = await pc.addTrack(track, stream);
         if (_captureValid(epoch, pc)) _videoSender = added;
-      } else {
+      } else if (sender != null) {
         await sender.replaceTrack(track);
       }
       if (!_captureValid(epoch, pc)) {
@@ -2938,10 +2936,10 @@ class CallSession {
         return;
       }
       final track = tracks.first;
-      if (_screenSender == null) {
+      if (_screenSender == null && _topology != 'SERVER') {
         final added = await pc.addTrack(track, stream);
         if (_captureValid(epoch, pc)) _screenSender = added;
-      } else {
+      } else if (_screenSender != null) {
         await _screenSender!.replaceTrack(track);
       }
       senderChanged = true;
