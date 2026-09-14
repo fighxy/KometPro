@@ -1486,15 +1486,11 @@ class CallSession {
       return;
     }
     if (!await commands.sendDisplayLayout(items)) {
-      if (_layoutRetry < 8) {
-        _layoutRetry++;
-        _scheduleDisplayLayout(delay: const Duration(seconds: 1));
-      } else {
-        logger.w(
-          '[call][sfu] display layout: канал не открылся за $_layoutRetry '
-          'попыток, запрошенное окружение отправить не удалось: $requested',
-        );
-      }
+      _layoutRetry++;
+      final delaySeconds = _layoutRetry < 5
+          ? 1
+          : (_layoutRetry < 10 ? 3 : 5);
+      _scheduleDisplayLayout(delay: Duration(seconds: delaySeconds));
       return;
     }
     _layoutRetry = 0;
