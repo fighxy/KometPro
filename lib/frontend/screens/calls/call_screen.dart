@@ -197,6 +197,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       }
       return;
     }
+    if (_holdingRemoteVideo) {
+      logger.i(
+        '[call][video] renderer remote resumed: stream=${stream?.id} '
+        'topology=${session.topology}',
+      );
+    }
     _holdingRemoteVideo = false;
     unawaited(_setRendererSource(_remoteRenderer, stream, 'remote'));
   }
