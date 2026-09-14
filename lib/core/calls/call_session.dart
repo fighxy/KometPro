@@ -2380,6 +2380,43 @@ class CallSession {
     }).firstOrNull;
   }
 
+  /// Re-reads the peer's live video track straight off [_directVideoTransceiver]
+  /// (the single sendrecv transceiver DIRECT calls use for both directions)
+  /// and rebinds it into [_remoteStreamRef]. Track ids are stable for the
+  /// life of a transceiver, so a renderer that already failed once on this
+  /// exact track id will otherwise never retry it (by design — see
+  /// _setRendererSource's dedup) even when flutter_webrtc's own wrapper for
+  /// that track has gone stale while the underlying media keeps flowing;
+  /// this gives call_screen a fresh object to force a retry with.
+  Future<MediaStream?> refreshRemoteVideo() async {
+    if (_topology == 'SERVER' || _ended) return null;
+    final live = _directVideoTransceiver?.receiver.track;
+    if (live == null || live.kind != 'video') return null;
+
+    var stream = _remoteStreamRef;
+    if (stream == null || !_ownRemoteStream) {
+      stream = await createLocalMediaStream('komet_remote');
+      _ownRemoteStream = true;
+    }
+    for (final old in stream.getVideoTracks().toList()) {
+      try {
+        await stream.removeTrack(old);
+      } catch (_) {}
+    }
+    try {
+      await stream.addTrack(live);
+    } catch (e) {
+      logger.w('[call][video] remote track refresh failed: $e');
+      return null;
+    }
+    _remoteStreamRef = stream;
+    if (!_remoteStream.isClosed) _remoteStream.add(stream);
+    logger.i(
+      '[call][video] remote track refreshed from transceiver track=${live.id}',
+    );
+    return stream;
+  }
+
   Future<void> _logSenders() async {
     final pc = _pc;
     if (pc == null) return;

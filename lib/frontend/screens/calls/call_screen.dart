@@ -231,12 +231,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   Future<void> _setRendererSource(
     RTCVideoRenderer renderer,
     MediaStream? stream,
-    String label,
-  ) {
+    String label, {
+    bool force = false,
+    bool allowRecovery = true,
+  }) {
     final track = stream?.getVideoTracks().firstOrNull;
     final source = track == null ? null : stream;
     final target = track?.id;
-    if (_rendererTargets.containsKey(renderer) &&
+    if (!force &&
+        _rendererTargets.containsKey(renderer) &&
         _rendererTargets[renderer] == target) {
       return _rendererTails[renderer] ?? Future.value();
     }
@@ -258,6 +261,27 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           error: e,
           stackTrace: st,
         );
+        // The remote track's id survives even when flutter_webrtc's own
+        // wrapper for it goes stale while the underlying media keeps
+        // flowing (confirmed against real call logs: growing frame/byte
+        // stats the whole time this kept failing) — the dedup above would
+        // otherwise never retry that same id again. Pull a fresh object
+        // for that id straight off the transceiver once and force one
+        // retry; allowRecovery:false on the retry stops this from looping.
+        if (label == 'remote' && allowRecovery && source != null) {
+          final fresh = await _session?.refreshRemoteVideo();
+          if (fresh != null && !_disposing) {
+            unawaited(
+              _setRendererSource(
+                renderer,
+                fresh,
+                label,
+                force: true,
+                allowRecovery: false,
+              ),
+            );
+          }
+        }
       }
       if (!_disposing && mounted) setState(() {});
     });
