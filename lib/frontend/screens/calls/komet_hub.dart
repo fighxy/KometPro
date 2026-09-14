@@ -20,25 +20,31 @@ Future<void> showKometHub(
     showDragHandle: true,
     backgroundColor: scheme.surfaceContainerHigh,
     shape: kSheetShape,
-    builder: (_) => Theme(
+    builder: (sheetContext) => Theme(
       data: Theme.of(context).copyWith(colorScheme: scheme),
-      child: _KometHub(session: session),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(sheetContext).size.height * 0.78,
+        ),
+        child: CallHubPanel(session: session),
+      ),
     ),
   );
 }
 
 enum _HubPage { menu, chat, games, checkers }
 
-class _KometHub extends StatefulWidget {
+class CallHubPanel extends StatefulWidget {
   final CallSession session;
+  final VoidCallback? onClose;
 
-  const _KometHub({required this.session});
+  const CallHubPanel({super.key, required this.session, this.onClose});
 
   @override
-  State<_KometHub> createState() => _KometHubState();
+  State<CallHubPanel> createState() => _CallHubPanelState();
 }
 
-class _KometHubState extends State<_KometHub> {
+class _CallHubPanelState extends State<CallHubPanel> {
   _HubPage _page = _HubPage.menu;
 
   void _go(_HubPage page) => setState(() => _page = page);
@@ -46,7 +52,11 @@ class _KometHubState extends State<_KometHub> {
   void _back() {
     switch (_page) {
       case _HubPage.menu:
-        Navigator.of(context).maybePop();
+        if (widget.onClose != null) {
+          widget.onClose!();
+        } else {
+          Navigator.of(context).maybePop();
+        }
         break;
       case _HubPage.checkers:
         _go(_HubPage.games);
@@ -79,19 +89,14 @@ class _KometHubState extends State<_KometHub> {
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.78,
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _header(cs),
-              Flexible(child: _body(cs)),
-            ],
-          ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _header(cs),
+            Flexible(child: _body(cs)),
+          ],
         ),
       ),
     );

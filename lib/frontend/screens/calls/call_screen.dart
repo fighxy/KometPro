@@ -11,11 +11,16 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../backend/modules/messages.dart' show ContactCache;
 import '../../../core/cache/info_cache.dart';
 import '../../../core/calls/active_call.dart';
+import '../../../core/calls/call_admin.dart' show CallParticipantRef;
 import '../../../core/calls/call_controller.dart';
 import '../../../core/calls/call_info.dart';
 import '../../../core/calls/call_session.dart';
+import '../../../core/config/app_breakpoints.dart';
 import '../../../core/config/app_colors.dart';
 import '../../../core/config/call_no_mute.dart';
+import '../../../core/config/desktop_density.dart';
+import '../../../core/design/komet_layout.dart';
+import '../../../core/desktop/desktop_window.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/screen_wake.dart';
@@ -23,15 +28,18 @@ import '../../../l10n/app_localizations.dart';
 import '../../widgets/call_video_view.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/glossy_pill.dart';
-import '../../widgets/animated_slash_icon.dart';
+import '../../widgets/lottie_slash_icon.dart';
 import '../../widgets/sheet_helpers.dart';
 import '../../widgets/small_spinner.dart';
+import 'call_desktop_shortcuts.dart';
 import 'call_mic_sheet.dart';
 import 'call_audio_output_sheet.dart';
 import 'call_capture_picker.dart';
 import 'call_participants_sheet.dart';
 import 'komet_hub.dart';
 import '../../../core/config/app_fonts.dart';
+
+enum _CallPanel { participants, chat }
 
 class CallScreen extends StatefulWidget {
   final String name;
@@ -66,6 +74,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _chatOpen = false;
   CallSessionState _state = CallSessionState.connecting;
   bool _incomingPending = false;
+  _CallPanel? _dockedPanel;
+  Offset? _localPreviewOffset;
 
   bool _isMuted = false;
   bool _isSpeaker = false;
@@ -98,6 +108,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   final Map<int, _PeerInfo> _peerInfo = {};
 
   bool get _isGroup => widget.isGroup || (_session?.participantCount ?? 0) > 2;
+
+  bool get _isPeerOnMobile {
+    final platform = _session?.info.peerPlatform?.toLowerCase();
+    if (platform == null) return false;
+    return platform.contains('android') ||
+        platform.contains('ios') ||
+        platform.contains('iphone') ||
+        platform.contains('ipad');
+  }
 
   void _onTileStream(int id) {
     for (final screen in [false, true]) {
@@ -481,6 +500,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   Future<void> _openKometHub() async {
     final session = _session;
     if (session == null) return;
+    if (_tryDockPanel(_CallPanel.chat)) return;
     setState(() => _chatOpen = true);
     await showKometHub(context, session: session, scheme: _darkScheme(context));
     if (mounted) setState(() => _chatOpen = false);
@@ -747,30 +767,101 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  CallParticipantView _resolveParticipantView(CallParticipant p) {
+    final l10n = AppLocalizations.of(context)!;
+    if (p.isSelf) {
+      return CallParticipantView(
+        name: l10n.callParticipantYou,
+        avatarUrl: _avatarUrl,
+      );
+    }
+    final ext = p.externalId;
+    final info = ext != null ? _peerInfo[ext] : null;
+    return CallParticipantView(
+      name: info?.name?.isNotEmpty == true
+          ? info!.name!
+          : l10n.callParticipantFallback,
+      avatarUrl: info?.avatar,
+    );
+  }
+
   void _showParticipants() {
     final session = _session;
     if (session == null) return;
-    final l10n = AppLocalizations.of(context)!;
+    if (_tryDockPanel(_CallPanel.participants)) return;
     showCallParticipantsSheet(
       context,
       session: session,
       scheme: _darkScheme(context),
-      resolve: (p) {
-        if (p.isSelf) {
-          return CallParticipantView(
-            name: l10n.callParticipantYou,
-            avatarUrl: _avatarUrl,
-          );
-        }
-        final ext = p.externalId;
-        final info = ext != null ? _peerInfo[ext] : null;
-        return CallParticipantView(
-          name: info?.name?.isNotEmpty == true
-              ? info!.name!
-              : l10n.callParticipantFallback,
-          avatarUrl: info?.avatar,
-        );
-      },
+      resolve: _resolveParticipantView,
+    );
+  }
+
+  bool _useDesktopLayout(double width) => AppBreakpoints.useSplitView(width);
+
+  bool _canDockPanel(double width) =>
+      _useDesktopLayout(width) &&
+      KometLayout.dockInspector(width, 0, DesktopDensity.s);
+
+  bool _tryDockPanel(_CallPanel panel) {
+    if (_session == null) return false;
+    final width = MediaQuery.sizeOf(context).width;
+    if (!_canDockPanel(width)) return false;
+    _setDockedPanel(_dockedPanel == panel ? null : panel);
+    return true;
+  }
+
+  void _setDockedPanel(_CallPanel? panel) {
+    setState(() {
+      _dockedPanel = panel;
+      _chatOpen = panel == _CallPanel.chat;
+    });
+  }
+
+  void _closeDockedPanel() => _setDockedPanel(null);
+
+  Widget _dockedPanelView(ColorScheme cs) {
+    final panel = _dockedPanel;
+    final session = _session;
+    if (panel == null || session == null) return const SizedBox.shrink();
+
+    final Widget content = switch (panel) {
+      _CallPanel.participants => CallParticipantsPanel(
+        session: session,
+        resolve: _resolveParticipantView,
+      ),
+      _CallPanel.chat => CallHubPanel(
+        session: session,
+        onClose: _closeDockedPanel,
+      ),
+    };
+
+    return Container(
+      width: KometLayout.inspector * DesktopDensity.s,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        border: Border(
+          left: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  onPressed: _closeDockedPanel,
+                  tooltip: captureText(context, 'Закрыть', 'Close'),
+                  icon: Icon(Symbols.close, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: content),
+        ],
+      ),
     );
   }
 
@@ -818,6 +909,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final cs = _darkScheme(context);
     final group = _isGroup && !_incomingPending;
+    final width = MediaQuery.sizeOf(context).width;
+    final dockOpen = _dockedPanel != null && _canDockPanel(width);
+    final panelWidth = KometLayout.inspector * DesktopDensity.s;
 
     final Widget body = group
         ? _buildGroupBody(cs)
@@ -833,6 +927,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             ),
           );
 
+    final Widget content = dockOpen
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [Expanded(child: body), _dockedPanelView(cs)],
+          )
+        : body;
+
+    final mica = DesktopWindow.micaEnabled.value;
+    final highContrast = MediaQuery.highContrastOf(context);
+    final backgroundColor = mica
+        ? cs.surface.withValues(alpha: highContrast ? 0.92 : 0.72)
+        : cs.surface;
+
     return Theme(
       data: Theme.of(context).copyWith(colorScheme: cs),
       child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -841,46 +948,90 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           systemNavigationBarColor: cs.surface,
           systemNavigationBarIconBrightness: Brightness.light,
         ),
-        child: Scaffold(
-          backgroundColor: cs.surface,
-          body: Stack(
-            children: [
-              body,
-              if (_session?.localVideo == true || _session?.localScreen == true)
-                _localPreview(cs),
-            ],
+        child: CallDesktopShortcuts(
+          enabled: _session?.isDesktop == true,
+          onToggleMute: _toggleMute,
+          onToggleVideo: _toggleVideo,
+          onToggleScreen: _toggleScreen,
+          onToggleChat: _openKometHub,
+          onToggleParticipants: _showParticipants,
+          onMinimize: _close,
+          child: Scaffold(
+            backgroundColor: backgroundColor,
+            body: Stack(
+              children: [
+                content,
+                if (_session?.localVideo == true ||
+                    _session?.localScreen == true)
+                  _localPreview(cs, dockOpen ? panelWidth : 0),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _localPreview(ColorScheme cs) {
-    return Positioned(
-      right: 16,
-      top: MediaQuery.of(context).padding.top + 56,
-      child: SafeArea(
-        child: Container(
-          width: 96,
-          height: 140,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: cs.surfaceContainerHighest,
-            border: Border.all(color: cs.outlineVariant, width: 1),
-          ),
-          child: _localRendererReady && _localRenderer.srcObject != null
-              ? CallVideoView(
-                  renderer: _localRenderer,
-                  mirror:
-                      _session?.localScreen != true &&
-                      _session?.cameraMirrored == true,
-                  objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
-                  placeholder: _localPreviewIcon(cs),
-                )
-              : _localPreviewIcon(cs),
-        ),
+  double _clampD(double value, double min, double max) =>
+      value < min ? min : (value > max ? max : value);
+
+  Widget _localPreview(ColorScheme cs, double rightInset) {
+    const boxWidth = 96.0;
+    const boxHeight = 140.0;
+    final screenSize = MediaQuery.sizeOf(context);
+    final defaultTop = MediaQuery.of(context).padding.top + 56;
+    final defaultLeft = screenSize.width - rightInset - 16 - boxWidth;
+    final maxLeft = _clampD(
+      screenSize.width - rightInset - boxWidth,
+      0,
+      double.infinity,
+    );
+    final maxTop = _clampD(screenSize.height - boxHeight, 0, double.infinity);
+
+    final offset = _localPreviewOffset;
+    final left = offset == null ? defaultLeft : _clampD(offset.dx, 0, maxLeft);
+    final top = offset == null ? defaultTop : _clampD(offset.dy, 0, maxTop);
+
+    final content = Container(
+      width: boxWidth,
+      height: boxHeight,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: cs.surfaceContainerHighest,
+        border: Border.all(color: cs.outlineVariant, width: 1),
       ),
+      child: _localRendererReady && _localRenderer.srcObject != null
+          ? CallVideoView(
+              renderer: _localRenderer,
+              mirror:
+                  _session?.localScreen != true &&
+                  _session?.cameraMirrored == true,
+              objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+              placeholder: _localPreviewIcon(cs),
+            )
+          : _localPreviewIcon(cs),
+    );
+
+    final desktop = _session?.isDesktop == true;
+    return Positioned(
+      left: left,
+      top: top,
+      child: desktop
+          ? GestureDetector(
+              onPanUpdate: (details) {
+                setState(() {
+                  final base =
+                      _localPreviewOffset ?? Offset(defaultLeft, defaultTop);
+                  _localPreviewOffset = Offset(
+                    _clampD(base.dx + details.delta.dx, 0, maxLeft),
+                    _clampD(base.dy + details.delta.dy, 0, maxTop),
+                  );
+                });
+              },
+              child: content,
+            )
+          : SafeArea(child: content),
     );
   }
 
@@ -972,6 +1123,27 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     );
   }
 
+  ({CallParticipant p, bool screen})? _findTile(
+    List<({CallParticipant p, bool screen})> tiles,
+    int id,
+  ) {
+    for (final t in tiles) {
+      if (t.p.id == id && !t.screen) return t;
+    }
+    return null;
+  }
+
+  int _gridColumns(double width, int tileCount) {
+    final countBased = tileCount <= 1
+        ? 1
+        : tileCount <= 4
+        ? 2
+        : 3;
+    if (width < AppBreakpoints.compact) return countBased;
+    final widthBased = (width / 240).floor().clamp(1, tileCount).toInt();
+    return widthBased > countBased ? widthBased : countBased;
+  }
+
   Widget _participantGrid(ColorScheme cs, List<CallParticipant> ps) {
     final tiles = <({CallParticipant p, bool screen})>[
       for (final p in ps) ...[
@@ -979,21 +1151,115 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         if (p.screenSharing && !p.isSelf) (p: p, screen: true),
       ],
     ];
-    final cols = tiles.length <= 1
-        ? 1
-        : tiles.length <= 4
-        ? 2
-        : 3;
-    return GridView.count(
-      crossAxisCount: cols,
+
+    final session = _session;
+    final pinnedId = session?.pinnedParticipant?.id;
+    final dominantId = session?.dominantSpeakerId;
+    final spotlightId = pinnedId ?? (tiles.length >= 3 ? dominantId : null);
+    final spotlight = spotlightId == null
+        ? null
+        : _findTile(tiles, spotlightId);
+
+    if (spotlight != null) {
+      final rest = [
+        for (final t in tiles) if (t != spotlight) t,
+      ];
+      return _spotlightLayout(cs, spotlight, rest);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _gridColumns(constraints.maxWidth, tiles.length);
+        return GridView.count(
+          crossAxisCount: cols,
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          childAspectRatio: 0.84,
+          children: [
+            for (final tile in tiles)
+              _participantTile(cs, tile.p, screen: tile.screen),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _spotlightLayout(
+    ColorScheme cs,
+    ({CallParticipant p, bool screen}) spotlight,
+    List<({CallParticipant p, bool screen})> rest,
+  ) {
+    final mainTile = _participantTile(cs, spotlight.p, screen: spotlight.screen);
+    if (rest.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+        child: mainTile,
+      );
+    }
+    return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-      mainAxisSpacing: 14,
-      crossAxisSpacing: 14,
-      childAspectRatio: 0.84,
-      children: [
-        for (final tile in tiles)
-          _participantTile(cs, tile.p, screen: tile.screen),
-      ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= constraints.maxHeight;
+          final filmstrip = _filmstrip(cs, rest, horizontal: !wide);
+          if (wide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: mainTile),
+                const SizedBox(width: 14),
+                SizedBox(width: 130, child: filmstrip),
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: mainTile),
+              const SizedBox(height: 14),
+              SizedBox(height: 110, child: filmstrip),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _filmstrip(
+    ColorScheme cs,
+    List<({CallParticipant p, bool screen})> tiles, {
+    required bool horizontal,
+  }) {
+    return ListView.separated(
+      scrollDirection: horizontal ? Axis.horizontal : Axis.vertical,
+      itemCount: tiles.length,
+      separatorBuilder: (context, index) =>
+          SizedBox(width: horizontal ? 10 : 0, height: horizontal ? 0 : 10),
+      itemBuilder: (context, i) {
+        final t = tiles[i];
+        final tile = _participantTile(cs, t.p, screen: t.screen);
+        return horizontal
+            ? SizedBox(width: 84, child: tile)
+            : SizedBox(height: 84, child: tile);
+      },
+    );
+  }
+
+  void _togglePin(int id) {
+    final session = _session;
+    if (session == null) return;
+    final wasPinned = session.pinnedParticipant?.id == id;
+    final next = !wasPinned;
+    session.setPinnedLocally(id, next);
+    final admin = session.admin;
+    if (admin == null) return;
+    unawaited(
+      admin.setPinned(CallParticipantRef(id), next).catchError((Object e) {
+        if (!mounted) return;
+        session.setPinnedLocally(id, wasPinned);
+        showCustomNotification(context, 'Не удалось закрепить: $e');
+      }),
     );
   }
 
@@ -1017,6 +1283,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final attached = renderer?.srcObject?.getVideoTracks().isNotEmpty == true;
     final announced = screen ? p.screenSharing : p.videoEnabled;
     final showVideo = !p.isSelf && renderer != null && (announced || attached);
+    final pinnableId = !p.isSelf && !screen ? p.id : null;
 
     return GlossyPill(
       color: cs.surfaceContainerHigh,
@@ -1028,8 +1295,26 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       padding: EdgeInsets.all(showVideo ? 0 : 12),
       onTap: showVideo ? () => _expandVideo(renderer, name) : null,
       child: showVideo
-          ? _videoTile(cs, renderer, name, muted, p.handRaised, screen)
-          : _avatarTile(cs, name, url, muted, p.handRaised, screen),
+          ? _videoTile(
+              cs,
+              renderer,
+              name,
+              muted,
+              p.handRaised,
+              screen,
+              pinned: p.pinned,
+              pinnableId: pinnableId,
+            )
+          : _avatarTile(
+              cs,
+              name,
+              url,
+              muted,
+              p.handRaised,
+              screen,
+              pinned: p.pinned,
+              pinnableId: pinnableId,
+            ),
     );
   }
 
@@ -1039,8 +1324,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     String? url,
     bool muted,
     bool hand,
-    bool screen,
-  ) {
+    bool screen, {
+    bool pinned = false,
+    int? pinnableId,
+  }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -1089,6 +1376,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                             cs.onSurfaceVariant,
                           ),
                         ),
+                      if (pinnableId != null)
+                        Positioned(
+                          bottom: -2,
+                          left: -2,
+                          child: _pinBadge(cs, pinnableId, pinned),
+                        ),
                     ],
                   ),
                 ),
@@ -1111,23 +1404,44 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     );
   }
 
+  bool _tileAspectMismatch(BoxConstraints constraints, RTCVideoValue value) {
+    if (constraints.maxHeight <= 0 || constraints.maxWidth <= 0) return false;
+    final contentAr = value.aspectRatio > 0 ? value.aspectRatio : 16 / 9;
+    final cellAr = constraints.maxWidth / constraints.maxHeight;
+    if (cellAr <= 0) return false;
+    return (contentAr / cellAr - 1).abs() > 0.35;
+  }
+
   Widget _videoTile(
     ColorScheme cs,
     RTCVideoRenderer renderer,
     String name,
     bool muted,
     bool hand,
-    bool screen,
-  ) {
+    bool screen, {
+    bool pinned = false,
+    int? pinnableId,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CallVideoView(
-            renderer: renderer,
-            objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
-            placeholder: ColoredBox(color: cs.surfaceContainerHighest),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return ValueListenableBuilder<RTCVideoValue>(
+                valueListenable: renderer,
+                builder: (context, value, _) {
+                  return CallVideoView(
+                    renderer: renderer,
+                    objectFit:
+                        RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+                    placeholder: ColoredBox(color: cs.surfaceContainerHighest),
+                    backdrop: _tileAspectMismatch(constraints, value),
+                  );
+                },
+              );
+            },
           ),
           Positioned(
             left: 8,
@@ -1158,6 +1472,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
+                if (pinnableId != null) ...[
+                  const SizedBox(width: 4),
+                  _pinBadge(cs, pinnableId, pinned),
+                ],
               ],
             ),
           ),
@@ -1184,6 +1502,18 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _pinBadge(ColorScheme cs, int participantId, bool pinned) {
+    return GestureDetector(
+      onTap: () => _togglePin(participantId),
+      child: _tileBadge(
+        cs,
+        Symbols.push_pin,
+        pinned ? cs.primary : cs.surfaceContainerHighest,
+        pinned ? cs.onPrimary : cs.onSurfaceVariant,
       ),
     );
   }
@@ -1338,6 +1668,23 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (!_isGroup && _isPeerOnMobile)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Tooltip(
+                        message: captureText(
+                          context,
+                          'Собеседник на телефоне',
+                          'Peer is on mobile',
+                        ),
+                        child: Icon(
+                          Symbols.smartphone,
+                          color: cs.onSurfaceVariant,
+                          weight: 500,
+                          size: 22,
+                        ),
+                      ),
+                    ),
                   if (_session?.peerIsKomet == true)
                     IconButton(
                       onPressed: _openKometHub,
@@ -1704,7 +2051,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             ),
           _CallButton(
             icon: Symbols.videocam,
-            slashedIcon: Symbols.videocam_off,
+            lottieAsset: 'assets/lottie/ic_videocam_on_to_off.json',
             slashed: !video,
             label: l10n.callVideoLabel,
             background: video ? cs.primary : cs.surfaceContainerHighest,
@@ -1723,7 +2070,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           ),
           _CallButton(
             icon: Symbols.mic,
-            slashedIcon: Symbols.mic_off,
+            lottieAsset: 'assets/lottie/ic_mic_on_to_off.json',
             slashed: _isMuted,
             label: _isMuted
                 ? (CallNoMute.enabled ? l10n.callMicStillLive : l10n.callUnmute)
@@ -1791,7 +2138,7 @@ class _CallingDots extends StatelessWidget {
 
 class _CallButton extends StatelessWidget {
   final IconData icon;
-  final IconData? slashedIcon;
+  final String? lottieAsset;
   final bool slashed;
   final String label;
   final Color background;
@@ -1807,23 +2154,21 @@ class _CallButton extends StatelessWidget {
     required this.foreground,
     required this.onTap,
     this.onLongPress,
-    this.slashedIcon,
+    this.lottieAsset,
     this.slashed = false,
     this.busy = false,
   });
 
   Widget _buildIcon() {
-    final crossed = slashedIcon;
-    if (crossed == null) {
+    final asset = lottieAsset;
+    if (asset == null) {
       return Icon(icon, color: foreground, size: 26, fill: 1);
     }
-    return AnimatedSlashIcon(
-      icon: icon,
-      slashedIcon: crossed,
+    return LottieSlashIcon(
+      asset: asset,
       slashed: slashed,
       color: foreground,
       size: 26,
-      fill: 1,
     );
   }
 

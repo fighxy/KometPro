@@ -36,22 +36,26 @@ Future<void> showCallParticipantsSheet(
     shape: kSheetShape,
     builder: (_) => Theme(
       data: Theme.of(context).copyWith(colorScheme: scheme),
-      child: _ParticipantsSheet(session: session, resolve: resolve),
+      child: CallParticipantsPanel(session: session, resolve: resolve),
     ),
   );
 }
 
-class _ParticipantsSheet extends StatefulWidget {
+class CallParticipantsPanel extends StatefulWidget {
   final CallSession session;
   final CallParticipantResolver resolve;
 
-  const _ParticipantsSheet({required this.session, required this.resolve});
+  const CallParticipantsPanel({
+    super.key,
+    required this.session,
+    required this.resolve,
+  });
 
   @override
-  State<_ParticipantsSheet> createState() => _ParticipantsSheetState();
+  State<CallParticipantsPanel> createState() => _CallParticipantsPanelState();
 }
 
-class _ParticipantsSheetState extends State<_ParticipantsSheet> {
+class _CallParticipantsPanelState extends State<CallParticipantsPanel> {
   final Map<CallOption, bool> _options = {};
   final Map<CallFeature, Set<CallRoleName>> _features = {};
   bool _recording = false;
@@ -94,6 +98,12 @@ class _ParticipantsSheetState extends State<_ParticipantsSheet> {
   }
 
   CallParticipantRef _ref(CallParticipant p) => CallParticipantRef(p.id);
+
+  Future<void> _setPinned(CallParticipant p, bool pinned) async {
+    widget.session.setPinnedLocally(p.id, pinned);
+    final ok = await _run((a) => a.setPinned(_ref(p), pinned));
+    if (!ok && mounted) widget.session.setPinnedLocally(p.id, !pinned);
+  }
 
   void _participantActions(CallParticipant p) {
     final cs = Theme.of(context).colorScheme;
@@ -177,11 +187,11 @@ class _ParticipantsSheetState extends State<_ParticipantsSheet> {
               }),
               _action(cs, Symbols.push_pin, 'Закрепить', () {
                 Navigator.pop(sheetContext);
-                _run((a) => a.setPinned(_ref(p), true));
+                _setPinned(p, true);
               }),
               _action(cs, Symbols.keep_off, 'Открепить', () {
                 Navigator.pop(sheetContext);
-                _run((a) => a.setPinned(_ref(p), false));
+                _setPinned(p, false);
               }),
               _action(cs, Symbols.person_remove, 'Удалить из звонка', () {
                 Navigator.pop(sheetContext);

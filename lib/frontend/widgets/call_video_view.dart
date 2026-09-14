@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart'
@@ -11,12 +12,20 @@ class CallVideoView extends StatefulWidget {
     this.objectFit = RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
     this.mirror = false,
     this.placeholder,
+    this.backdrop = false,
   });
 
   final RTCVideoRenderer renderer;
   final RTCVideoViewObjectFit objectFit;
   final bool mirror;
   final Widget? placeholder;
+
+  /// When true, fills the widget's bounds with a blurred, dimmed `Cover`-fit
+  /// copy of the same stream behind the foreground `objectFit` video, so a
+  /// mismatched-aspect-ratio source (portrait mobile camera in a wide tile,
+  /// or a wide screen-share in a narrow tile) letterboxes/pillarboxes onto
+  /// its own blurred content instead of a flat color.
+  final bool backdrop;
 
   @override
   State<CallVideoView> createState() => _CallVideoViewState();
@@ -96,6 +105,23 @@ class _CallVideoViewState extends State<CallVideoView> {
     return Stack(
       fit: StackFit.expand,
       children: [
+        if (attached && widget.backdrop)
+          ClipRect(
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              child: ColorFiltered(
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: 0.35),
+                  BlendMode.darken,
+                ),
+                child: RTCVideoView(
+                  widget.renderer,
+                  objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                  mirror: widget.mirror,
+                ),
+              ),
+            ),
+          ),
         if (attached)
           RTCVideoView(
             widget.renderer,
