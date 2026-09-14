@@ -1378,6 +1378,11 @@ class CallSession {
       final participant = _participants[id];
       if (participant == null ||
           (!participant.videoEnabled && !participant.screenSharing)) {
+        logger.i(
+          '[call][sfu] slot $slot -> participant $id dropped: '
+          'known=${participant != null} video=${participant?.videoEnabled} '
+          'screen=${participant?.screenSharing}',
+        );
         return;
       }
       participants[slot] = id;
@@ -1426,7 +1431,7 @@ class CallSession {
       ..addAll(screens);
     logger.i(
       '[call][video] SFU slots changed: participants=${participants.length} '
-      'screens=${screens.length}',
+      'screens=${screens.length} map=$participants screens=$screens',
     );
     final revision = ++_slotRevision;
     _slotRebindTail = _slotRebindTail.catchError((_) {}).then((_) async {
@@ -1481,15 +1486,17 @@ class CallSession {
       return;
     }
     if (!await commands.sendDisplayLayout(items)) {
-      if (_layoutRetry < 8) {
-        _layoutRetry++;
-        _scheduleDisplayLayout(delay: const Duration(seconds: 1));
-      }
+      _layoutRetry++;
+      final delaySeconds = _layoutRetry < 5
+          ? 1
+          : (_layoutRetry < 10 ? 3 : 5);
+      _scheduleDisplayLayout(delay: Duration(seconds: delaySeconds));
       return;
     }
     _layoutRetry = 0;
     _lastLayout = requested;
     _layoutSent = true;
+    logger.i('[call][sfu] display layout sent: $requested');
   }
 
   Set<String> _videoSlotMids(String sdp) {
@@ -2280,7 +2287,15 @@ class CallSession {
     final id =
         _participantFromTrackId(track.id) ??
         (_topology != 'SERVER' ? _peerId : null);
-    if (id == null || id == ws2Config.userId || track.kind != 'video') return;
+    if (track.kind != 'video') return;
+    if (id == null) {
+      logger.i(
+        '[call][video] track ${track.id} unresolved: no participant for '
+        'slot (known slots=$_slotParticipant)',
+      );
+      return;
+    }
+    if (id == ws2Config.userId) return;
     final slot = RegExp(r'^video-pat-(\d+)$').firstMatch(track.id ?? '');
     final screen =
         (track.id?.endsWith(':sSCREEN') ?? false) ||
@@ -2290,7 +2305,7 @@ class CallSession {
     final source = _remoteTrackStreams[track.id];
     if (source != null && source.getVideoTracks().length == 1) {
       streams[id] = source;
-      logger.t('[call] remote stream ${source.id} -> participant $id');
+      logger.i('[call][video] remote stream ${source.id} -> participant $id');
       if (!_participantStreamUpdates.isClosed) {
         _participantStreamUpdates.add(id);
       }
@@ -2316,7 +2331,7 @@ class CallSession {
     } catch (_) {
       return;
     }
-    logger.t('[call] track ${track.id} -> participant $id');
+    logger.i('[call][video] track ${track.id} -> participant $id');
     if (!_participantStreamUpdates.isClosed) _participantStreamUpdates.add(id);
   }
 

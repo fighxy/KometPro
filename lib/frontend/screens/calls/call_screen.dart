@@ -197,6 +197,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       }
       return;
     }
+    if (_holdingRemoteVideo) {
+      logger.i(
+        '[call][video] renderer remote resumed: stream=${stream?.id} '
+        'topology=${session.topology}',
+      );
+    }
     _holdingRemoteVideo = false;
     unawaited(_setRendererSource(_remoteRenderer, stream, 'remote'));
   }
@@ -1133,15 +1139,33 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     return null;
   }
 
-  int _gridColumns(double width, int tileCount) {
-    final countBased = tileCount <= 1
-        ? 1
-        : tileCount <= 4
-        ? 2
-        : 3;
-    if (width < AppBreakpoints.compact) return countBased;
-    final widthBased = (width / 240).floor().clamp(1, tileCount).toInt();
-    return widthBased > countBased ? widthBased : countBased;
+  ({int cols, double aspect}) _gridLayout(
+    double width,
+    double height,
+    int tileCount,
+  ) {
+    if (tileCount <= 0) return (cols: 1, aspect: 1.0);
+    const spacing = 14.0;
+    const horizontalPadding = 40.0;
+    const verticalPadding = 8.0;
+    final availW = (width - horizontalPadding).clamp(1.0, double.infinity);
+    final availH = (height - verticalPadding).clamp(1.0, double.infinity);
+    var bestCols = 1;
+    var bestArea = -1.0;
+    var bestAspect = 1.0;
+    for (var cols = 1; cols <= tileCount; cols++) {
+      final rows = (tileCount / cols).ceil();
+      final cellW = (availW - spacing * (cols - 1)) / cols;
+      final cellH = (availH - spacing * (rows - 1)) / rows;
+      if (cellW <= 0 || cellH <= 0) continue;
+      final area = cellW * cellH;
+      if (area > bestArea) {
+        bestArea = area;
+        bestCols = cols;
+        bestAspect = cellW / cellH;
+      }
+    }
+    return (cols: bestCols, aspect: bestAspect);
   }
 
   Widget _participantGrid(ColorScheme cs, List<CallParticipant> ps) {
@@ -1169,13 +1193,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = _gridColumns(constraints.maxWidth, tiles.length);
+        final layout = _gridLayout(
+          constraints.maxWidth,
+          constraints.maxHeight,
+          tiles.length,
+        );
         return GridView.count(
-          crossAxisCount: cols,
+          crossAxisCount: layout.cols,
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
           mainAxisSpacing: 14,
           crossAxisSpacing: 14,
-          childAspectRatio: 0.84,
+          childAspectRatio: layout.aspect,
           children: [
             for (final tile in tiles)
               _participantTile(cs, tile.p, screen: tile.screen),
