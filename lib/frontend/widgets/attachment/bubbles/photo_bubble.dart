@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
@@ -8,12 +9,13 @@ import 'package:komet/main.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../../core/media/preview_image.dart';
+import '../../../../core/utils/media_frame_size.dart';
+import '../../../../core/utils/telegram_album_layout.dart' as telegram;
 import '../../../../core/utils/format.dart';
 import '../../../../models/attachment.dart';
 import '../../photo_viewer.dart';
 import '../photo_hero.dart';
 import '../../text_with_meta.dart';
-import 'album_layout.dart';
 import 'bubble_context.dart';
 import 'video_bubble.dart';
 
@@ -53,18 +55,6 @@ class PhotoBubble extends StatelessWidget {
     _ => null,
   };
 
-  // #***! реальное соотношение сторон плитки в ряду, зажатое в разумных
-  // пределах — иначе один экстремально узкий/широкий скрин ломает ряд
-  static const double _minTileRatio = 0.6;
-  static const double _maxTileRatio = 1.6;
-
-  static double _tileRatio(MessageAttachment item) {
-    final w = _intrinsicWidth(item)?.toDouble();
-    final h = _intrinsicHeight(item)?.toDouble();
-    if (w == null || h == null || w <= 0 || h <= 0) return 1.0;
-    return (w / h).clamp(_minTileRatio, _maxTileRatio);
-  }
-
   static String? _localPathOf(MessageAttachment item) => switch (item) {
     PhotoAttachment(:final localPath) => localPath,
     VideoAttachment(:final localPath) => localPath,
@@ -96,33 +86,15 @@ class PhotoBubble extends StatelessWidget {
         : BubbleContext.photoMinSize;
     final width = _intrinsicWidth(item)?.toDouble() ?? 200;
     final height = _intrinsicHeight(item)?.toDouble() ?? 200;
-
-    final downScale = math.min(
-      1.0,
-      math.min(
-        BubbleContext.photoMaxSize / width,
-        BubbleContext.photoMaxSize / height,
-      ),
-    );
-    var displayWidth = width * downScale;
-    var displayHeight = height * downScale;
-
-    final upScale = math.max(
-      1.0,
-      math.max(
-        minWidth / displayWidth,
-        BubbleContext.photoMinSize / displayHeight,
-      ),
-    );
-    displayWidth *= upScale;
-    displayHeight *= upScale;
-
-    return Size(
-      displayWidth.clamp(minWidth, BubbleContext.photoMaxSize),
-      displayHeight.clamp(
-        BubbleContext.photoMinSize,
-        BubbleContext.photoMaxSize,
-      ),
+    return fitMediaFrame(
+      width,
+      height,
+      maxWidth: BubbleContext.photoMaxSize,
+      maxHeight: BubbleContext.photoMaxSize,
+      minSize: BubbleContext.photoMinSize,
+      minFrameWidth: minWidth,
+      minPreviewHeight: BubbleContext.photoMinSize,
+      widenPortrait: true,
     );
   }
 
@@ -141,12 +113,8 @@ class PhotoBubble extends StatelessWidget {
         hasCaption: hasCaption,
         hasContentAbove: hasContentAbove,
       );
-    } else if (count == 2) {
-      photosWidget = _buildTwoPhotos(ctx, media[0], media[1]);
-    } else if (count == 3) {
-      photosWidget = _buildThreePhotos(ctx, media);
     } else {
-      photosWidget = _buildPhotoMosaic(ctx, media);
+      photosWidget = _buildAlbum(ctx, media);
     }
 
     if (!hasCaption) {
@@ -240,19 +208,35 @@ class PhotoBubble extends StatelessWidget {
     );
     final memWidth = (constrainedWidth * dpr).round();
     final memHeight = (constrainedHeight * dpr).round();
+    final sourceWidth = _intrinsicWidth(photo)?.toDouble() ?? 0;
+    final sourceHeight = _intrinsicHeight(photo)?.toDouble() ?? 0;
+    final needsFill = sourceWidth > 0 &&
+        sourceHeight > 0 &&
+        sourceWidth / sourceHeight < constrainedWidth / constrainedHeight * 0.92;
+    Widget image(BoxFit fit) => _buildPhotoImage(
+      ctx,
+      photo,
+      constrainedWidth,
+      constrainedHeight,
+      memWidth: memWidth,
+      memHeight: memHeight,
+      fit: fit,
+    );
 
     return ClipRRect(
       borderRadius: radius,
       child: Stack(
         children: [
-          _buildPhotoImage(
-            ctx,
-            photo,
-            constrainedWidth,
-            constrainedHeight,
-            memWidth: memWidth,
-            memHeight: memHeight,
-          ),
+          if (needsFill) ...[
+            ClipRect(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                child: Transform.scale(scale: 1.16, child: image(BoxFit.cover)),
+              ),
+            ),
+            const Positioned.fill(child: ColoredBox(color: Color(0x3A000000))),
+          ],
+          image(needsFill ? BoxFit.contain : BoxFit.cover),
           ..._videoBadges(photo, compact: false),
           if (ctx.uploadProgress != null)
             _buildUploadOverlay(ctx.uploadProgress!, 0),
@@ -284,6 +268,7 @@ class PhotoBubble extends StatelessWidget {
     double height, {
     required int memWidth,
     required int memHeight,
+    BoxFit fit = BoxFit.cover,
   }) {
     final localPath = _localPathOf(photo);
     if (localPath != null) {
@@ -291,7 +276,7 @@ class PhotoBubble extends StatelessWidget {
         File(localPath),
         width: width,
         height: height,
-        fit: BoxFit.cover,
+        fit: fit,
         cacheWidth: memWidth,
         gaplessPlayback: true,
         errorBuilder: (_, _, _) =>
@@ -305,7 +290,7 @@ class PhotoBubble extends StatelessWidget {
         imageUrl: imageUrl,
         width: width,
         height: height,
-        fit: BoxFit.cover,
+        fit: fit,
         memCacheWidth: memWidth,
         memCacheHeight: memHeight,
         fadeInDuration: Duration.zero,
@@ -316,7 +301,7 @@ class PhotoBubble extends StatelessWidget {
                 image: embedded,
                 width: width,
                 height: height,
-                fit: BoxFit.cover,
+                fit: fit,
               ),
       );
     }
@@ -325,7 +310,7 @@ class PhotoBubble extends StatelessWidget {
         image: embedded,
         width: width,
         height: height,
-        fit: BoxFit.cover,
+        fit: fit,
         gaplessPlayback: true,
         errorBuilder: (_, _, _) =>
             _buildPhotoPlaceholder(ctx.cs, width, height),
@@ -422,121 +407,23 @@ class PhotoBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildTwoPhotos(
-    BubbleContext ctx,
-    MessageAttachment p1,
-    MessageAttachment p2,
-  ) {
-    final matchTop =
-        ctx.hasMultiplePhotosNoCaption && ctx.shape == BubbleShape.singleTop;
-    final matchBottom =
-        ctx.hasMultiplePhotosNoCaption && ctx.shape == BubbleShape.singleBottom;
-
-    final r1 = _tileRatio(p1);
-    final r2 = _tileRatio(p2);
-
-    return ClipRRect(
-      borderRadius: _multiPhotoCornerRadius(
-        matchTop: matchTop,
-        matchBottom: matchBottom,
-        isMe: ctx.isMe,
-      ),
-      child: AspectRatio(
-        aspectRatio: r1 + r2,
-        child: Row(
-          children: [
-            Expanded(
-              flex: (r1 * 100).round(),
-              child: _buildPhotoTile(ctx, p1, 0),
-            ),
-            const SizedBox(width: 2),
-            Expanded(
-              flex: (r2 * 100).round(),
-              child: _buildPhotoTile(ctx, p2, 1),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildThreePhotos(BubbleContext ctx, List<MessageAttachment> photos) {
-    final matchTop =
-        ctx.hasMultiplePhotosNoCaption && ctx.shape == BubbleShape.singleTop;
-    final matchBottom =
-        ctx.hasMultiplePhotosNoCaption && ctx.shape == BubbleShape.singleBottom;
-
-    return ClipRRect(
-      borderRadius: _multiPhotoCornerRadius(
-        matchTop: matchTop,
-        matchBottom: matchBottom,
-        isMe: ctx.isMe,
-      ),
-      child: AspectRatio(
-        aspectRatio: 3 / 2,
-        child: Row(
-          children: [
-            Expanded(flex: 2, child: _buildFillTile(ctx, photos[0], 0)),
-            const SizedBox(width: 2),
-            Expanded(
-              child: Column(
-                children: [
-                  Expanded(child: _buildFillTile(ctx, photos[1], 1)),
-                  const SizedBox(height: 2),
-                  Expanded(child: _buildFillTile(ctx, photos[2], 2)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPhotoMosaic(BubbleContext ctx, List<MessageAttachment> photos) {
-    final visible = math.min(photos.length, AlbumLayout.maxTiles);
+  Widget _buildAlbum(BubbleContext ctx, List<MessageAttachment> photos) {
+    final visible = math.min(photos.length, 10);
     final remaining = photos.length - visible;
-    final ratios = [for (var i = 0; i < visible; i++) _tileRatio(photos[i])];
-
+    final layout = telegram.layoutTelegramAlbum(
+      [
+        for (var i = 0; i < visible; i++)
+          telegram.AlbumMediaSize(
+            _intrinsicWidth(photos[i])?.toDouble() ?? 0,
+            _intrinsicHeight(photos[i])?.toDouble() ?? 0,
+          ),
+      ],
+      maxWidth: BubbleContext.photoMaxSize,
+    );
     final matchTop =
         ctx.hasMultiplePhotosNoCaption && ctx.shape == BubbleShape.singleTop;
     final matchBottom =
         ctx.hasMultiplePhotosNoCaption && ctx.shape == BubbleShape.singleBottom;
-
-    final rows = <Widget>[];
-    var start = 0;
-    for (final size in AlbumLayout.rows(ratios)) {
-      if (rows.isNotEmpty) rows.add(const SizedBox(height: 2));
-      final end = start + size;
-      var rowRatio = 0.0;
-      for (var i = start; i < end; i++) {
-        rowRatio += ratios[i];
-      }
-      rows.add(
-        AspectRatio(
-          aspectRatio: rowRatio,
-          child: Row(
-            children: [
-              for (var i = start; i < end; i++) ...[
-                if (i > start) const SizedBox(width: 2),
-                Expanded(
-                  flex: (ratios[i] * 100).round(),
-                  child: i == visible - 1 && remaining > 0
-                      ? _buildPhotoTileWithOverlay(
-                          ctx,
-                          photos[i],
-                          '+$remaining',
-                          i,
-                        )
-                      : _buildPhotoTile(ctx, photos[i], i),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-      start = end;
-    }
 
     return ClipRRect(
       borderRadius: _multiPhotoCornerRadius(
@@ -544,7 +431,29 @@ class PhotoBubble extends StatelessWidget {
         matchBottom: matchBottom,
         isMe: ctx.isMe,
       ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: rows),
+      child: SizedBox(
+        width: layout.width,
+        height: layout.height,
+        child: Stack(
+          children: [
+            for (final tile in layout.tiles)
+              Positioned(
+                left: tile.left,
+                top: tile.top,
+                width: tile.width,
+                height: tile.height,
+                child: remaining > 0 && tile.index == visible - 1
+                    ? _buildPhotoTileWithOverlay(
+                        ctx,
+                        photos[tile.index],
+                        '+$remaining',
+                        tile.index,
+                      )
+                    : _buildPhotoTile(ctx, photos[tile.index], tile.index),
+              ),
+          ],
+        ),
+      ),
     );
   }
 

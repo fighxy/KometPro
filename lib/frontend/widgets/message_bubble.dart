@@ -985,6 +985,8 @@ class MessageBubble extends StatelessWidget {
     final screenWidth = availableWidth;
     final maxBubbleWidth = isVideoNote
         ? math.min(screenWidth - 24, 560.0)
+        : screenWidth < 600
+        ? math.min(screenWidth - 24, screenWidth * 0.88)
         : math.min(screenWidth * 0.75, 760.0);
     final noBubbleBackground =
         isVideoNote || _isSticker || jumboAnimoji != null;

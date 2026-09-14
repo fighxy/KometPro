@@ -59,7 +59,6 @@ class VoiceMessageBubble extends StatefulWidget {
   State<VoiceMessageBubble> createState() => _VoiceMessageBubbleState();
 }
 
-const double _transcriptionMaxHeight = 132;
 
 class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   bool _transcriptionVisible = false;
@@ -328,7 +327,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
         : widget.cs.primary;
 
     return SizedBox(
-      width: 240,
+      width: _transcriptionVisible ? 320 : 240,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,7 +376,8 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(width: 32, child: Center(child: _buildTimeLabel())),
+              const SizedBox(width: 42),
+              _buildTimeLabel(),
               const SizedBox(width: 10),
               Expanded(
                 child: AnimatedSize(
@@ -385,20 +385,12 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                   curve: Curves.easeOut,
                   alignment: Alignment.topLeft,
                   child: _transcriptionVisible
-                      ? ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxHeight: _transcriptionMaxHeight,
-                          ),
-                          child: SingleChildScrollView(
-                            physics: const ClampingScrollPhysics(),
-                            child: Text(
-                              _transcriptionText ?? '',
-                              style: TextStyle(
-                                color: widget.textColor.withValues(alpha: 0.8),
-                                fontSize: 12,
-                                height: 1.3,
-                              ),
-                            ),
+                      ? Text(
+                          _transcriptionText ?? '',
+                          style: TextStyle(
+                            color: widget.textColor.withValues(alpha: 0.8),
+                            fontSize: 12,
+                            height: 1.3,
                           ),
                         )
                       : const SizedBox.shrink(),

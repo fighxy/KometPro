@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/main.dart';
 
 import '../../../../core/media/preview_image.dart';
+import '../../../../core/utils/media_frame_size.dart';
 import '../../../../core/utils/format.dart';
 import '../../../../core/utils/haptics.dart';
 import '../../../../models/attachment.dart';
@@ -21,13 +22,22 @@ class VideoBubble extends StatelessWidget {
   const VideoBubble({super.key, required this.ctx, required this.video});
 
   static double layoutWidth(VideoAttachment video, {bool hasCaption = false}) {
-    return (video.width?.toDouble() ?? 200.0).clamp(
-      hasCaption
-          ? BubbleContext.captionedMediaMinWidth
-          : BubbleContext.photoMinSize,
-      BubbleContext.photoMaxSize,
-    );
+    return _frameSize(video, hasCaption: hasCaption).width;
   }
+
+  static Size _frameSize(VideoAttachment video, {bool hasCaption = false}) =>
+      fitMediaFrame(
+        video.width?.toDouble() ?? 200,
+        video.height?.toDouble() ?? 150,
+        maxWidth: BubbleContext.photoMaxSize,
+        maxHeight: BubbleContext.photoMaxSize,
+        minSize: BubbleContext.photoMinSize,
+        minFrameWidth: hasCaption
+            ? BubbleContext.captionedMediaMinWidth
+            : BubbleContext.photoMinSize,
+        minPreviewHeight: BubbleContext.photoMinSize,
+        widenPortrait: false,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -59,12 +69,9 @@ class VideoBubble extends StatelessWidget {
         ? video.baseUrl!
         : (video.previewData ?? '');
 
-    final h = video.height;
-    final width = layoutWidth(video, hasCaption: hasCaption);
-    final height = (h?.toDouble() ?? 150.0).clamp(
-      BubbleContext.photoMinSize,
-      BubbleContext.photoMaxSize,
-    );
+    final frame = _frameSize(video, hasCaption: hasCaption);
+    final width = frame.width;
+    final height = frame.height;
     final dpr = MediaQuery.of(ctx.context).devicePixelRatio;
 
     Widget placeholder() => Container(
