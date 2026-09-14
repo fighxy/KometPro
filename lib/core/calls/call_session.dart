@@ -16,6 +16,7 @@ import 'call_admin.dart';
 import 'call_bridge.dart';
 import 'call_info.dart';
 import 'conversation_params.dart';
+import 'direct_video.dart';
 import 'pulse_audio.dart';
 import 'sfu_data_channel.dart';
 import 'ws2_signaling.dart';
@@ -145,7 +146,6 @@ class CallSession {
   RTCRtpSender? _videoSender;
   RTCRtpSender? _screenSender;
   RTCRtpTransceiver? _directVideoTransceiver;
-  RTCRtpTransceiver? _remoteVideoTransceiver;
   bool _directScreenSubstitution = false;
   String? _micDeviceId = AppMicrophone.deviceId;
   String? _audioOutputDeviceId = AppAudioOutput.deviceId;
@@ -543,7 +543,8 @@ class CallSession {
     _speakHold.removeWhere((_, ticks) => ticks <= 0);
 
     final next = _speakHold.keys.toSet();
-    final changed = next.length != _speaking.length || !next.containsAll(_speaking);
+    final changed =
+        next.length != _speaking.length || !next.containsAll(_speaking);
     if (changed) _speaking = next;
     if (_updateDominantSpeaker(next) || changed) _notifyInfo();
   }
@@ -972,14 +973,6 @@ class CallSession {
     }
     _pc = pc;
     await _addLocalMedia(pc);
-
-    if (_videoSender == null) {
-      _directVideoTransceiver = await pc.addTransceiver(
-        kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
-        init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendRecv),
-      );
-      _videoSender = _directVideoTransceiver!.sender;
-    }
 
     await _setupKometProbe(pc);
 
@@ -1494,9 +1487,7 @@ class CallSession {
     }
     if (!await commands.sendDisplayLayout(items)) {
       _layoutRetry++;
-      final delaySeconds = _layoutRetry < 5
-          ? 1
-          : (_layoutRetry < 10 ? 3 : 5);
+      final delaySeconds = _layoutRetry < 5 ? 1 : (_layoutRetry < 10 ? 3 : 5);
       _scheduleDisplayLayout(delay: Duration(seconds: delaySeconds));
       return;
     }
@@ -2261,7 +2252,6 @@ class CallSession {
       unawaited(applyAudioRoute());
       return;
     }
-    if (_topology != 'SERVER') _remoteVideoTransceiver = event.transceiver;
     final source = _sourceStreamForTrack(event.track, event.streams);
     if (source != null) {
       _remoteTrackStreams[event.track.id!] = source;
@@ -2390,52 +2380,6 @@ class CallSession {
     }).firstOrNull;
   }
 
-  /// Re-reads the peer's live video track straight off
-  /// [_remoteVideoTransceiver] (the transceiver [_onRemoteTrack] actually
-  /// received the peer's video on — NOT [_directVideoTransceiver], the one
-  /// *we* create for sending: a callee's answer can end up negotiating the
-  /// peer's video onto a different, separately auto-created transceiver, so
-  /// the two must not be assumed to be the same one) and rebinds it into
-  /// [_remoteStreamRef]. Track ids are stable for the life of a transceiver,
-  /// so a renderer that already failed once on this exact track id will
-  /// otherwise never retry it (by design — see _setRendererSource's dedup)
-  /// even when flutter_webrtc's own wrapper for that track has gone stale
-  /// while the underlying media keeps flowing; this gives call_screen a
-  /// fresh object to force a retry with.
-  Future<MediaStream?> refreshRemoteVideo() async {
-    if (_topology == 'SERVER' || _ended) return null;
-    MediaStreamTrack? live;
-    try {
-      live = _remoteVideoTransceiver?.receiver.track;
-    } catch (_) {
-      return null;
-    }
-    if (live == null || live.kind != 'video') return null;
-
-    var stream = _remoteStreamRef;
-    if (stream == null || !_ownRemoteStream) {
-      stream = await createLocalMediaStream('komet_remote');
-      _ownRemoteStream = true;
-    }
-    for (final old in stream.getVideoTracks().toList()) {
-      try {
-        await stream.removeTrack(old);
-      } catch (_) {}
-    }
-    try {
-      await stream.addTrack(live);
-    } catch (e) {
-      logger.w('[call][video] remote track refresh failed: $e');
-      return null;
-    }
-    _remoteStreamRef = stream;
-    if (!_remoteStream.isClosed) _remoteStream.add(stream);
-    logger.i(
-      '[call][video] remote track refreshed from transceiver track=${live.id}',
-    );
-    return stream;
-  }
-
   Future<void> _logSenders() async {
     final pc = _pc;
     if (pc == null) return;
@@ -2477,6 +2421,8 @@ class CallSession {
     final peerId = _peerId;
     if (pc == null || peerId == null) return;
 
+    await _prepareDirectVideo(pc);
+    if (_isDesktop) await _preferVp8Codecs(pc);
     await _applyVideoQuality();
     final offer = await pc.createOffer(iceRestart ? {'iceRestart': true} : {});
     final sdp = offer.sdp ?? '';
@@ -2547,12 +2493,16 @@ class CallSession {
         await pc.setLocalDescription(RTCSessionDescription(null, 'rollback'));
       }
 
-      await pc.setRemoteDescription(RTCSessionDescription(desc, type));
+      await pc.setRemoteDescription(
+        RTCSessionDescription(DirectVideo.withRemoteStreams(desc), type),
+      );
       _remoteDescSet = true;
       await _flushCandidates();
       await _applyVideoQuality();
 
       if (type == 'offer') {
+        await _prepareDirectVideo(pc, remoteOffer: desc);
+        if (_isDesktop) await _preferVp8Codecs(pc);
         final answer = await pc.createAnswer({});
         await pc.setLocalDescription(answer);
         logger.t('[call] our answer video: ${_videoDir(answer.sdp ?? '')}');
@@ -2850,7 +2800,41 @@ class CallSession {
   Future<void> _publishMedia({bool renegotiate = true}) async {
     await _sendMediaSettings();
     await _applyVideoQuality();
-    if (renegotiate && _topology != 'SERVER') await _createAndSendOffer();
+    if (_topology == 'SERVER') return;
+    final sender = _directScreenSubstitution ? _screenSender : _videoSender;
+    if (sender?.track != null) {
+      final direction = await _directVideoTransceiver?.getCurrentDirection();
+      renegotiate =
+          renegotiate ||
+          (direction != TransceiverDirection.SendRecv &&
+              direction != TransceiverDirection.SendOnly);
+    }
+    if (renegotiate) await _createAndSendOffer();
+  }
+
+  Future<void> _prepareDirectVideo(
+    RTCPeerConnection pc, {
+    String? remoteOffer,
+  }) async {
+    final stream = _localStream;
+    if (_topology == 'SERVER' || stream == null) return;
+    final transceiver = await DirectVideo.prepare(
+      pc,
+      stream: stream,
+      remoteOffer: remoteOffer,
+      previousSender: _directScreenSubstitution ? _screenSender : _videoSender,
+    );
+    if (transceiver == null) return;
+    _directVideoTransceiver = transceiver;
+    if (_directScreenSubstitution) {
+      _screenSender = transceiver.sender;
+    } else {
+      _videoSender = transceiver.sender;
+    }
+    logger.i(
+      '[call][video] direct transceiver mid=${transceiver.mid} '
+      'sender=${transceiver.sender.senderId} stream=${stream.id}',
+    );
   }
 
   Future<void> _applyVideoQuality() async {

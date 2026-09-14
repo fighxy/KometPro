@@ -231,15 +231,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   Future<void> _setRendererSource(
     RTCVideoRenderer renderer,
     MediaStream? stream,
-    String label, {
-    bool force = false,
-    bool allowRecovery = true,
-  }) {
+    String label,
+  ) {
     final track = stream?.getVideoTracks().firstOrNull;
     final source = track == null ? null : stream;
     final target = track?.id;
-    if (!force &&
-        _rendererTargets.containsKey(renderer) &&
+    if (_rendererTargets.containsKey(renderer) &&
         _rendererTargets[renderer] == target) {
       return _rendererTails[renderer] ?? Future.value();
     }
@@ -255,33 +252,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           'stream=${source?.id} track=${track?.id}',
         );
       } catch (e, st) {
-        // Deliberately not clearing _rendererTargets here: retrying a target already known dead (e.g. a disposed track) on every resync is what caused the repeated native setSrcObject crashes below.
         logger.e(
           '[call][video] renderer $label bind#$sequence failed',
           error: e,
           stackTrace: st,
         );
-        // The remote track's id survives even when flutter_webrtc's own
-        // wrapper for it goes stale while the underlying media keeps
-        // flowing (confirmed against real call logs: growing frame/byte
-        // stats the whole time this kept failing) — the dedup above would
-        // otherwise never retry that same id again. Pull a fresh object
-        // for that id straight off the transceiver once and force one
-        // retry; allowRecovery:false on the retry stops this from looping.
-        if (label == 'remote' && allowRecovery && source != null) {
-          final fresh = await _session?.refreshRemoteVideo();
-          if (fresh != null && !_disposing) {
-            unawaited(
-              _setRendererSource(
-                renderer,
-                fresh,
-                label,
-                force: true,
-                allowRecovery: false,
-              ),
-            );
-          }
-        }
       }
       if (!_disposing && mounted) setState(() {});
     });
@@ -958,7 +933,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final Widget content = dockOpen
         ? Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [Expanded(child: body), _dockedPanelView(cs)],
+            children: [
+              Expanded(child: body),
+              _dockedPanelView(cs),
+            ],
           )
         : body;
 
@@ -1208,7 +1186,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
 
     if (spotlight != null) {
       final rest = [
-        for (final t in tiles) if (t != spotlight) t,
+        for (final t in tiles)
+          if (t != spotlight) t,
       ];
       return _spotlightLayout(cs, spotlight, rest);
     }
@@ -1240,7 +1219,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     ({CallParticipant p, bool screen}) spotlight,
     List<({CallParticipant p, bool screen})> rest,
   ) {
-    final mainTile = _participantTile(cs, spotlight.p, screen: spotlight.screen);
+    final mainTile = _participantTile(
+      cs,
+      spotlight.p,
+      screen: spotlight.screen,
+    );
     if (rest.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
@@ -2084,8 +2067,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final l10n = AppLocalizations.of(context)!;
     final video = _session?.localVideo == true;
     final screen = _session?.localScreen == true;
-    final cameraBlockedByScreen =
-        _session?.cameraBlockedByScreenShare == true;
+    final cameraBlockedByScreen = _session?.cameraBlockedByScreenShare == true;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Wrap(
