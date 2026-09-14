@@ -145,6 +145,7 @@ class CallSession {
   RTCRtpSender? _videoSender;
   RTCRtpSender? _screenSender;
   RTCRtpTransceiver? _directVideoTransceiver;
+  RTCRtpTransceiver? _remoteVideoTransceiver;
   bool _directScreenSubstitution = false;
   String? _micDeviceId = AppMicrophone.deviceId;
   String? _audioOutputDeviceId = AppAudioOutput.deviceId;
@@ -2252,6 +2253,7 @@ class CallSession {
       unawaited(applyAudioRoute());
       return;
     }
+    if (_topology != 'SERVER') _remoteVideoTransceiver = event.transceiver;
     final source = _sourceStreamForTrack(event.track, event.streams);
     if (source != null) {
       _remoteTrackStreams[event.track.id!] = source;
@@ -2380,17 +2382,26 @@ class CallSession {
     }).firstOrNull;
   }
 
-  /// Re-reads the peer's live video track straight off [_directVideoTransceiver]
-  /// (the single sendrecv transceiver DIRECT calls use for both directions)
-  /// and rebinds it into [_remoteStreamRef]. Track ids are stable for the
-  /// life of a transceiver, so a renderer that already failed once on this
-  /// exact track id will otherwise never retry it (by design — see
-  /// _setRendererSource's dedup) even when flutter_webrtc's own wrapper for
-  /// that track has gone stale while the underlying media keeps flowing;
-  /// this gives call_screen a fresh object to force a retry with.
+  /// Re-reads the peer's live video track straight off
+  /// [_remoteVideoTransceiver] (the transceiver [_onRemoteTrack] actually
+  /// received the peer's video on — NOT [_directVideoTransceiver], the one
+  /// *we* create for sending: a callee's answer can end up negotiating the
+  /// peer's video onto a different, separately auto-created transceiver, so
+  /// the two must not be assumed to be the same one) and rebinds it into
+  /// [_remoteStreamRef]. Track ids are stable for the life of a transceiver,
+  /// so a renderer that already failed once on this exact track id will
+  /// otherwise never retry it (by design — see _setRendererSource's dedup)
+  /// even when flutter_webrtc's own wrapper for that track has gone stale
+  /// while the underlying media keeps flowing; this gives call_screen a
+  /// fresh object to force a retry with.
   Future<MediaStream?> refreshRemoteVideo() async {
     if (_topology == 'SERVER' || _ended) return null;
-    final live = _directVideoTransceiver?.receiver.track;
+    MediaStreamTrack? live;
+    try {
+      live = _remoteVideoTransceiver?.receiver.track;
+    } catch (_) {
+      return null;
+    }
     if (live == null || live.kind != 'video') return null;
 
     var stream = _remoteStreamRef;
