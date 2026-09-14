@@ -690,7 +690,15 @@ extension _ChatHistoryLoad on _ChatScreenState {
   Future<void> _reloadChatMeta() async {
     if (_myId == 0) return;
     final rows = await _deps.chats.getChat(_myId, widget.chatId);
-    if (!mounted || rows.isEmpty) return;
+    if (!mounted) return;
+    if (rows.isEmpty) {
+      closeChatSurface(
+        context,
+        embedded: widget.embedded,
+        onClose: widget.onClose,
+      );
+      return;
+    }
     final fresh = rows.first;
     final current = chat;
     if (current != null &&

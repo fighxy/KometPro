@@ -33,6 +33,7 @@ import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/animated_text_swap.dart';
 import '../../widgets/avatar_history_screen.dart';
 import '../../widgets/chat_info/shared_content_tabs.dart';
+import '../../widgets/chat_nav.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/formatted_message_text.dart';
@@ -99,6 +100,7 @@ class ChatInfoScreen extends StatefulWidget {
 
   final void Function(String messageId, int time)? onJumpToMessage;
   final VoidCallback? onClose;
+  final VoidCallback? onChatRemoved;
 
   const ChatInfoScreen({
     super.key,
@@ -112,6 +114,7 @@ class ChatInfoScreen extends StatefulWidget {
     this.openedFromChat = false,
     this.onJumpToMessage,
     this.onClose,
+    this.onChatRemoved,
   });
 
   @override
@@ -1663,7 +1666,11 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       showCustomNotification(context, l10n.chatInfoLeaveFailed);
       return;
     }
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    popToRootOrClose(
+      context,
+      onRemoved: widget.onChatRemoved,
+      onClose: widget.onClose,
+    );
   }
 
   Future<void> _clearHistory() async {
@@ -1711,7 +1718,11 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       showCustomNotification(context, error);
       return;
     }
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    popToRootOrClose(
+      context,
+      onRemoved: widget.onChatRemoved,
+      onClose: widget.onClose,
+    );
   }
 
   Future<void> _toggleBlock() async {
