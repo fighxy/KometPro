@@ -13,6 +13,7 @@ import '../../backend/modules/messages.dart';
 import '../../backend/modules/shared_content.dart';
 import '../../core/cache/info_cache.dart';
 import '../../core/config/app_frost.dart';
+import '../../core/media/preview_image.dart';
 import '../../core/utils/download_history.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/image_format.dart';
@@ -217,6 +218,15 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     if (zoomed == _zoomed) return;
     _zoomed = zoomed;
     _syncSwipe();
+  }
+
+  void _resetZoom() {
+    final transform = _transformFor(_current.id);
+    if (transform.value.getMaxScaleOnAxis() <= 1.01) return;
+    transform.value = Matrix4.identity();
+    _syncZoom();
+    _syncHero();
+    if (mounted) setState(() {});
   }
 
   void _updatePointers(int delta) {
@@ -456,7 +466,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
 
   void _rotate() {
     setState(() {
-      _quarterTurns[_current.id] = ((_quarterTurns[_current.id] ?? 0) + 3) % 4;
+      _quarterTurns[_current.id] = ((_quarterTurns[_current.id] ?? 0) + 1) % 4;
     });
     _syncHero();
   }
@@ -547,7 +557,11 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
       final file = File(localPath);
       return await file.exists() ? file : null;
     }
-    final url = photo.baseUrl ?? '';
+    final previewUrl = photo.previewData?.startsWith('http') == true
+        ? photo.previewData
+        : null;
+    final url =
+        (photo.baseUrl?.isNotEmpty == true ? photo.baseUrl : previewUrl) ?? '';
     if (url.isEmpty) return null;
     return MediaCache.getOrDownload(_cacheNameFor(photo, url), url);
   }
@@ -721,84 +735,108 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     action();
   }
 
+  void _closeFromKeyboard() {
+    if (!_zoomed) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _resetZoom();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.of(context).padding;
     final hasMenu = _current.isVideo || !(widget.actions?.isEmpty ?? true);
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _step(1),
-          const SingleActivator(LogicalKeyboardKey.arrowRight): () => _step(-1),
-        },
-        child: Focus(
-          autofocus: true,
-          child: Stack(
-            children: [
-              Positioned.fill(child: _buildPager()),
-              Positioned.fill(
-                child: IgnorePointer(
-                  ignoring: !_chromeVisible,
-                  child: AnimatedOpacity(
-                    opacity: _chromeVisible ? 1 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOut,
-                    child: Stack(
-                      children: [
-                        if (_index < _items.length - 1)
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: _arrow(Symbols.chevron_left, () => _step(1)),
-                          ),
-                        if (_index > 0)
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: _arrow(
-                              Symbols.chevron_right,
-                              () => _step(-1),
+    return PopScope(
+      canPop: !_zoomed,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _resetZoom();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.escape):
+                _closeFromKeyboard,
+            const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _step(-1),
+            const SingleActivator(LogicalKeyboardKey.arrowRight): () => _step(1),
+            const SingleActivator(LogicalKeyboardKey.keyR, control: true):
+                _rotate,
+          },
+          child: Focus(
+            autofocus: true,
+            child: Stack(
+              children: [
+                Positioned.fill(child: _buildPager()),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: !_chromeVisible,
+                    child: AnimatedOpacity(
+                      opacity: _chromeVisible ? 1 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                      child: Stack(
+                        children: [
+                          if (_index > 0)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: _arrow(
+                                Symbols.chevron_left,
+                                () => _step(-1),
+                              ),
+                            ),
+                          if (_index < _items.length - 1)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _arrow(
+                                Symbols.chevron_right,
+                                () => _step(1),
+                              ),
+                            ),
+                          Positioned(
+                            top: padding.top + 8,
+                            left: 8,
+                            right: 8,
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Symbols.close,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () => Navigator.of(context).pop(),
+                                ),
+                                const Spacer(),
+                                if (hasMenu)
+                                  Builder(
+                                    builder: (btnContext) => IconButton(
+                                      icon: const Icon(
+                                        Symbols.more_vert,
+                                        color: Colors.white,
+                                      ),
+                                      onPressed: () => _openMenu(btnContext),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
-                        Positioned(
-                          top: padding.top + 8,
-                          left: 8,
-                          right: 8,
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Symbols.close,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
-                              const Spacer(),
-                              if (hasMenu)
-                                Builder(
-                                  builder: (btnContext) => IconButton(
-                                    icon: const Icon(
-                                      Symbols.more_vert,
-                                      color: Colors.white,
-                                    ),
-                                    onPressed: () => _openMenu(btnContext),
-                                  ),
-                                ),
-                            ],
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: _buildBottomBar(padding.bottom),
                           ),
-                        ),
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: _buildBottomBar(padding.bottom),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -822,7 +860,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         child: PageView.builder(
           key: ValueKey(_pager),
           controller: _controller,
-          reverse: true,
           physics: _swipeEnabled ? null : const NeverScrollableScrollPhysics(),
           itemCount: _items.length,
           onPageChanged: _onPageChanged,
@@ -923,7 +960,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                 ),
               IconButton(
                 icon: const Icon(
-                  Symbols.rotate_90_degrees_ccw,
+                  Symbols.rotate_90_degrees_cw,
                   color: Colors.white,
                 ),
                 onPressed: _rotate,
@@ -1048,17 +1085,25 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   }
 
   Widget _buildImage(PhotoAttachment photo) {
+    final preview = dataUriImage(photo, photo.previewData);
+    final fallback = preview == null
+        ? _broken()
+        : Image(image: preview, fit: BoxFit.contain);
     final localPath = photo.localPath;
     if (localPath != null) {
       return Image.file(
         File(localPath),
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => _broken(),
+        errorBuilder: (_, _, _) => fallback,
       );
     }
 
-    final url = photo.baseUrl ?? '';
-    if (url.isEmpty) return _broken();
+    final previewUrl = photo.previewData?.startsWith('http') == true
+        ? photo.previewData
+        : null;
+    final url =
+        (photo.baseUrl?.isNotEmpty == true ? photo.baseUrl : previewUrl) ?? '';
+    if (url.isEmpty) return fallback;
 
     return CachedNetworkImage(
       imageUrl: url,
@@ -1066,7 +1111,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
       fadeInDuration: const Duration(milliseconds: 120),
       placeholder: (_, _) =>
           const Center(child: SmallSpinner(size: 36, color: Colors.white)),
-      errorWidget: (_, _, _) => _broken(),
+      errorWidget: (_, _, _) => fallback,
     );
   }
 
