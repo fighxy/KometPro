@@ -212,6 +212,14 @@ class CallSession {
 
   bool get localVideo => _localVideo;
   bool get localScreen => _localScreen;
+
+  /// True while screen sharing is substituting for the camera on the single
+  /// video transceiver a 1:1 DIRECT call negotiates — camera and screen
+  /// can't be sent at the same time in that mode, so the UI should disable
+  /// the camera toggle while this is true (see _startCamera's matching
+  /// guard).
+  bool get cameraBlockedByScreenShare => _directScreenSubstitution;
+
   bool get _signaledVideo => _directScreenSubstitution || _localVideo;
   bool get _signaledScreen => !_directScreenSubstitution && _localScreen;
   MediaStream? get localVideoStream =>
@@ -3001,6 +3009,12 @@ class CallSession {
     if (_localVideo) return;
     final pc = _pc;
     if (pc == null || _ended) return;
+    if (_directScreenSubstitution) {
+      throw StateError(
+        'Камера и демонстрация экрана делят один канал в этом звонке — '
+        'сначала остановите демонстрацию экрана',
+      );
+    }
     final epoch = _captureEpoch;
     MediaStream? stream;
     final started = DateTime.now();
