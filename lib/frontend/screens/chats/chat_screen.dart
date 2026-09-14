@@ -30,6 +30,7 @@ import 'package:komet/frontend/screens/chats/chat_list_screen.dart';
 import 'package:komet/frontend/screens/chats/poll_create_screen.dart';
 import 'package:komet/frontend/widgets/custom_notification.dart';
 import 'package:komet/frontend/widgets/chat_menu_overlay.dart';
+import 'package:komet/frontend/widgets/chat_nav.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../backend/api.dart';
@@ -1564,7 +1565,11 @@ class _ChatScreenState extends State<ChatScreen>
       showCustomNotification(context, err);
       return;
     }
-    Navigator.of(context).pop();
+    closeChatSurface(
+      context,
+      embedded: widget.embedded,
+      onClose: widget.onClose,
+    );
   }
 
   Future<void> _startCall() async {

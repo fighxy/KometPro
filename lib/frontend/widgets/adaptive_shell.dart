@@ -72,6 +72,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   int _railIndex = 0;
   bool _infoOpen = false;
   bool _hadHinge = false;
+  ValueNotifier<int>? _chatsChanged;
 
   @override
   void initState() {
@@ -82,6 +83,8 @@ class _AdaptiveShellState extends State<AdaptiveShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _hadHinge = AppBreakpoints.hingeOf(MediaQuery.of(context)) != null;
+      _chatsChanged = AppScope.read(context).chats.chatsChanged;
+      _chatsChanged!.addListener(_onChatsChanged);
       _runStartupPrompts();
       _onJumpChat();
     });
@@ -89,6 +92,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
 
   @override
   void dispose() {
+    _chatsChanged?.removeListener(_onChatsChanged);
     DesktopWindow.openChatId.removeListener(_onJumpChat);
     WidgetsBinding.instance.removeObserver(this);
     _listWidth.dispose();
@@ -165,6 +169,22 @@ class _AdaptiveShellState extends State<AdaptiveShell>
     _selected.value = null;
   }
 
+  void _onChatsChanged() {
+    final selected = _selected.value;
+    if (selected == null) return;
+    unawaited(_closeIfChatRemoved(selected.chatId));
+  }
+
+  Future<void> _closeIfChatRemoved(int chatId) async {
+    final profile = await AppDatabase.loadActiveProfile();
+    if (profile == null || !mounted) return;
+    final rows = await AppScope.read(context).chats.getChat(profile.id, chatId);
+    if (!mounted) return;
+    if (rows.isEmpty && _selected.value?.chatId == chatId) {
+      _closeChat();
+    }
+  }
+
   void _toggleInfo() {
     final chat = _selected.value;
     if (chat == null) return;
@@ -187,6 +207,10 @@ class _AdaptiveShellState extends State<AdaptiveShell>
               chatType: chat.chatType,
               openedFromChat: true,
               onClose: () => Navigator.of(dialogContext).pop(),
+              onChatRemoved: () {
+                Navigator.of(dialogContext).pop();
+                _closeChat();
+              },
             ),
           ),
         ),
@@ -473,6 +497,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                                     chatType: selected.chatType,
                                     openedFromChat: true,
                                     onClose: _closeInfo,
+                                    onChatRemoved: _closeChat,
                                   ),
                                 ),
                               ),
