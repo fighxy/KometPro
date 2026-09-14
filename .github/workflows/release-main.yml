@@ -291,12 +291,23 @@ jobs:
         id: ver
         run: |
           PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          PUBSPEC_BUILD=$(grep '^version:' pubspec.yaml | awk '{print $2}' | awk -F'+' 'NF>1 {print $2}')
           echo "version=${PUBSPEC_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "build=${PUBSPEC_BUILD:-${GITHUB_RUN_NUMBER}}" >> "$GITHUB_OUTPUT"
           echo "tag=v${PUBSPEC_VERSION}+${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "name=KometPro ${PUBSPEC_VERSION} (сборка ${GITHUB_RUN_NUMBER})" >> "$GITHUB_OUTPUT"
 
       - name: List artifacts
         run: ls -lhR dist
+
+      - name: Generate update manifest
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          BUILD: ${{ steps.ver.outputs.build }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          REPO: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+        run: bash .github/scripts/generate-update-manifest.sh
 
       - name: Create release
         uses: softprops/action-gh-release@v2
