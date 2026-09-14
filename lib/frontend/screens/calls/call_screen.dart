@@ -2084,6 +2084,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final l10n = AppLocalizations.of(context)!;
     final video = _session?.localVideo == true;
     final screen = _session?.localScreen == true;
+    final cameraBlockedByScreen =
+        _session?.cameraBlockedByScreenShare == true;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Wrap(
@@ -2107,6 +2109,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             background: video ? cs.primary : cs.surfaceContainerHighest,
             foreground: video ? cs.onPrimary : cs.onSurface,
             busy: _videoBusy,
+            enabled: !cameraBlockedByScreen,
             onTap: _toggleVideo,
             onLongPress: _showCameras,
           ),
@@ -2196,6 +2199,7 @@ class _CallButton extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
   final bool busy;
+  final bool enabled;
 
   const _CallButton({
     required this.icon,
@@ -2207,6 +2211,7 @@ class _CallButton extends StatelessWidget {
     this.lottieAsset,
     this.slashed = false,
     this.busy = false,
+    this.enabled = true,
   });
 
   Widget _buildIcon() {
@@ -2225,35 +2230,39 @@ class _CallButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 62,
-          height: 62,
-          child: GlossyPill(
-            color: background,
-            borderRadius: BorderRadius.circular(31),
-            onTap: busy ? null : onTap,
-            onLongPress: busy ? null : onLongPress,
-            depth: 9,
-            child: Center(
-              child: busy
-                  ? SmallSpinner(size: 22, color: foreground)
-                  : _buildIcon(),
+    final tappable = enabled && !busy;
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 62,
+            height: 62,
+            child: GlossyPill(
+              color: background,
+              borderRadius: BorderRadius.circular(31),
+              onTap: tappable ? onTap : null,
+              onLongPress: tappable ? onLongPress : null,
+              depth: 9,
+              child: Center(
+                child: busy
+                    ? SmallSpinner(size: 22, color: foreground)
+                    : _buildIcon(),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: cs.onSurfaceVariant,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: cs.onSurfaceVariant,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
