@@ -1,7 +1,7 @@
 abstract final class UpdateConfig {
   static const String baseUrl = String.fromEnvironment(
     'KOMET_UPDATE_BASE_URL',
-    defaultValue: 'https://dl.komet.pw',
+    defaultValue: 'https://github.com/fighxy/KometPro/releases/latest/download',
   );
 
   static bool get isConfigured => _normalizedBase.isNotEmpty;
@@ -10,7 +10,15 @@ abstract final class UpdateConfig {
     '$_normalizedBase/latest.json',
   ).replace(queryParameters: {'t': _cacheBuster});
 
-  static String get downloadsPage => _normalizedBase;
+  static const String _githubDownloadSuffix = '/releases/latest/download';
+
+  static String get downloadsPage {
+    final base = _normalizedBase;
+    if (base.endsWith(_githubDownloadSuffix)) {
+      return base.substring(0, base.length - '/download'.length);
+    }
+    return base;
+  }
 
   static String get _normalizedBase {
     var url = baseUrl.trim();
