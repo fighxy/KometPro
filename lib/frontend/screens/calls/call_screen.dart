@@ -252,9 +252,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           'stream=${source?.id} track=${track?.id}',
         );
       } catch (e, st) {
-        if (_rendererTargets[renderer] == target) {
-          _rendererTargets.remove(renderer);
-        }
+        // Deliberately not clearing _rendererTargets here: retrying a target already known dead (e.g. a disposed track) on every resync is what caused the repeated native setSrcObject crashes below.
         logger.e(
           '[call][video] renderer $label bind#$sequence failed',
           error: e,
