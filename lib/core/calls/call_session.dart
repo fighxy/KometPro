@@ -1331,9 +1331,7 @@ class CallSession {
       try {
         final channel = await pc.createDataChannel(
           label,
-          RTCDataChannelInit()
-            ..ordered = true
-            ..maxRetransmitTime = 10000000,
+          RTCDataChannelInit()..ordered = true,
         );
         channel.onDataChannelState = (state) {
           logger.i('[call][sfu] data channel $label $state');
