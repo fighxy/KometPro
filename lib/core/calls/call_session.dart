@@ -33,6 +33,7 @@ class CallParticipant {
   bool videoEnabled;
   bool screenSharing;
   bool handRaised;
+  bool pinned;
   List<String> roles;
 
   CallParticipant({
@@ -44,6 +45,7 @@ class CallParticipant {
     this.videoEnabled = false,
     this.screenSharing = false,
     this.handRaised = false,
+    this.pinned = false,
     this.roles = const [],
   });
 
@@ -113,6 +115,10 @@ class CallSession {
   List _iceServers = const [];
   Object? _sfuSessionId;
   Set<int> _speaking = const {};
+  int? _dominantSpeakerId;
+  int? _dominantCandidateId;
+  DateTime? _dominantCandidateSince;
+  static const _dominantSwitchDelay = Duration(milliseconds: 900);
 
   Future<void> _mediaTail = Future.value();
   int _captureEpoch = 0;
@@ -219,6 +225,27 @@ class CallSession {
 
   List<CallParticipant> get participants =>
       _participants.values.toList(growable: false);
+
+  CallParticipant? get pinnedParticipant {
+    for (final p in _participants.values) {
+      if (p.pinned) return p;
+    }
+    return null;
+  }
+
+  int? get dominantSpeakerId => _dominantSpeakerId;
+
+  void setPinnedLocally(int id, bool pinned) {
+    final p = _participants[id];
+    if (p == null) return;
+    if (pinned) {
+      for (final other in _participants.values) {
+        if (other.id != id) other.pinned = false;
+      }
+    }
+    p.pinned = pinned;
+    _notifyInfo();
+  }
 
   Map<int, MediaStream> get participantStreams =>
       Map.unmodifiable(_participantStreams);
@@ -507,10 +534,41 @@ class CallSession {
     _speakHold.removeWhere((_, ticks) => ticks <= 0);
 
     final next = _speakHold.keys.toSet();
-    if (next.length != _speaking.length || !next.containsAll(_speaking)) {
-      _speaking = next;
-      _notifyInfo();
+    final changed = next.length != _speaking.length || !next.containsAll(_speaking);
+    if (changed) _speaking = next;
+    if (_updateDominantSpeaker(next) || changed) _notifyInfo();
+  }
+
+  bool _updateDominantSpeaker(Set<int> loud) {
+    final others = loud.where((id) => id != ws2Config.userId);
+    if (others.isEmpty) {
+      _dominantCandidateId = null;
+      _dominantCandidateSince = null;
+      if (_dominantSpeakerId != null && !loud.contains(_dominantSpeakerId)) {
+        _dominantSpeakerId = null;
+        return true;
+      }
+      return false;
     }
+    if (_dominantSpeakerId != null && loud.contains(_dominantSpeakerId)) {
+      _dominantCandidateId = null;
+      _dominantCandidateSince = null;
+      return false;
+    }
+    final candidate = others.first;
+    final now = DateTime.now();
+    if (_dominantCandidateId != candidate) {
+      _dominantCandidateId = candidate;
+      _dominantCandidateSince = now;
+      return false;
+    }
+    if (now.difference(_dominantCandidateSince!) >= _dominantSwitchDelay) {
+      _dominantSpeakerId = candidate;
+      _dominantCandidateId = null;
+      _dominantCandidateSince = null;
+      return true;
+    }
+    return false;
   }
 
   void _enqueue(Map<String, dynamic> msg) {
@@ -721,6 +779,7 @@ class CallSession {
     Object? mediaSettings,
     Object? muteStates,
     bool? handRaised,
+    bool? pinned,
     Object? roles,
   }) {
     final p = _participants.putIfAbsent(
@@ -743,6 +802,7 @@ class CallSession {
       if (s is String && s != 'UNMUTE') p.screenSharing = false;
     }
     if (handRaised != null) p.handRaised = handRaised;
+    if (pinned != null) p.pinned = pinned;
     if (roles is List) {
       p.roles = roles.whereType<String>().toList(growable: false);
     }
@@ -759,6 +819,13 @@ class CallSession {
     final state = participantState['state'];
     if (state is! Map || !state.containsKey('hand')) return null;
     return state['hand'] == '1' || state['hand'] == true;
+  }
+
+  bool? _pinnedFrom(Object? participantState) {
+    if (participantState is! Map) return null;
+    final state = participantState['state'];
+    if (state is! Map || !state.containsKey('pinned')) return null;
+    return state['pinned'] == '1' || state['pinned'] == true;
   }
 
   void _onParticipantMedia(Map<String, dynamic> msg) {
@@ -802,6 +869,7 @@ class CallSession {
       mediaSettings: p['mediaSettings'],
       muteStates: p['muteStates'],
       handRaised: _handFrom(p['participantState']),
+      pinned: _pinnedFrom(p['participantState']),
       roles: p['roles'],
     );
     _maybeAdoptPeer(id, p);
@@ -831,7 +899,11 @@ class CallSession {
   void _onParticipantStateChanged(Map<String, dynamic> msg) {
     final id = msg['participantId'];
     if (id is! int) return;
-    _upsertParticipant(id, handRaised: _handFrom(msg['participantState']));
+    _upsertParticipant(
+      id,
+      handRaised: _handFrom(msg['participantState']),
+      pinned: _pinnedFrom(msg['participantState']),
+    );
     _notifyInfo();
   }
 
@@ -848,6 +920,7 @@ class CallSession {
         mediaSettings: p['mediaSettings'],
         muteStates: p['muteStates'],
         handRaised: _handFrom(p['participantState']),
+        pinned: _pinnedFrom(p['participantState']),
         roles: p['roles'],
       );
     }
@@ -1289,6 +1362,7 @@ class CallSession {
         .map((e) => e.key)
         .toSet();
     logger.i('[call][sfu] levels: $levels speaking=$loud');
+    _updateDominantSpeaker(loud);
     if (loud.length == _speaking.length && loud.containsAll(_speaking)) return;
     _speaking = loud;
     _notifyInfo();
