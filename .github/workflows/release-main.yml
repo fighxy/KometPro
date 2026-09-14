@@ -76,9 +76,9 @@ jobs:
 
       - name: Build APKs and App Bundle (${{ matrix.flavor }})
         run: |
-          flutter build apk --release --flavor ${{ matrix.flavor }} --obfuscate --split-debug-info=build/symbols
-          flutter build apk --release --split-per-abi --flavor ${{ matrix.flavor }} --obfuscate --split-debug-info=build/symbols
-          flutter build appbundle --release --flavor ${{ matrix.flavor }} --obfuscate --split-debug-info=build/symbols
+          flutter build apk --release --build-number=${{ github.run_number }} --flavor ${{ matrix.flavor }} --obfuscate --split-debug-info=build/symbols
+          flutter build apk --release --build-number=${{ github.run_number }} --split-per-abi --flavor ${{ matrix.flavor }} --obfuscate --split-debug-info=build/symbols
+          flutter build appbundle --release --build-number=${{ github.run_number }} --flavor ${{ matrix.flavor }} --obfuscate --split-debug-info=build/symbols
 
       - name: Collect Android artifacts (${{ matrix.flavor }})
         run: |
@@ -117,7 +117,7 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
       - name: Build Windows
-        run: flutter build windows --release
+        run: flutter build windows --release --build-number=${{ github.run_number }}
       - name: Package Windows
         shell: pwsh
         run: ./.github/scripts/package-windows.ps1
@@ -151,7 +151,7 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
       - name: Build Linux
-        run: flutter build linux --release
+        run: flutter build linux --release --build-number=${{ github.run_number }}
       - name: Verify native dependencies
         run: |
           if ldd build/linux/x64/release/bundle/Komet | grep -F 'not found'; then
@@ -189,7 +189,7 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
       - name: Build macOS
-        run: flutter build macos --release
+        run: flutter build macos --release --build-number=${{ github.run_number }}
       - name: Package macOS
         run: |
           mkdir -p dist
@@ -223,7 +223,7 @@ jobs:
       - name: Build iOS (no codesign)
         run: |
           flutter config --no-enable-swift-package-manager
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
       - name: Install ldid
         run: brew install ldid
       - name: Pseudo-sign with ldid
@@ -291,9 +291,15 @@ jobs:
         id: ver
         run: |
           PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
-          PUBSPEC_BUILD=$(grep '^version:' pubspec.yaml | awk '{print $2}' | awk -F'+' 'NF>1 {print $2}')
           echo "version=${PUBSPEC_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "build=${PUBSPEC_BUILD:-${GITHUB_RUN_NUMBER}}" >> "$GITHUB_OUTPUT"
+          # Every platform job stamps --build-number=$GITHUB_RUN_NUMBER onto
+          # its own flutter build, overriding pubspec.yaml's +build suffix —
+          # match that here so the manifest's "build" always reflects what's
+          # actually compiled, regardless of whether pubspec.yaml's own
+          # version was bumped for this release. A build number that never
+          # moves is exactly what makes the updater report "up to date"
+          # forever even though the code underneath changed.
+          echo "build=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "tag=v${PUBSPEC_VERSION}+${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "name=KometPro ${PUBSPEC_VERSION} (сборка ${GITHUB_RUN_NUMBER})" >> "$GITHUB_OUTPUT"
 
