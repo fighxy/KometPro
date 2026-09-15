@@ -227,6 +227,11 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
           onTap: widget.onMarkUnread,
         ),
       ChatMenuItem(
+        icon: Symbols.check_circle,
+        label: 'Выделить',
+        onTap: widget.onEnterSelection,
+      ),
+      ChatMenuItem(
         icon: Symbols.delete,
         label: 'Удалить',
         destructive: true,
@@ -376,11 +381,18 @@ class SelectableMessageRowState extends State<SelectableMessageRow> {
               behavior: HitTestBehavior.opaque,
               onTapDown: (d) => _lastTapDown = d.globalPosition,
               onTap: _handleTap,
-              onLongPressStart: (d) => _handleLongPressStart(d.globalPosition),
-              onLongPressMoveUpdate: (d) =>
-                  _handleLongPressMove(d.globalPosition),
-              onLongPressEnd: (_) => _handleLongPressEnd(),
-              onLongPressCancel: _handleLongPressEnd,
+              onLongPressStart: DesktopDensity.enabled
+                  ? null
+                  : (d) => _handleLongPressStart(d.globalPosition),
+              onLongPressMoveUpdate: DesktopDensity.enabled
+                  ? null
+                  : (d) => _handleLongPressMove(d.globalPosition),
+              onLongPressEnd: DesktopDensity.enabled
+                  ? null
+                  : (_) => _handleLongPressEnd(),
+              onLongPressCancel: DesktopDensity.enabled
+                  ? null
+                  : _handleLongPressEnd,
               onSecondaryTapDown: active ? null : _onSecondaryTapDown,
               child: ColoredBox(
                 color: isSelected

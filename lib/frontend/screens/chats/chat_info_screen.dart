@@ -29,6 +29,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../../models/chat_info.dart';
 import '../../../models/contact_info.dart';
 import '../../../models/story.dart';
+import '../../../core/config/desktop_density.dart';
+import '../../widgets/adaptive_shell.dart';
 import '../../widgets/desktop_scroll.dart';
 import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/animated_text_swap.dart';
@@ -1565,6 +1567,22 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
 
   void _openChat() {
     if (widget.openedFromChat) {
+      if (widget.onClose != null) {
+        widget.onClose!();
+      } else {
+        Navigator.of(context).maybePop();
+      }
+      return;
+    }
+    if (DesktopDensity.enabled &&
+        AdaptiveShell.openInPane(
+          DesktopChatSelection(
+            chatId: _mediaChatId,
+            name: widget.name,
+            imageUrl: widget.imageUrl,
+            chatType: widget.chatType,
+          ),
+        )) {
       if (widget.onClose != null) {
         widget.onClose!();
       } else {

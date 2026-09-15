@@ -4,6 +4,7 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/cache/self_presence.dart';
@@ -403,6 +404,11 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
                         return _buildSection(
                           context,
                           items: [
+                            _SettingsItem(
+                              icon: Symbols.tag,
+                              label: 'Мой ID: ${_profile!.id}',
+                              onTap: () => unawaited(_copyMyId()),
+                            ),
                             if (BuildProfile.digitalId)
                               _SettingsItem(
                                 icon: Symbols.badge,
@@ -916,6 +922,15 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
         },
       ),
     );
+  }
+
+  Future<void> _copyMyId() async {
+    final id = _profile?.id;
+    if (id == null) return;
+    await Clipboard.setData(ClipboardData(text: '$id'));
+    if (!mounted) return;
+    Haptics.tap();
+    showCustomNotification(context, 'ID скопирован');
   }
 
   Widget _headerAligned(double t, Widget child) {

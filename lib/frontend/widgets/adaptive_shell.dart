@@ -37,6 +37,19 @@ import 'update_dialog.dart';
 class AdaptiveShell extends StatefulWidget {
   const AdaptiveShell({super.key});
 
+  static _AdaptiveShellState? _current;
+
+  /// Opens [chat] in the desktop chat pane instead of a full-screen route.
+  /// Returns false when there is no desktop shell to host it.
+  static bool openInPane(DesktopChatSelection chat) {
+    final state = _current;
+    if (state == null || !state.mounted || !DesktopDensity.enabled) {
+      return false;
+    }
+    state._onChatSelected(chat);
+    return true;
+  }
+
   @override
   State<AdaptiveShell> createState() => _AdaptiveShellState();
 }
@@ -78,6 +91,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   @override
   void initState() {
     super.initState();
+    AdaptiveShell._current = this;
     WidgetsBinding.instance.addObserver(this);
     _loadListWidth();
     DesktopWindow.openChatId.addListener(_onJumpChat);
@@ -93,6 +107,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
 
   @override
   void dispose() {
+    if (identical(AdaptiveShell._current, this)) AdaptiveShell._current = null;
     _chatsChanged?.removeListener(_onChatsChanged);
     DesktopWindow.openChatId.removeListener(_onJumpChat);
     WidgetsBinding.instance.removeObserver(this);
