@@ -406,7 +406,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                             _ResizeDivider(
                               hitWidth: _dividerHitWidth,
                               lineWidth: _dividerLineWidth,
-                              color: cs.outlineVariant.withValues(alpha: 0.35),
+                              color: cs.outlineVariant.withValues(alpha: 0.6),
                               onDrag: (dx) => _onDrag(dx, totalWidth),
                               onDragEnd: _persistListWidth,
                             ),
@@ -485,7 +485,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                                     border: Border(
                                       left: BorderSide(
                                         color: cs.outlineVariant.withValues(
-                                          alpha: 0.35,
+                                          alpha: 0.6,
                                         ),
                                       ),
                                     ),

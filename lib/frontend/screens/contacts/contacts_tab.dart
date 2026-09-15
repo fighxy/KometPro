@@ -20,6 +20,7 @@ import '../../../models/contact_info.dart';
 import '../../widgets/komet_avatar.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/sheet_helpers.dart';
+import '../../widgets/desktop_scroll.dart';
 import '../../widgets/small_spinner.dart';
 import '../../widgets/spectrum_tint.dart';
 import '../../widgets/springy_tap.dart';
@@ -47,6 +48,7 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
   String _query = '';
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
+  final ScrollController _listController = ScrollController();
 
   static bool get _nfcSupported =>
       !kIsWeb &&
@@ -418,12 +420,16 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
                       ),
                     );
                   }
-                  return ListView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: 120),
-                    itemCount: visible.length,
-                    itemBuilder: (context, index) =>
-                        _buildContactItem(context, cs, visible[index]),
+                  return DesktopScroll(
+                    controller: _listController,
+                    child: ListView.builder(
+                      controller: _listController,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.only(bottom: 120),
+                      itemCount: visible.length,
+                      itemBuilder: (context, index) =>
+                          _buildContactItem(context, cs, visible[index]),
+                    ),
                   );
                 },
               ),

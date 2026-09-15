@@ -47,6 +47,7 @@ class PhotoBubble extends StatelessWidget {
       ],
       maxWidth: maxWidth,
       minSingleWidth: minSingleWidth,
+      widenPortrait: !DesktopDensity.enabled,
     );
   }
 

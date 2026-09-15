@@ -429,7 +429,9 @@ extension _ChatTranscriptBuild on _ChatScreenState {
                       final inset = ChatLayout.horizontalInset(
                         constraints.maxWidth,
                       );
-                      return DesktopScroll(
+                      return ChatPaneWidth(
+                        width: constraints.maxWidth,
+                        child: DesktopScroll(
                         controller: _scrollController,
                         child: CustomScrollView(
                     controller: _scrollController,
@@ -695,6 +697,7 @@ extension _ChatTranscriptBuild on _ChatScreenState {
                       ),
                     ],
                   ),
+                        ),
                       );
                     },
                   );

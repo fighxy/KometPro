@@ -27,6 +27,7 @@ import 'formatted_message_text.dart';
 import 'reply_preview.dart';
 import 'text_entity_actions.dart';
 import 'sending_clock_icon.dart';
+import 'chat_pane_width.dart';
 import 'photo_viewer.dart';
 import 'selectable_message_text.dart';
 import '../../models/attachment.dart';
@@ -1150,7 +1151,7 @@ class MessageBubble extends StatelessWidget {
 
     final keyboard = _inlineKeyboard;
     final isVideoNote = _isVideoNote;
-    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenWidth = ChatPaneWidth.of(context);
     final mediaOnly = (_contentText?.isEmpty ?? true) &&
         _contentAttachments.any((item) => item is PhotoAttachment || item is VideoAttachment);
     final maxBubbleWidth = isVideoNote
@@ -1680,7 +1681,7 @@ class MessageBubble extends StatelessWidget {
     if (_contentType == MessageType.voice) {
       final width = math.min(
         380.0,
-        ChatLayout.maxBubbleWidth(MediaQuery.sizeOf(context).width),
+        ChatLayout.maxBubbleWidth(ChatPaneWidth.of(context)),
       );
       return SizedBox(width: width, child: content);
     }
