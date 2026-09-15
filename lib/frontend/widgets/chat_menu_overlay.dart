@@ -77,7 +77,7 @@ class _ChatMenuLayer extends StatefulWidget {
 
 class _MenuLayout extends SingleChildLayoutDelegate {
   static const double menuWidth = 290.0;
-  static const double compactMenuWidth = 226.0;
+  static const double compactMenuWidth = 258.0;
   static const double margin = 8.0;
   static const double gap = 6.0;
 
@@ -211,7 +211,7 @@ class _ChatMenuLayerState extends State<_ChatMenuLayer>
       },
       child: Material(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(widget.compact ? 10 : 20),
+        borderRadius: BorderRadius.circular(widget.compact ? 14 : 20),
         clipBehavior: Clip.antiAlias,
         elevation: 12,
         shadowColor: Colors.black.withValues(alpha: 0.45),
@@ -291,13 +291,13 @@ class _ChatMenuRow extends StatelessWidget {
           : null,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: compact ? 12 : 18,
-          vertical: compact ? 7 : 15,
+          horizontal: compact ? 14 : 18,
+          vertical: compact ? 10 : 15,
         ),
         child: Row(
           children: [
-            Icon(item.icon, size: compact ? 16 : 24, weight: 400, color: fg),
-            SizedBox(width: compact ? 10 : 18),
+            Icon(item.icon, size: compact ? 19 : 24, weight: 400, color: fg),
+            SizedBox(width: compact ? 12 : 18),
             Expanded(
               child: Text(
                 item.label,
@@ -305,7 +305,7 @@ class _ChatMenuRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: fg,
-                  fontSize: compact ? 13 : 16,
+                  fontSize: compact ? 14.5 : 16,
                   fontWeight: FontWeight.w500,
                   height: 1.15,
                 ),
@@ -314,7 +314,7 @@ class _ChatMenuRow extends StatelessWidget {
             if (item.showChevron || item.hasSubmenu)
               Icon(
                 Symbols.chevron_right,
-                size: compact ? 16 : 22,
+                size: compact ? 18 : 22,
                 weight: 400,
                 color: cs.onSurface.withValues(alpha: 0.7),
               ),

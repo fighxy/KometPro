@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import 'package:komet/backend/modules/messages.dart';
+import 'package:komet/core/config/desktop_density.dart';
 import 'package:komet/core/config/app_chat_chrome.dart';
 import 'package:komet/core/config/app_colors.dart';
 import 'package:komet/core/config/app_composer_background.dart';
@@ -543,9 +544,11 @@ class ComposerInputBar extends StatelessWidget {
 
   double get _controlSize => _flat ? 48 : 54;
 
-  double get _barSideInset => _flat ? 0 : 12;
+  bool get _island => DesktopDensity.enabled;
 
-  double get _barVerticalInset => _flat ? 4 : 8;
+  double get _barSideInset => _island ? 14 : (_flat ? 0 : 12);
+
+  double get _barVerticalInset => _island ? 10 : (_flat ? 4 : 8);
 
   double get _fieldSideInset => _flat ? 12 : 14;
 
@@ -558,6 +561,7 @@ class ComposerInputBar extends StatelessWidget {
   double get _attachLeading => _flat ? 0 : 12;
 
   Widget _barSurface(ColorScheme cs, Widget child) {
+    if (_island) return child;
     if (!_flat || _translucent) return child;
     if (chrome == ChatChromeStyle.blur) return child;
     return DecoratedBox(
@@ -570,6 +574,22 @@ class ComposerInputBar extends StatelessWidget {
   }
 
   Widget _fieldSurface(ColorScheme cs, Widget child) {
+    if (_flat && _island) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(
+            cs.surfaceContainerHighest.withValues(alpha: 0.92),
+            cs.surface,
+          ),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+            width: 0.5,
+          ),
+        ),
+        child: child,
+      );
+    }
     if (_flat) return child;
     return GlossyPill(
       color: _translucent

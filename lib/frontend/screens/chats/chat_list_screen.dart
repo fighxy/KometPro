@@ -1960,9 +1960,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildTitleRow(themeCs),
-                  if (AppStories.current.value)
+                  if (AppStories.current.value) ...[
                     SizedBox(
-                      height: 96 * _pullRatio,
+                      height: 106 * _pullRatio,
                       child: IgnorePointer(
                         ignoring: _pullRatio < 0.95,
                         child: Opacity(
@@ -1971,6 +1971,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                         ),
                       ),
                     ),
+                    SizedBox(height: 10 * _pullRatio),
+                  ],
                   AnimatedSize(
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
@@ -2959,10 +2961,15 @@ class _ChatListScreenState extends State<ChatListScreen>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _selectFolder(folderId),
-      onLongPress: () {
-        Haptics.medium();
-        showFolderActionSheet(context, folder: folder);
-      },
+      onLongPress: DesktopDensity.enabled
+          ? null
+          : () {
+              Haptics.medium();
+              showFolderActionSheet(context, folder: folder);
+            },
+      onSecondaryTapDown: DesktopDensity.enabled
+          ? (_) => showFolderActionSheet(context, folder: folder)
+          : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
@@ -3304,12 +3311,6 @@ class _ChatListScreenState extends State<ChatListScreen>
       active: isActive,
       selected: isSelected,
       enableHover: desktopPane && !widget.forwardMode && !_shareMode && !_isSelectionMode,
-      archived: widget.archiveMode,
-      onArchive: chat == null || chat.id == 0 || _profile == null ? null : () async {
-        await ArchivedChatsStore.instance.setArchived(_profile!.id, chat.id, !widget.archiveMode);
-        if (!mounted) return;
-        showCustomNotification(context, widget.archiveMode ? 'Чат возвращён' : 'Чат в архиве');
-      },
       onSecondaryTapDown: (!DesktopDensity.enabled ||
               widget.forwardMode ||
               _shareMode ||

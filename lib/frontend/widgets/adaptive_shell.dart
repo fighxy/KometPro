@@ -37,6 +37,21 @@ import 'update_dialog.dart';
 class AdaptiveShell extends StatefulWidget {
   const AdaptiveShell({super.key});
 
+  static _AdaptiveShellState? _current;
+
+  /// Opens [chat] in the desktop chat pane instead of a full-screen route.
+  /// With [withInfo] the docked info pane is opened too, when the window is
+  /// wide enough to hold it. Returns false when there is no desktop shell.
+  static bool openInPane(DesktopChatSelection chat, {bool withInfo = false}) {
+    final state = _current;
+    if (state == null || !state.mounted || !DesktopDensity.enabled) {
+      return false;
+    }
+    state._onChatSelected(chat);
+    if (withInfo) state._openInfoIfDockable();
+    return true;
+  }
+
   @override
   State<AdaptiveShell> createState() => _AdaptiveShellState();
 }
@@ -78,6 +93,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
   @override
   void initState() {
     super.initState();
+    AdaptiveShell._current = this;
     WidgetsBinding.instance.addObserver(this);
     _loadListWidth();
     DesktopWindow.openChatId.addListener(_onJumpChat);
@@ -93,6 +109,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
 
   @override
   void dispose() {
+    if (identical(AdaptiveShell._current, this)) AdaptiveShell._current = null;
     _chatsChanged?.removeListener(_onChatsChanged);
     DesktopWindow.openChatId.removeListener(_onJumpChat);
     WidgetsBinding.instance.removeObserver(this);
@@ -186,15 +203,24 @@ class _AdaptiveShellState extends State<AdaptiveShell>
     }
   }
 
-  void _toggleInfo() {
-    final chat = _selected.value;
-    if (chat == null) return;
+  bool _inspectorFits() {
     final width = MediaQuery.sizeOf(context).width;
     final list = _listWidth.value.clamp(
       _minListWidth,
       KometLayout.listLimit(width, DesktopDensity.s, false),
     );
-    if (!KometLayout.dockInspector(width, list, DesktopDensity.s)) {
+    return KometLayout.dockInspector(width, list, DesktopDensity.s);
+  }
+
+  void _openInfoIfDockable() {
+    if (_infoOpen || !_inspectorFits()) return;
+    setState(() => _infoOpen = true);
+  }
+
+  void _toggleInfo() {
+    final chat = _selected.value;
+    if (chat == null) return;
+    if (!_inspectorFits()) {
       showDialog<void>(
         context: context,
         builder: (dialogContext) => Dialog(
@@ -458,7 +484,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                                   return SwipeToPop(
                                     enabled: selected != null && iosPane,
                                     onPop: _closeChat,
-                                    child: pane,
+                                    child: _island(cs, pane),
                                   );
                                 },
                               ),
@@ -479,18 +505,11 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                                   DesktopDensity.s,
                                 ))
                               SizedBox(
-                                width: DesktopDensity.infoPaneWidth,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: cs.outlineVariant.withValues(
-                                          alpha: 0.6,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  child: ChatInfoScreen(
+                                width: DesktopDensity.infoPaneWidth +
+                                    (_islandEnabled ? _islandGap : 0),
+                                child: _island(
+                                  cs,
+                                  ChatInfoScreen(
                                     key: ValueKey('info-${selected.chatId}'),
                                     chatId: selected.chatId,
                                     name: selected.name,
@@ -512,6 +531,31 @@ class _AdaptiveShellState extends State<AdaptiveShell>
             },
           );
         },
+      ),
+    );
+  }
+
+  static const double _islandInset = 8;
+  static const double _islandGap = _islandInset * 2;
+
+  static bool get _islandEnabled => DesktopDensity.enabled;
+
+  /// Wraps a desktop pane into a rounded card floating over the window
+  /// background instead of a pane flush with the window edges.
+  Widget _island(ColorScheme cs, Widget child) {
+    if (!_islandEnabled) return child;
+    final radius = BorderRadius.circular(18);
+    return Padding(
+      padding: const EdgeInsets.all(_islandInset),
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        child: ClipRRect(borderRadius: radius, child: child),
       ),
     );
   }

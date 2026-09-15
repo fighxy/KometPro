@@ -1,5 +1,5 @@
 name: Build Windows
-run-name: KometPro 0.6.1 — Windows x64 + Inno Setup
+run-name: KometPro 0.7.0 — Windows x64 + Inno Setup
 
 on:
   workflow_dispatch:

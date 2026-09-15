@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import '../../../../../core/design/komet_components.dart';
@@ -180,8 +179,6 @@ class DesktopChatChrome extends StatefulWidget {
   final bool enableHover;
   final GestureTapDownCallback? onSecondaryTapDown;
   final Widget child;
-  final VoidCallback? onArchive;
-  final bool archived;
 
   const DesktopChatChrome({
     super.key,
@@ -191,8 +188,6 @@ class DesktopChatChrome extends StatefulWidget {
     required this.enableHover,
     required this.child,
     this.onSecondaryTapDown,
-    this.onArchive,
-    this.archived = false,
   });
 
   @override
@@ -201,26 +196,9 @@ class DesktopChatChrome extends StatefulWidget {
 
 class _DesktopChatChromeState extends State<DesktopChatChrome> {
   bool _hovered = false;
-  bool _showActions = false;
-  Timer? _hoverTimer;
 
   void _hover(bool entered) {
-    _hoverTimer?.cancel();
-    setState(() {
-      _hovered = entered;
-      if (!entered) _showActions = false;
-    });
-    if (entered) {
-      _hoverTimer = Timer(const Duration(milliseconds: 250), () {
-        if (mounted) setState(() => _showActions = true);
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _hoverTimer?.cancel();
-    super.dispose();
+    setState(() => _hovered = entered);
   }
 
   Color _fill(ColorScheme cs) {
@@ -253,58 +231,7 @@ class _DesktopChatChromeState extends State<DesktopChatChrome> {
               ),
             ),
           ),
-          child: Stack(
-            children: [
-              widget.child,
-              if (widget.enableHover && _showActions)
-                Positioned(
-                  right: 8,
-                  top: 4,
-                  bottom: 4,
-                  child: Material(
-                    color: _fill(cs),
-                    borderRadius: KometTokens.controlRadius,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (widget.onArchive != null)
-                          IconButton(
-                            tooltip: widget.archived
-                                ? 'Вернуть из архива'
-                                : 'В архив',
-                            icon: Icon(
-                              widget.archived
-                                  ? Icons.unarchive_outlined
-                                  : Icons.archive_outlined,
-                              size: 18,
-                            ),
-                            onPressed: widget.onArchive,
-                          ),
-                        if (widget.onSecondaryTapDown != null)
-                          Builder(
-                            builder: (buttonContext) => IconButton(
-                              tooltip: 'Действия с чатом',
-                              icon: const Icon(Icons.more_horiz, size: 18),
-                              onPressed: () {
-                                final box =
-                                    buttonContext.findRenderObject()
-                                        as RenderBox;
-                                widget.onSecondaryTapDown!(
-                                  TapDownDetails(
-                                    globalPosition: box.localToGlobal(
-                                      Offset(0, box.size.height),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          child: widget.child,
         ),
       ),
     );

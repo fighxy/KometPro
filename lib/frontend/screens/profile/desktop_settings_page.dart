@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -692,6 +693,10 @@ class _AccountPane extends StatelessWidget {
                               ),
                             ),
                           ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: _ProfileIdLabel(id: profile!.id),
+                        ),
                         ValueListenableBuilder<bool>(
                           valueListenable: KometSettings.selfOnlineCheck,
                           builder: (context, enabled, _) {
@@ -772,6 +777,42 @@ class _AccountPane extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _ProfileIdLabel extends StatelessWidget {
+  const _ProfileIdLabel({required this.id});
+
+  final int id;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => unawaited(_copy(context)),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'ID $id',
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(width: 6),
+            Icon(Symbols.content_copy, size: 14, color: cs.outline),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: '$id'));
+    if (!context.mounted) return;
+    Haptics.tap();
+    showCustomNotification(context, 'ID скопирован');
   }
 }
 
