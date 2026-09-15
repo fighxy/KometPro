@@ -1911,6 +1911,12 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       }
     }
 
+    final idCard = _buildIdCard(cs);
+    if (idCard != null) {
+      if (items.isNotEmpty) items.add(const SizedBox(height: 8));
+      items.add(idCard);
+    }
+
     if (items.isEmpty) return const SizedBox.shrink();
     return SelectionArea(
       child: Column(
@@ -1920,37 +1926,69 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
     );
   }
 
+  Widget? _buildIdCard(ColorScheme cs) {
+    final int? id;
+    final String label;
+    if (widget.chatType == 'DIALOG') {
+      final raw = _contactData?.raw['id'];
+      id = raw is int ? raw : _otherId;
+      label = l10n.chatInfoRowUserId;
+    } else {
+      final raw = _chatInfo?.raw['id'];
+      id = raw is int ? raw : widget.chatId;
+      label = l10n.chatInfoRowId;
+    }
+    if (id == null || id == 0) return null;
+    return _simpleInfoCard(
+      cs,
+      label,
+      '$id',
+      onTap: () => unawaited(_copyInfoValue('$id')),
+      trailing: Icon(Symbols.content_copy, size: 18, color: cs.outline),
+    );
+  }
+
   Widget _simpleInfoCard(
     ColorScheme cs,
     String label,
     String value, {
     bool isLink = false,
+    VoidCallback? onTap,
+    Widget? trailing,
   }) {
     return GlossyPill(
       color: cs.surfaceContainerHigh,
       borderRadius: BorderRadius.circular(14),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       depth: 6,
+      onTap: onTap,
       child: SizedBox(
         width: double.infinity,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              label,
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
-            ),
-            const SizedBox(height: 4),
-            FormattedMessageText(
-              text: value,
-              ranges: const [],
-              entityMode: TextEntityMode.copy,
-              style: TextStyle(
-                color: isLink ? cs.primary : cs.onSurface,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                  ),
+                  const SizedBox(height: 4),
+                  FormattedMessageText(
+                    text: value,
+                    ranges: const [],
+                    entityMode: TextEntityMode.copy,
+                    style: TextStyle(
+                      color: isLink ? cs.primary : cs.onSurface,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
+            if (trailing != null) ...[const SizedBox(width: 12), trailing],
           ],
         ),
       ),
