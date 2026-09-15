@@ -1,5 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import '../../../core/cache/info_cache.dart';
+import '../../../core/utils/format.dart';
 import '../../../core/config/debug_test.dart';
 import '../../../core/contacts/contact_labels.dart';
 import '../../../core/contacts/device_contacts_service.dart';
@@ -19,6 +24,7 @@ import '../../widgets/small_spinner.dart';
 import '../../widgets/spectrum_tint.dart';
 import '../../widgets/springy_tap.dart';
 import '../chats/chat_info_screen.dart';
+import 'add_contact_sheet.dart';
 import 'nfc_exchange_sheet.dart';
 import 'open_contact_profile.dart';
 import '../../../core/config/app_frost.dart';
@@ -37,13 +43,27 @@ class ContactsTab extends StatefulWidget {
 class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
   List<CachedContact> _contacts = [];
   bool _isLoading = true;
+  bool _searchOpen = false;
+  String _query = '';
+  final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+
+  static bool get _nfcSupported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   @override
   void initState() {
     super.initState();
     _loadContacts();
     ContactsModule.revision.addListener(_loadContacts);
+    PresenceFetch.revision.addListener(_onPresenceChanged);
     _loadDeviceContacts();
+  }
+
+  void _onPresenceChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadDeviceContacts() async {
@@ -54,6 +74,9 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
   @override
   void dispose() {
     ContactsModule.revision.removeListener(_loadContacts);
+    PresenceFetch.revision.removeListener(_onPresenceChanged);
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -84,15 +107,58 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
     );
   }
 
-  Future<void> _openSearchById() async {
+  Future<void> _openAddContact() async {
     final cs = Theme.of(context).colorScheme;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: cs.surfaceContainerHigh,
       shape: kSheetShape,
-      builder: (_) => const _SearchContactSheet(),
+      builder: (_) => _AddContactSheet(
+        onManualAdd: () => showAddContactSheet(context),
+        onNfcExchange: _nfcSupported ? _openNfcExchange : null,
+      ),
     );
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _searchOpen = !_searchOpen;
+      if (!_searchOpen) {
+        _searchCtrl.clear();
+        _query = '';
+      }
+    });
+    if (_searchOpen) _searchFocus.requestFocus();
+  }
+
+  List<CachedContact> get _visibleContacts {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return _contacts;
+    final digits = query.replaceAll(RegExp(r'[^\d]'), '');
+    return _contacts.where((c) {
+      final name = [
+        c.firstName,
+        c.lastName ?? '',
+      ].where((s) => s.isNotEmpty).join(' ').toLowerCase();
+      if (name.contains(query)) return true;
+      if (digits.isNotEmpty) {
+        if (c.phone.toString().contains(digits)) return true;
+        if (c.id.toString().contains(digits)) return true;
+      }
+      return false;
+    }).toList();
+  }
+
+  String? _presenceSubtitle(CachedContact contact) {
+    final presence = PresenceFetch.live(contact.id);
+    if (presence == null) return null;
+    final status = presence['status'] as int?;
+    if (status == 1) return 'В сети';
+    if (status == 2 || status == 3) return 'Был(-а) недавно';
+    final seen = presence['seen'] as int?;
+    if (seen != null && seen > 0) return formatLastSeen(seen);
+    return null;
   }
 
   Future<void> _loadContacts() async {
@@ -121,6 +187,7 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
         _isLoading = false;
       });
     }
+    unawaited(PresenceFetch.ensureFor(contacts.map((c) => c.id)));
   }
 
   Widget _buildContactItem(
@@ -135,9 +202,7 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
       phone: contact.phone,
     );
     final nameToDisplay = labels.title;
-    final subtitle = contact.updateTime > 0
-        ? 'Был(а) недавно'
-        : labels.subtitle;
+    final subtitle = _presenceSubtitle(contact) ?? labels.subtitle;
 
     return SpringyTap(
       child: Material(
@@ -257,38 +322,111 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Добавить контакт',
                     icon: Icon(Symbols.person_add, color: cs.onSurface),
-                    onPressed: _openNfcExchange,
+                    onPressed: _openAddContact,
                   ),
                   IconButton(
-                    icon: Icon(Symbols.search, color: cs.onSurface),
-                    onPressed: _openSearchById,
+                    tooltip: 'Поиск по контактам',
+                    icon: Icon(
+                      _searchOpen ? Symbols.close : Symbols.search,
+                      color: cs.onSurface,
+                    ),
+                    onPressed: _toggleSearch,
                   ),
                 ],
               ),
             ),
+            if (_searchOpen)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: TextField(
+                  controller: _searchCtrl,
+                  focusNode: _searchFocus,
+                  onChanged: (value) => setState(() => _query = value),
+                  style: TextStyle(color: cs.onSurface, fontSize: 15),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor: cs.surfaceContainerHighest,
+                    hintText: 'Имя, номер или ID',
+                    hintStyle: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 15,
+                    ),
+                    prefixIcon: Icon(
+                      Symbols.search,
+                      color: cs.onSurfaceVariant,
+                      size: 20,
+                    ),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(
+                              Symbols.cancel,
+                              color: cs.onSurfaceVariant,
+                              size: 18,
+                            ),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(50),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
             Expanded(
-              child: _isLoading
-                  ? const Center(child: SmallSpinner(size: 36))
-                  : _contacts.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Нет контактов',
-                        style: TextStyle(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 16,
+              child: Builder(
+                builder: (context) {
+                  if (_isLoading) {
+                    return const Center(child: SmallSpinner(size: 36));
+                  }
+                  final visible = _visibleContacts;
+                  if (visible.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _contacts.isEmpty
+                                  ? 'Нет контактов'
+                                  : 'Ничего не найдено',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 16,
+                              ),
+                            ),
+                            if (_contacts.isNotEmpty && _query.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              TextButton.icon(
+                                onPressed: _openAddContact,
+                                icon: const Icon(Symbols.person_search,
+                                    size: 18),
+                                label: const Text('Найти по номеру или ID'),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                    )
-                  : ListView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.only(bottom: 120),
-                      itemCount: _contacts.length,
-                      itemBuilder: (context, index) {
-                        final contact = _contacts[index];
-                        return _buildContactItem(context, cs, contact);
-                      },
-                    ),
+                    );
+                  }
+                  return ListView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(bottom: 120),
+                    itemCount: visible.length,
+                    itemBuilder: (context, index) =>
+                        _buildContactItem(context, cs, visible[index]),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -297,14 +435,17 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
   }
 }
 
-class _SearchContactSheet extends StatefulWidget {
-  const _SearchContactSheet();
+class _AddContactSheet extends StatefulWidget {
+  const _AddContactSheet({required this.onManualAdd, this.onNfcExchange});
+
+  final VoidCallback onManualAdd;
+  final VoidCallback? onNfcExchange;
 
   @override
-  State<_SearchContactSheet> createState() => _SearchContactSheetState();
+  State<_AddContactSheet> createState() => _AddContactSheetState();
 }
 
-class _SearchContactSheetState extends State<_SearchContactSheet> {
+class _AddContactSheetState extends State<_AddContactSheet> {
   final _controller = TextEditingController();
   _SearchMode _mode = _SearchMode.phone;
   bool _loading = false;
@@ -478,7 +619,7 @@ class _SearchContactSheetState extends State<_SearchContactSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Найти контакт',
+                      'Добавить контакт',
                       style: TextStyle(
                         color: cs.onSurface,
                         fontSize: 18,
@@ -589,8 +730,85 @@ class _SearchContactSheetState extends State<_SearchContactSheet> {
                     ? const SmallSpinner(size: 20)
                     : const Text('Найти'),
               ),
+              const SizedBox(height: 8),
+              _AddContactAction(
+                icon: Symbols.person_add,
+                label: 'Добавить вручную',
+                hint: 'Номер телефона и имя',
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onManualAdd();
+                },
+              ),
+              if (widget.onNfcExchange != null)
+                _AddContactAction(
+                  icon: Symbols.nfc,
+                  label: 'Обменяться по NFC',
+                  hint: 'Приложите телефоны друг к другу',
+                  onTap: () {
+                    Navigator.pop(context);
+                    widget.onNfcExchange!();
+                  },
+                ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class _AddContactAction extends StatelessWidget {
+  const _AddContactAction({
+    required this.icon,
+    required this.label,
+    required this.hint,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String hint;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: cs.onSurfaceVariant, size: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: cs.onSurface,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hint,
+                    style: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Symbols.chevron_right, color: cs.outline, size: 18),
+          ],
         ),
       ),
     );

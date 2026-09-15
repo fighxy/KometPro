@@ -1833,6 +1833,36 @@ class _ChatListScreenState extends State<ChatListScreen>
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (DesktopDensity.enabled &&
+                      !widget.forwardMode &&
+                      !widget.archiveMode &&
+                      !_shareMode)
+                    PopupMenuButton<int>(
+                      key: const ValueKey('create-button'),
+                      tooltip: 'Создать',
+                      icon: Icon(
+                        Symbols.add_circle,
+                        color: cs.outline,
+                        weight: 400,
+                      ),
+                      offset: const Offset(0, 48),
+                      elevation: 4,
+                      color: cs.surfaceContainerHigh,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      onSelected: _onCreateMenuSelected,
+                      itemBuilder: (context) => [
+                        _buildPopupMenuItem(1, 'Создать группу', Symbols.group_add),
+                        _buildPopupMenuItem(2, 'Создать канал', Symbols.campaign),
+                        _buildPopupMenuItem(3, 'Создать контакт', Symbols.person_add),
+                        _buildPopupMenuItem(
+                          4,
+                          'Создать папку',
+                          Symbols.create_new_folder,
+                        ),
+                      ],
+                    ),
                   if (!widget.forwardMode &&
                       !widget.archiveMode &&
                       !_shareMode)
@@ -2501,6 +2531,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                     );
                     final showChatsFab =
                         !_isSelectionMode &&
+                        !DesktopDensity.enabled &&
                         (_navDragging || _navPageAnimController.isAnimating
                             ? pageDisplayT < 1.0
                             : _currentNavIndex == 0);
@@ -4070,6 +4101,19 @@ class _ChatListScreenState extends State<ChatListScreen>
         ),
       ),
     );
+  }
+
+  void _onCreateMenuSelected(int value) {
+    switch (value) {
+      case 1:
+        showCreateGroupFlow(context);
+      case 2:
+        showCreateChannelFlow(context);
+      case 3:
+        showAddContactSheet(context);
+      case 4:
+        showFolderEditSheet(context);
+    }
   }
 
   void _onOverflowMenuSelected(int value) {
