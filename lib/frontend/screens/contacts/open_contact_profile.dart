@@ -5,17 +5,23 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/storage/token_storage.dart';
 import '../chats/chat_info_screen.dart';
 
+/// Chat id of the dialog with [contactId]: the cached one when it exists,
+/// otherwise the id the server derives from both account ids.
+Future<int> dialogChatIdFor(int contactId) async {
+  final accountId = await TokenStorage.getActiveAccountId();
+  final existing = accountId == null
+      ? null
+      : await AppDatabase.findDialogChatByParticipant(accountId, contactId);
+  return existing ?? ((accountId ?? 0) ^ contactId);
+}
+
 Future<void> openContactDialogProfile(
   BuildContext context, {
   required int contactId,
   required String name,
   String? avatarUrl,
 }) async {
-  final accountId = await TokenStorage.getActiveAccountId();
-  final existing = accountId == null
-      ? null
-      : await AppDatabase.findDialogChatByParticipant(accountId, contactId);
-  final chatId = existing ?? ((accountId ?? 0) ^ contactId);
+  final chatId = await dialogChatIdFor(contactId);
   if (!context.mounted) return;
   if (DesktopDensity.enabled) {
     await showDialog<void>(

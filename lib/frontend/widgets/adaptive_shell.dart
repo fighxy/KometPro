@@ -40,13 +40,15 @@ class AdaptiveShell extends StatefulWidget {
   static _AdaptiveShellState? _current;
 
   /// Opens [chat] in the desktop chat pane instead of a full-screen route.
-  /// Returns false when there is no desktop shell to host it.
-  static bool openInPane(DesktopChatSelection chat) {
+  /// With [withInfo] the docked info pane is opened too, when the window is
+  /// wide enough to hold it. Returns false when there is no desktop shell.
+  static bool openInPane(DesktopChatSelection chat, {bool withInfo = false}) {
     final state = _current;
     if (state == null || !state.mounted || !DesktopDensity.enabled) {
       return false;
     }
     state._onChatSelected(chat);
+    if (withInfo) state._openInfoIfDockable();
     return true;
   }
 
@@ -201,15 +203,24 @@ class _AdaptiveShellState extends State<AdaptiveShell>
     }
   }
 
-  void _toggleInfo() {
-    final chat = _selected.value;
-    if (chat == null) return;
+  bool _inspectorFits() {
     final width = MediaQuery.sizeOf(context).width;
     final list = _listWidth.value.clamp(
       _minListWidth,
       KometLayout.listLimit(width, DesktopDensity.s, false),
     );
-    if (!KometLayout.dockInspector(width, list, DesktopDensity.s)) {
+    return KometLayout.dockInspector(width, list, DesktopDensity.s);
+  }
+
+  void _openInfoIfDockable() {
+    if (_infoOpen || !_inspectorFits()) return;
+    setState(() => _infoOpen = true);
+  }
+
+  void _toggleInfo() {
+    final chat = _selected.value;
+    if (chat == null) return;
+    if (!_inspectorFits()) {
       showDialog<void>(
         context: context,
         builder: (dialogContext) => Dialog(

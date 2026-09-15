@@ -17,6 +17,8 @@ import '../../../backend/modules/messages.dart' show ContactCache;
 import 'package:komet/backend/app_services.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/contact_info.dart';
+import '../../../core/config/desktop_density.dart';
+import '../../widgets/adaptive_shell.dart';
 import '../../widgets/komet_avatar.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/sheet_helpers.dart';
@@ -192,6 +194,33 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
     unawaited(PresenceFetch.ensureFor(contacts.map((c) => c.id)));
   }
 
+  Future<void> _openContact({
+    required int contactId,
+    required String name,
+    String? avatarUrl,
+  }) async {
+    if (DesktopDensity.enabled) {
+      final chatId = await dialogChatIdFor(contactId);
+      final opened = AdaptiveShell.openInPane(
+        DesktopChatSelection(
+          chatId: chatId,
+          name: name,
+          imageUrl: avatarUrl ?? '',
+          chatType: 'DIALOG',
+        ),
+        withInfo: true,
+      );
+      if (opened) return;
+    }
+    if (!mounted) return;
+    await openContactDialogProfile(
+      context,
+      contactId: contactId,
+      name: name,
+      avatarUrl: avatarUrl,
+    );
+  }
+
   Widget _buildContactItem(
     BuildContext context,
     ColorScheme cs,
@@ -210,11 +239,12 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => openContactDialogProfile(
-            context,
-            contactId: contact.id,
-            name: nameToDisplay,
-            avatarUrl: contact.baseUrl,
+          onTap: () => unawaited(
+            _openContact(
+              contactId: contact.id,
+              name: nameToDisplay,
+              avatarUrl: contact.baseUrl,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

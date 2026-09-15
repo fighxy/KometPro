@@ -398,13 +398,10 @@ extension _ChatTranscriptBuild on _ChatScreenState {
 
   Widget _buildMessagesListContent() {
     if (_messages.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocalizations.of(context)!.hubChatEmpty,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
+      final isChannel = (chat?.type ?? widget.chatType) == 'CHANNEL';
+      return EmptyChatCard(
+        title: AppLocalizations.of(context)!.hubChatEmpty,
+        onStickerTap: isChannel ? null : _sendSticker,
       );
     }
 
