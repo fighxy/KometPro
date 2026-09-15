@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/core/config/app_frost.dart';
+import 'package:komet/core/config/desktop_density.dart';
 import 'package:komet/core/config/app_stories.dart';
 import 'package:komet/core/utils/haptics.dart';
 import 'package:komet/frontend/screens/stories/story_owner_info.dart';
@@ -113,7 +114,11 @@ class ChatHeaderRow extends StatelessWidget {
                 },
                 child: Center(
                   child: Icon(
-                    embedded ? Symbols.chevron_left : Symbols.arrow_back,
+                    embedded
+                        ? (DesktopDensity.enabled
+                              ? Symbols.close
+                              : Symbols.chevron_left)
+                        : Symbols.arrow_back,
                     color: cs.onSurface,
                     weight: 500,
                     size: 24,
@@ -290,8 +295,13 @@ class ChatHeaderRow extends StatelessWidget {
         _backWithBadge(
           cs,
           IconButton(
+            tooltip: embedded && DesktopDensity.enabled ? 'Закрыть чат' : null,
             icon: Icon(
-              embedded ? Symbols.chevron_left : Symbols.arrow_back,
+              embedded
+                  ? (DesktopDensity.enabled
+                        ? Symbols.close
+                        : Symbols.chevron_left)
+                  : Symbols.arrow_back,
               weight: 400,
               color: cs.onSurface,
             ),

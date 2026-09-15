@@ -858,7 +858,13 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
                 child: Row(
                   children: [
                     IconButton(
-                      icon: Icon(Symbols.arrow_back, color: iconColor),
+                      tooltip: widget.onClose != null ? 'Закрыть' : null,
+                      icon: Icon(
+                        widget.onClose != null
+                            ? Symbols.close
+                            : Symbols.arrow_back,
+                        color: iconColor,
+                      ),
                       onPressed: () {
                         if (widget.onClose != null) {
                           widget.onClose!();
@@ -1935,7 +1941,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       label = l10n.chatInfoRowUserId;
     } else {
       final raw = _chatInfo?.raw['id'];
-      id = raw is int ? raw : widget.chatId;
+      id = (raw is int ? raw : widget.chatId).abs();
       label = l10n.chatInfoRowId;
     }
     if (id == null || id == 0) return null;
@@ -2126,11 +2132,27 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
               );
             }
           },
-          child: SingleChildScrollView(
+          child: ShaderMask(
+            shaderCallback: (rect) => LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: const [
+                Color(0x00000000),
+                Color(0xFF000000),
+                Color(0xFF000000),
+                Color(0x00000000),
+              ],
+              stops: const [0.0, 0.03, 0.97, 1.0],
+            ).createShader(rect),
+            blendMode: BlendMode.dstIn,
+            child: SingleChildScrollView(
             controller: _tabScrollController,
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              constraints: BoxConstraints(
+                minWidth: math.max(0.0, constraints.maxWidth - 24),
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -2141,6 +2163,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
                   ],
                 ],
               ),
+            ),
             ),
           ),
         ),

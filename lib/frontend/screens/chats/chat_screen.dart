@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../widgets/chat_pane_width.dart';
 import '../../widgets/desktop_file_drop.dart';
 import 'dart:convert' show base64Encode;
 import 'dart:io' show File;

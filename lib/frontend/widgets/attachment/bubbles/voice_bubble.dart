@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/backend/app_services.dart';
+import 'package:komet/frontend/widgets/chat_pane_width.dart';
 import '../../../../backend/modules/messages.dart';
 import '../../../../core/config/app_colors.dart';
 import '../../../../core/config/komet_settings.dart';
@@ -342,7 +343,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
             ? compactWidth
             : maxW.isFinite
             ? maxW
-            : ChatLayout.maxBubbleWidth(MediaQuery.sizeOf(context).width);
+            : ChatLayout.maxBubbleWidth(ChatPaneWidth.of(context));
         final width = maxW.isFinite
             ? math.min(preferredWidth, maxW)
             : preferredWidth;
