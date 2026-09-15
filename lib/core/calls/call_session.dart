@@ -16,6 +16,7 @@ import 'call_admin.dart';
 import 'call_bridge.dart';
 import 'call_info.dart';
 import 'conversation_params.dart';
+import 'direct_video.dart';
 import 'pulse_audio.dart';
 import 'sfu_data_channel.dart';
 import 'ws2_signaling.dart';
@@ -1454,10 +1455,9 @@ class CallSession {
       return;
     }
     if (!await commands.sendDisplayLayout(items)) {
-      if (_layoutRetry < 8) {
-        _layoutRetry++;
-        _scheduleDisplayLayout(delay: const Duration(seconds: 1));
-      }
+      _layoutRetry++;
+      final delaySeconds = _layoutRetry < 5 ? 1 : (_layoutRetry < 10 ? 3 : 5);
+      _scheduleDisplayLayout(delay: Duration(seconds: delaySeconds));
       return;
     }
     _layoutRetry = 0;
@@ -2465,7 +2465,9 @@ class CallSession {
         await pc.setLocalDescription(RTCSessionDescription(null, 'rollback'));
       }
 
-      await pc.setRemoteDescription(RTCSessionDescription(desc, type));
+      await pc.setRemoteDescription(
+        RTCSessionDescription(DirectVideo.withRemoteStreams(desc), type),
+      );
       _remoteDescSet = true;
       await _flushCandidates();
       await _applyVideoQuality();
@@ -2934,6 +2936,12 @@ class CallSession {
     if (_localVideo) return;
     final pc = _pc;
     if (pc == null || _ended) return;
+    if (_directScreenSubstitution) {
+      throw StateError(
+        'Камера и демонстрация экрана делят один канал в этом звонке — '
+        'сначала остановите демонстрацию экрана',
+      );
+    }
     final epoch = _captureEpoch;
     MediaStream? stream;
     final started = DateTime.now();
