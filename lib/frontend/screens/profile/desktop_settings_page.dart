@@ -39,6 +39,7 @@ import 'message_actions_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_qr_sheet.dart';
 import 'security_screen.dart';
+import 'shortcuts_screen.dart';
 import 'spoof_screen.dart';
 import 'theme_settings_screen.dart';
 
@@ -52,6 +53,7 @@ enum DesktopSettingsSection {
   network,
   storage,
   advanced,
+  shortcuts,
   about,
 }
 
@@ -193,6 +195,7 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
             _section == DesktopSettingsSection.appearance ||
             _section == DesktopSettingsSection.privacy ||
             _section == DesktopSettingsSection.spoof ||
+            _section == DesktopSettingsSection.shortcuts ||
             _section == DesktopSettingsSection.about);
     return PopScope(
       canPop: _subpage == null,
@@ -272,6 +275,8 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
         return 'Хранилище';
       case DesktopSettingsSection.advanced:
         return 'Дополнительно';
+      case DesktopSettingsSection.shortcuts:
+        return 'Горячие клавиши';
       case DesktopSettingsSection.about:
         return 'О приложении';
     }
@@ -313,6 +318,8 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
         return const CloudStorageScreen();
       case DesktopSettingsSection.advanced:
         return const KometSettingsScreen();
+      case DesktopSettingsSection.shortcuts:
+        return const ShortcutsScreen();
       case DesktopSettingsSection.about:
         return _AboutPane(
           version: _version,
@@ -484,6 +491,14 @@ class _Sidebar extends StatelessWidget {
                                 section == DesktopSettingsSection.advanced,
                             onTap: () =>
                                 onSelect(DesktopSettingsSection.advanced),
+                          ),
+                          _NavTile(
+                            icon: Symbols.keyboard,
+                            label: 'Горячие клавиши',
+                            selected:
+                                section == DesktopSettingsSection.shortcuts,
+                            onTap: () =>
+                                onSelect(DesktopSettingsSection.shortcuts),
                           ),
                           _NavTile(
                             icon: Symbols.info,
