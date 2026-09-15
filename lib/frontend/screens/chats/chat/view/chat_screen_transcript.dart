@@ -26,8 +26,8 @@ extension _ChatTranscriptBuild on _ChatScreenState {
                 _formatDateLabel(date),
                 style: TextStyle(
                   color: cs.onSurfaceVariant,
-                  fontSize: 12,
-                  fontStyle: floating ? FontStyle.normal : FontStyle.italic,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
