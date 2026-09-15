@@ -276,6 +276,8 @@ jobs:
     needs: [android, windows, linux, macos, ios]
     if: ${{ always() && !cancelled() && needs.windows.result == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      VT_API_KEY: ${{ secrets.VT_API_KEY }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -315,6 +317,54 @@ jobs:
           COMMIT: ${{ github.sha }}
         run: bash .github/scripts/generate-update-manifest.sh
 
+      # Installable artifacts only: the .aab is Play-only and 100 MB+, and the
+      # checksum and zsync files are not executables.
+      - name: Scan artifacts with VirusTotal
+        id: vt
+        if: env.VT_API_KEY != ''
+        continue-on-error: true
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          request_rate: 4
+          files: |
+            dist/*.apk
+            dist/*setup.exe
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.tar.gz
+            dist/*.ipa
+
+      - name: Build VirusTotal section
+        id: vtbody
+        if: always()
+        env:
+          ANALYSIS: ${{ steps.vt.outputs.analysis }}
+        run: |
+          {
+            echo 'section<<VT_SECTION_EOF'
+            if [ -n "${ANALYSIS}" ]; then
+              echo '[![VirusTotal](https://img.shields.io/badge/VirusTotal-%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%B5%D0%BD%D0%BE-2ea44f?logo=virustotal&logoColor=white)](https://www.virustotal.com/)'
+              echo
+              echo '<details><summary><b>Отчёты VirusTotal по файлам этого релиза</b></summary>'
+              echo
+              printf '%s\n' "${ANALYSIS}" | tr ',' '\n' | while IFS='=' read -r name url; do
+                [ -n "${name}" ] && echo "- [\`${name}\`](${url})"
+              done
+              echo
+              echo '</details>'
+              echo
+              echo '---'
+              echo
+            else
+              echo '_Проверка VirusTotal не выполнялась для этой сборки._'
+              echo
+              echo '---'
+              echo
+            fi
+            echo 'VT_SECTION_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
@@ -325,6 +375,7 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           body: |
+            ${{ steps.vtbody.outputs.section }}
             Автоматическая сборка из ветки `${{ github.ref_name }}` @ `${{ github.sha }}`.
 
             Версия приложения: **${{ steps.ver.outputs.version }}**.
