@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../backend/modules/chats.dart';
+import '../../backend/modules/messages.dart' show ContactCache;
 import '../../core/config/app_breakpoints.dart';
 import '../../core/design/komet_layout.dart';
 import '../../core/design/komet_tokens.dart';
@@ -587,6 +588,22 @@ class _ResizeDividerState extends State<_ResizeDivider> {
   }
 }
 
+class _RecentChat {
+  const _RecentChat({
+    required this.id,
+    required this.title,
+    required this.avatarUrl,
+    required this.type,
+    required this.time,
+  });
+
+  final int id;
+  final String title;
+  final String avatarUrl;
+  final String type;
+  final int? time;
+}
+
 class _EmptyChatPane extends StatefulWidget {
   final ColorScheme colorScheme;
 
@@ -598,7 +615,7 @@ class _EmptyChatPane extends StatefulWidget {
 
 class _EmptyChatPaneState extends State<_EmptyChatPane> {
   ProfileData? _profile;
-  List<CachedChat> _recents = const [];
+  List<_RecentChat> _recents = const [];
 
   @override
   void initState() {
@@ -609,10 +626,10 @@ class _EmptyChatPaneState extends State<_EmptyChatPane> {
   Future<void> _load() async {
     try {
       final profile = await AppDatabase.loadActiveProfile();
-      var recents = <CachedChat>[];
+      var recents = <_RecentChat>[];
       if (profile != null) {
-        recents = await AppScope.read(context).chats.getChats(profile.id);
-        recents = recents.take(6).toList();
+        final chats = await AppScope.read(context).chats.getChats(profile.id);
+        recents = _resolve(chats, profile.id).take(5).toList();
       }
       if (!mounted) return;
       setState(() {
@@ -622,11 +639,40 @@ class _EmptyChatPaneState extends State<_EmptyChatPane> {
     } catch (_) {}
   }
 
+  Iterable<_RecentChat> _resolve(List<CachedChat> chats, int selfId) sync* {
+    for (final chat in chats) {
+      if (chat.id == 0) continue;
+      var title = (chat.title ?? '').trim();
+      var avatar = (chat.iconUrl ?? '').trim();
+      if (chat.type == 'DIALOG') {
+        var peerId = 0;
+        for (final entry in chat.participants.entries) {
+          if (entry.key != selfId) {
+            peerId = entry.key;
+            break;
+          }
+        }
+        if (peerId != 0) {
+          title = (ContactCache.get(peerId) ?? title).trim();
+          avatar = (ContactCache.getAvatar(peerId) ?? avatar).trim();
+        }
+      }
+      if (title.isEmpty) continue;
+      yield _RecentChat(
+        id: chat.id,
+        title: title,
+        avatarUrl: avatar,
+        type: chat.type,
+        time: chat.lastMsgTime,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = widget.colorScheme;
     final name = _profile == null
-        ? 'Komet'
+        ? ''
         : [
             _profile!.firstName,
             _profile!.lastName ?? '',
@@ -634,99 +680,165 @@ class _EmptyChatPaneState extends State<_EmptyChatPane> {
     return ColoredBox(
       color: cs.surfaceContainerLow,
       child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer.withValues(alpha: 0.72),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.forum_rounded,
-                    color: cs.onPrimaryContainer,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Выберите чат',
-                  style: TextStyle(
-                    color: cs.onSurface,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  name.isEmpty
-                      ? 'Откройте переписку слева или воспользуйтесь поиском'
-                      : '$name, откройте переписку слева или воспользуйтесь поиском',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: cs.onSurfaceVariant,
-                    fontSize: 13,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Ctrl+K — поиск  ·  Ctrl+N — новый контакт',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: cs.outline, fontSize: 11.5),
-                ),
-                if (_recents.isNotEmpty) ...[
-                  const SizedBox(height: 28),
-                  Material(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    clipBehavior: Clip.antiAlias,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                            child: Text(
-                              'Недавние чаты',
-                              style: TextStyle(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          for (final chat in _recents)
-                            _RecentRow(
-                              chat: chat,
-                              colorScheme: cs,
-                              onTap: () {
-                                final shell = context.findAncestorStateOfType<
-                                    _AdaptiveShellState>();
-                                shell?._onChatSelected(
-                                  DesktopChatSelection(
-                                    chatId: chat.id,
-                                    name: chat.title ?? '',
-                                    imageUrl: chat.iconUrl ?? '',
-                                    chatType: chat.type,
-                                  ),
-                                );
-                              },
-                            ),
-                        ],
-                      ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer.withValues(alpha: 0.72),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.forum_rounded,
+                      color: cs.onPrimaryContainer,
+                      size: 32,
                     ),
                   ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Выберите чат',
+                    style: TextStyle(
+                      color: cs.onSurface,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    name.isEmpty
+                        ? 'Откройте переписку слева или воспользуйтесь поиском'
+                        : '$name, откройте переписку слева или воспользуйтесь поиском',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _EmptyPaneAction(
+                        icon: Icons.search_rounded,
+                        label: 'Поиск',
+                        colorScheme: cs,
+                        onTap: ChatListScreen.openSearch,
+                      ),
+                      const SizedBox(width: 10),
+                      _EmptyPaneAction(
+                        icon: Icons.person_add_alt_1_rounded,
+                        label: 'Новый чат',
+                        colorScheme: cs,
+                        onTap: () => context
+                            .findAncestorStateOfType<_AdaptiveShellState>()
+                            ?._onRailSelect(2),
+                      ),
+                    ],
+                  ),
+                  if (_recents.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    Material(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                              child: Text(
+                                'Недавние чаты',
+                                style: TextStyle(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                            for (final chat in _recents)
+                              _RecentRow(
+                                chat: chat,
+                                colorScheme: cs,
+                                onTap: () {
+                                  final shell = context
+                                      .findAncestorStateOfType<
+                                          _AdaptiveShellState>();
+                                  shell?._onChatSelected(
+                                    DesktopChatSelection(
+                                      chatId: chat.id,
+                                      name: chat.title,
+                                      imageUrl: chat.avatarUrl,
+                                      chatType: chat.type,
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyPaneAction extends StatelessWidget {
+  const _EmptyPaneAction({
+    required this.icon,
+    required this.label,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = colorScheme;
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        hoverColor: cs.onSurface.withValues(alpha: 0.05),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 17, color: cs.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -741,57 +853,60 @@ class _RecentRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final CachedChat chat;
+  final _RecentChat chat;
   final ColorScheme colorScheme;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = colorScheme;
-    final title = chat.title ?? '';
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: cs.onSurface.withValues(alpha: 0.05),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 14,
+                radius: 15,
                 backgroundColor: cs.surfaceContainerHighest,
-                backgroundImage: (chat.iconUrl ?? '').isNotEmpty
-                    ? CachedNetworkImageProvider(chat.iconUrl!)
+                backgroundImage: chat.avatarUrl.isNotEmpty
+                    ? CachedNetworkImageProvider(chat.avatarUrl)
                     : null,
-                child: (chat.iconUrl ?? '').isEmpty
+                child: chat.avatarUrl.isEmpty
                     ? Text(
-                        title.isNotEmpty ? title[0].toUpperCase() : '?',
+                        chat.title.characters.first.toUpperCase(),
                         style: TextStyle(
                           color: cs.onSurfaceVariant,
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       )
                     : null,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  title,
+                  chat.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: cs.onSurface,
-                    fontSize: 13,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              if (chat.lastMsgTime != null)
+              if (chat.time != null) ...[
+                const SizedBox(width: 10),
                 Text(
-                  formatChatListTime(chat.lastMsgTime),
+                  formatChatListTime(chat.time),
                   style: TextStyle(color: cs.outline, fontSize: 11),
                 ),
+              ],
             ],
           ),
         ),
