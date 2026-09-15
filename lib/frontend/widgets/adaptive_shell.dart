@@ -484,7 +484,7 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                                   return SwipeToPop(
                                     enabled: selected != null && iosPane,
                                     onPop: _closeChat,
-                                    child: pane,
+                                    child: _island(cs, pane),
                                   );
                                 },
                               ),
@@ -505,18 +505,11 @@ class _AdaptiveShellState extends State<AdaptiveShell>
                                   DesktopDensity.s,
                                 ))
                               SizedBox(
-                                width: DesktopDensity.infoPaneWidth,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: cs.outlineVariant.withValues(
-                                          alpha: 0.6,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  child: ChatInfoScreen(
+                                width: DesktopDensity.infoPaneWidth +
+                                    (_islandEnabled ? _islandGap : 0),
+                                child: _island(
+                                  cs,
+                                  ChatInfoScreen(
                                     key: ValueKey('info-${selected.chatId}'),
                                     chatId: selected.chatId,
                                     name: selected.name,
@@ -538,6 +531,31 @@ class _AdaptiveShellState extends State<AdaptiveShell>
             },
           );
         },
+      ),
+    );
+  }
+
+  static const double _islandInset = 8;
+  static const double _islandGap = _islandInset * 2;
+
+  static bool get _islandEnabled => DesktopDensity.enabled;
+
+  /// Wraps a desktop pane into a rounded card floating over the window
+  /// background instead of a pane flush with the window edges.
+  Widget _island(ColorScheme cs, Widget child) {
+    if (!_islandEnabled) return child;
+    final radius = BorderRadius.circular(18);
+    return Padding(
+      padding: const EdgeInsets.all(_islandInset),
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        child: ClipRRect(borderRadius: radius, child: child),
       ),
     );
   }
