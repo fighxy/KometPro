@@ -20,6 +20,9 @@ class DirectVideo {
           if (line.startsWith('a=mid:')) line.substring(6),
   };
 
+  static bool _sends(List<String> section) =>
+      section.any((line) => line == 'a=sendrecv' || line == 'a=sendonly');
+
   static String withRemoteStreams(String sdp) {
     final sections = _sections(sdp).toList();
     for (final section in sections) {
@@ -30,6 +33,7 @@ class DirectVideo {
           ?.substring(6);
       if (mid == null) continue;
       final streamId = 'komet-remote-video-$mid';
+      var associated = false;
       for (var i = 0; i < section.length; i++) {
         section[i] = section[i].replaceFirst(
           RegExp(r'^a=msid:-(?=\s|$)'),
@@ -39,7 +43,16 @@ class DirectVideo {
           RegExp(r'^(a=ssrc:\d+ msid:)-(?=\s|$)'),
           (match) => '${match[1]}$streamId',
         );
+        if (section[i].startsWith('a=msid:') ||
+            RegExp(r'^a=ssrc:\d+ msid:').hasMatch(section[i])) {
+          associated = true;
+        }
       }
+      if (associated || !_sends(section)) continue;
+      section.insert(
+        section.indexWhere((line) => line.startsWith('a=mid:')) + 1,
+        'a=msid:$streamId $streamId-track',
+      );
     }
     return sections.expand((section) => section).join('\r\n');
   }

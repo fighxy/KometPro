@@ -30,6 +30,36 @@ void main() {
     },
   );
 
+  test('a video section with no msid at all gets one', () {
+    final sdp = DirectVideo.withRemoteStreams(
+      'v=0\r\n'
+      'm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
+      'a=mid:camera\r\n'
+      'a=sendrecv\r\n'
+      'a=ssrc:1234 cname:peer\r\n',
+    );
+    expect(
+      sdp,
+      'v=0\r\n'
+      'm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
+      'a=mid:camera\r\n'
+      'a=msid:komet-remote-video-camera '
+      'komet-remote-video-camera-track\r\n'
+      'a=sendrecv\r\n'
+      'a=ssrc:1234 cname:peer\r\n',
+    );
+    expect(DirectVideo.withRemoteStreams(sdp), sdp);
+  });
+
+  test('a video section we only receive on is left alone', () {
+    const sdp =
+        'v=0\r\n'
+        'm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
+        'a=mid:camera\r\n'
+        'a=recvonly\r\n';
+    expect(DirectVideo.withRemoteStreams(sdp), sdp);
+  });
+
   test('existing remote stream associations are preserved', () {
     final sdp = _offer.replaceAll('msid:- ', 'msid:peer-stream ');
     expect(DirectVideo.withRemoteStreams(sdp), sdp);

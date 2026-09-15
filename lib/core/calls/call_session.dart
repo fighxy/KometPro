@@ -2366,7 +2366,13 @@ class CallSession {
     if (!stream.getTracks().any((t) => t.id == track.id)) {
       try {
         await stream.addTrack(track);
-      } catch (_) {}
+      } catch (e) {
+        logger.e(
+          '[call][video] remote track ${track.id} was refused by the '
+          'synthetic stream ${stream.id}: $e — the renderer bound to it '
+          'stays black while the decoder keeps running',
+        );
+      }
     }
     _remoteStream.add(stream);
   }
