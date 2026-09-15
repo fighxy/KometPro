@@ -29,6 +29,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../models/chat_info.dart';
 import '../../../models/contact_info.dart';
 import '../../../models/story.dart';
+import '../../widgets/desktop_scroll.dart';
 import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/animated_text_swap.dart';
 import '../../widgets/avatar_history_screen.dart';
@@ -632,7 +633,9 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
 
         return NotificationListener<ScrollNotification>(
           onNotification: (n) => _onHeaderScrollNotification(n, delta),
-          child: CustomScrollView(
+          child: DesktopScroll(
+            controller: controller,
+            child: CustomScrollView(
             key: ValueKey(delta),
             controller: controller,
             physics: HeaderPullScrollPhysics(
@@ -663,6 +666,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
                 ),
               ),
             ],
+            ),
           ),
         );
       },

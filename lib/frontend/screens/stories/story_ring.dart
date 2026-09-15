@@ -142,16 +142,21 @@ class _StoryRingState extends State<StoryRing> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: cs.onSurface,
-                        fontSize: 11,
-                        fontWeight: hasUnread
-                            ? FontWeight.w600
-                            : FontWeight.w500,
+                    SizedBox(
+                      height: 26,
+                      child: Text(
+                        name,
+                        maxLines: 2,
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontSize: 10.5,
+                          height: 1.15,
+                          fontWeight: hasUnread
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
@@ -375,14 +380,19 @@ class _StorySelfTileState extends State<StorySelfTile> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  'Ваша история',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: cs.onSurface,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                SizedBox(
+                  height: 26,
+                  child: Text(
+                    'Ваша история',
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: cs.onSurface,
+                      fontSize: 10.5,
+                      height: 1.15,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],

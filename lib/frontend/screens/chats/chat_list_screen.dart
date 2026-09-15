@@ -1815,7 +1815,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                             ? '${_selectedChats.length} '
                                 '${pluralRu(_selectedChats.length, 'получатель', 'получателя', 'получателей')}'
                             : connectionStatusLabel(_sessionState) ??
-                                (_profile?.firstName ?? 'Чат'),
+                                (DesktopDensity.enabled
+                                    ? 'Чаты'
+                                    : (_profile?.firstName ?? 'Чат')),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -1841,7 +1843,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                       key: const ValueKey('create-button'),
                       tooltip: 'Создать',
                       icon: Icon(
-                        Symbols.add_circle,
+                        Symbols.add,
                         color: cs.outline,
                         weight: 400,
                       ),
@@ -1870,7 +1872,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                       key: const ValueKey('downloads-button'),
                       tooltip: AppLocalizations.of(context)!.downloadsTooltip,
                       icon: Icon(
-                        Symbols.download_for_offline,
+                        DesktopDensity.enabled
+                            ? Symbols.download
+                            : Symbols.download_for_offline,
                         color: cs.outline,
                         weight: 400,
                       ),
