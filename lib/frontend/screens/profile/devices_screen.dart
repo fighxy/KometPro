@@ -110,6 +110,34 @@ class _DevicesScreenState extends State<DevicesScreen>
     if (success && mounted) _loadSessions();
   }
 
+  Widget _buildTerminateButton(ColorScheme cs, SessionInfo session) {
+    final available = session.id != null;
+    final disabledColor = cs.onSurfaceVariant.withValues(alpha: 0.5);
+    final button = TextButton.icon(
+      style: TextButton.styleFrom(
+        foregroundColor: cs.error,
+        disabledForegroundColor: disabledColor,
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: available ? () => _terminateSession(session) : null,
+      icon: Icon(
+        Symbols.logout,
+        size: 16,
+        color: available ? cs.error : disabledColor,
+      ),
+      label: const Text('Завершить'),
+    );
+    if (available) return button;
+    return Tooltip(
+      message: 'Сервер не вернул идентификатор сессии, закрыть её отдельно '
+          'нельзя — используйте «Завершить остальные»',
+      triggerMode: TooltipTriggerMode.tap,
+      child: button,
+    );
+  }
+
   Future<void> _terminateSession(SessionInfo session) async {
     if (session.current || session.id == null) return;
     final l10n = AppLocalizations.of(context)!;
@@ -578,21 +606,8 @@ class _DevicesScreenState extends State<DevicesScreen>
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!session.current && session.id != null)
-                        TextButton.icon(
-                          style: TextButton.styleFrom(
-                            foregroundColor: cs.error,
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          onPressed: () => _terminateSession(session),
-                          icon: Icon(Symbols.logout, size: 16, color: cs.error),
-                          label: const Text('Завершить'),
-                        ),
+                      if (!session.current)
+                        _buildTerminateButton(cs, session),
                       if (!isExpanded)
                         InkWell(
                           onTap: isLoading

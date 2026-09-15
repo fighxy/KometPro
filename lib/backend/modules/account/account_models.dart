@@ -447,11 +447,36 @@ class SessionInfo {
     required this.info,
   });
 
+  static const _idKeys = [
+    'id',
+    'sessionId',
+    'session_id',
+    'tokenId',
+    'token_id',
+  ];
+
+  static int? _readId(Map<dynamic, dynamic> map) {
+    for (final key in _idKeys) {
+      final raw = map[key];
+      if (raw == null) continue;
+      if (raw is int) {
+        if (raw != 0) return raw;
+        continue;
+      }
+      if (raw is num) {
+        final value = raw.toInt();
+        if (value != 0) return value;
+        continue;
+      }
+      final parsed = int.tryParse(raw.toString().trim());
+      if (parsed != null && parsed != 0) return parsed;
+    }
+    return null;
+  }
+
   factory SessionInfo.fromMap(Map<dynamic, dynamic> map) {
     return SessionInfo(
-      id: map['id'] is int
-          ? map['id']
-          : (int.tryParse(map['id']?.toString() ?? '')),
+      id: _readId(map),
       client: map['client'] ?? '',
       location: map['location'] ?? '',
       current: map['current'] ?? false,
