@@ -1492,6 +1492,9 @@ class _ViewerGlassSurface extends StatelessWidget {
             frostTint: Colors.black.withValues(alpha: 0.28),
             frostSigma: AppFrost.panelSigma,
             liquidTint: Colors.black.withValues(alpha: 0.28),
+            // The viewer is dark chrome over media in every theme, so the
+            // plain fallback must not pick up a light app surface.
+            fallbackColor: Colors.black.withValues(alpha: 0.72),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.12),
               width: 0.5,
