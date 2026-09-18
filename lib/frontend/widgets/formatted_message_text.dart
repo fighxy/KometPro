@@ -394,7 +394,7 @@ class _FormattedMessageTextState extends State<FormattedMessageText> {
       if (configuredFamily != 'Outfit' && !existingFallback.contains('Outfit'))
         'Outfit',
       ...existingFallback,
-      for (final family in kEmojiFontFallback)
+      for (final family in kTextEmojiFallback)
         if (!existingFallback.contains(family)) family,
     ];
     final paragraphStyle = widget.style.copyWith(
