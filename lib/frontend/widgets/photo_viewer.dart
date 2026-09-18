@@ -144,9 +144,15 @@ class PhotoViewerScreen extends StatefulWidget {
   State<PhotoViewerScreen> createState() => _PhotoViewerScreenState();
 }
 
-class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
+class _PhotoViewerScreenState extends State<PhotoViewerScreen>
+    with SingleTickerProviderStateMixin {
   static const int _prefetchThreshold = 3;
   static const int _maxCachedVideoPlayers = 5;
+
+  /// Vertical drag past this distance, or faster than this, closes the viewer.
+  static const double _dismissDistance = 110;
+  static const double _dismissVelocity = 700;
+  static const double _dismissTravel = 320;
 
   late PageController _controller;
   late List<_ViewerMedia> _items;
@@ -171,6 +177,12 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   bool _chromeVisible = true;
   int _total = 0;
   bool _saving = false;
+  double _dragDy = 0;
+  bool _dragging = false;
+  late final AnimationController _dragBack = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  );
 
   @override
   void initState() {
@@ -219,6 +231,77 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     _syncSwipe();
   }
 
+  bool get _canDragToDismiss => !_zoomed;
+
+  void _onDismissDragStart(DragStartDetails details) {
+    if (_zoomed || _pointers > 1) return;
+    _dragBack.stop();
+    setState(() => _dragging = true);
+  }
+
+  void _onDismissDragUpdate(DragUpdateDetails details) {
+    if (!_dragging) return;
+    setState(() => _dragDy += details.delta.dy);
+  }
+
+  void _onDismissDragEnd(DragEndDetails details) {
+    if (!_dragging) return;
+    final velocity = details.velocity.pixelsPerSecond.dy;
+    final dismiss =
+        _dragDy.abs() >= _dismissDistance ||
+        (velocity.abs() >= _dismissVelocity && velocity.sign == _dragDy.sign);
+    if (dismiss) {
+      setState(() => _dragging = false);
+      Navigator.of(context).pop();
+      return;
+    }
+    _settleDrag();
+  }
+
+  void _onDismissDragCancel() {
+    if (!_dragging) return;
+    _settleDrag();
+  }
+
+  void _settleDrag() {
+    final from = _dragDy;
+    if (from == 0) {
+      setState(() => _dragging = false);
+      return;
+    }
+    final animation = _dragBack.drive(
+      Tween<double>(begin: from, end: 0).chain(
+        CurveTween(curve: Curves.easeOutCubic),
+      ),
+    );
+    void tick() {
+      if (mounted) setState(() => _dragDy = animation.value);
+    }
+
+    animation.addListener(tick);
+    _dragBack
+      ..reset()
+      ..forward().whenComplete(() {
+        animation.removeListener(tick);
+        if (!mounted) return;
+        setState(() {
+          _dragDy = 0;
+          _dragging = false;
+        });
+      });
+  }
+
+  double get _dragProgress =>
+      (_dragDy.abs() / _dismissTravel).clamp(0.0, 1.0).toDouble();
+
+  Widget _dragToDismiss(Widget child) {
+    if (_dragDy == 0) return child;
+    return Transform.translate(
+      offset: Offset(0, _dragDy),
+      child: Transform.scale(scale: 1 - 0.18 * _dragProgress, child: child),
+    );
+  }
+
   void _resetZoom() {
     final transform = _transformFor(_current.id);
     if (transform.value.getMaxScaleOnAxis() <= 1.01) return;
@@ -236,6 +319,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
 
   @override
   void dispose() {
+    _dragBack.dispose();
     _controller.dispose();
     _heroTransform.dispose();
     for (final transform in _pageTransforms.values) {
@@ -755,12 +839,12 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
           autofocus: true,
           child: Stack(
             children: [
-              Positioned.fill(child: _buildPager()),
+              Positioned.fill(child: _dragToDismiss(_buildPager())),
               Positioned.fill(
                 child: IgnorePointer(
-                  ignoring: !_chromeVisible,
+                  ignoring: !_chromeVisible || _dragging,
                   child: AnimatedOpacity(
-                    opacity: _chromeVisible ? 1 : 0,
+                    opacity: _chromeVisible ? 1 - _dragProgress : 0,
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOut,
                     child: Stack(
@@ -865,6 +949,10 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         session: _videoSessionFor(item),
         quarterTurns: _quarterTurns[item.id] ?? 0,
         onSurfaceTap: _toggleChrome,
+        onDragStart: _canDragToDismiss ? _onDismissDragStart : null,
+        onDragUpdate: _canDragToDismiss ? _onDismissDragUpdate : null,
+        onDragEnd: _canDragToDismiss ? _onDismissDragEnd : null,
+        onDragCancel: _canDragToDismiss ? _onDismissDragCancel : null,
       );
     }
 
@@ -872,6 +960,10 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     final page = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _toggleChrome,
+      onVerticalDragStart: _canDragToDismiss ? _onDismissDragStart : null,
+      onVerticalDragUpdate: _canDragToDismiss ? _onDismissDragUpdate : null,
+      onVerticalDragEnd: _canDragToDismiss ? _onDismissDragEnd : null,
+      onVerticalDragCancel: _canDragToDismiss ? _onDismissDragCancel : null,
       child: InteractiveViewer(
         minScale: 1,
         maxScale: 5,
@@ -1314,12 +1406,20 @@ class _VideoSurface extends StatelessWidget {
   final _VideoPlaybackSession session;
   final int quarterTurns;
   final VoidCallback onSurfaceTap;
+  final GestureDragStartCallback? onDragStart;
+  final GestureDragUpdateCallback? onDragUpdate;
+  final GestureDragEndCallback? onDragEnd;
+  final GestureDragCancelCallback? onDragCancel;
 
   const _VideoSurface({
     super.key,
     required this.session,
     required this.quarterTurns,
     required this.onSurfaceTap,
+    this.onDragStart,
+    this.onDragUpdate,
+    this.onDragEnd,
+    this.onDragCancel,
   });
 
   @override
@@ -1329,6 +1429,10 @@ class _VideoSurface extends StatelessWidget {
       builder: (context, _) => GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onSurfaceTap,
+        onVerticalDragStart: onDragStart,
+        onVerticalDragUpdate: onDragUpdate,
+        onVerticalDragEnd: onDragEnd,
+        onVerticalDragCancel: onDragCancel,
         child: Stack(
           children: [
             Center(
