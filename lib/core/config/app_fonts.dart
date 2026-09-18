@@ -94,7 +94,7 @@ class AppFonts {
   static TextTheme textTheme(String id, TextTheme base) {
     final family = resolve(id).fontFamily;
     final themed = family == null ? base : base.apply(fontFamily: family);
-    return themed.apply(fontFamilyFallback: kEmojiFontFallback);
+    return themed.apply(fontFamilyFallback: kTextEmojiFallback);
   }
 
   static TextStyle sample(String id, {required double fontSize}) {
@@ -102,7 +102,7 @@ class AppFonts {
     return TextStyle(
       fontFamily: family,
       fontSize: fontSize,
-      fontFamilyFallback: kEmojiFontFallback,
+      fontFamilyFallback: kTextEmojiFallback,
     );
   }
 

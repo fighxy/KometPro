@@ -39,6 +39,11 @@ class GlassSurface extends StatelessWidget {
   final Color liquidTint;
   final BoxBorder? border;
   final BackdropKey? backdropKey;
+
+  /// Fill for the plain fallback (Material You, high contrast, reduced
+  /// animations). Defaults to a themed surface; pass a fixed colour where the
+  /// surface sits on media instead of on the app background.
+  final Color? fallbackColor;
   final Widget child;
 
   GlassSurface({
@@ -50,6 +55,7 @@ class GlassSurface extends StatelessWidget {
     this.liquidTint = Colors.transparent,
     this.border,
     this.backdropKey,
+    this.fallbackColor,
     required this.child,
   }) : frostSigma = frostSigma ?? AppFrost.sigma;
 
@@ -61,7 +67,9 @@ class GlassSurface extends StatelessWidget {
       return ClipRRect(
         borderRadius: borderRadius,
         child: ColoredBox(
-          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          color:
+              fallbackColor ??
+              Theme.of(context).colorScheme.surfaceContainerHigh,
           child: child,
         ),
       );
@@ -78,6 +86,7 @@ class GlassSurface extends StatelessWidget {
       return LiquidGlassSurface(
         borderRadius: borderRadius,
         tint: liquidTint,
+        fallbackColor: fallbackColor,
         child: decorated,
       );
     }
@@ -103,6 +112,7 @@ class LiquidGlassSurface extends StatelessWidget {
   final Offset light;
   final double tintFeather;
   final double rimWidth;
+  final Color? fallbackColor;
   final Widget child;
 
   const LiquidGlassSurface({
@@ -117,6 +127,7 @@ class LiquidGlassSurface extends StatelessWidget {
     this.light = AppLiquidGlass.light,
     this.tintFeather = AppLiquidGlass.tintFeather,
     this.rimWidth = AppLiquidGlass.rimWidth,
+    this.fallbackColor,
     this.child = const SizedBox.expand(),
   });
 
@@ -128,7 +139,9 @@ class LiquidGlassSurface extends StatelessWidget {
       return ClipRRect(
         borderRadius: borderRadius,
         child: ColoredBox(
-          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          color:
+              fallbackColor ??
+              Theme.of(context).colorScheme.surfaceContainerHigh,
           child: child,
         ),
       );

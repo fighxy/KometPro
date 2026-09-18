@@ -268,6 +268,14 @@ class _PillNavCell extends StatelessWidget {
     required this.onLongPress,
   });
 
+  /// The animated nav icons are baked from Material Symbols at wght 400 and
+  /// GRAD 0, so the static ones use the same instance and every icon in the
+  /// bar keeps one stroke weight in both states.
+  static const double _iconWeight = 400;
+  static const double _iconGrade = 0;
+  static const double _labelSize = 11.5;
+  static const FontWeight _labelWeight = FontWeight.w600;
+
   Widget _buildIcon() {
     final color = selected ? cs.primary : cs.onSurfaceVariant;
     final asset = item.animationAsset;
@@ -284,8 +292,8 @@ class _PillNavCell extends StatelessWidget {
       color: color,
       size: iconSize,
       fill: selected ? 1 : 0,
-      weight: selected ? 600 : 500,
-      grade: 200,
+      weight: _iconWeight,
+      grade: _iconGrade,
       opticalSize: 24,
     );
   }
@@ -313,8 +321,9 @@ class _PillNavCell extends StatelessWidget {
                       item.label,
                       style: TextStyle(
                         color: cs.primary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontSize: _labelSize,
+                        fontWeight: _labelWeight,
+                        height: 1.1,
                       ),
                     ),
                   ],
@@ -331,8 +340,8 @@ class _PillNavCell extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: cs.onSurfaceVariant,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                      fontSize: _labelSize,
+                      fontWeight: _labelWeight,
                       height: 1.1,
                     ),
                   ),
