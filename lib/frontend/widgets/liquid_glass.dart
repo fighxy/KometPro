@@ -44,6 +44,9 @@ class GlassSurface extends StatelessWidget {
   /// animations). Defaults to a themed surface; pass a fixed colour where the
   /// surface sits on media instead of on the app background.
   final Color? fallbackColor;
+
+  /// Tuning for the liquid path; controls and panels read differently.
+  final GlassPreset preset;
   final Widget child;
 
   GlassSurface({
@@ -56,6 +59,7 @@ class GlassSurface extends StatelessWidget {
     this.border,
     this.backdropKey,
     this.fallbackColor,
+    this.preset = GlassPreset.panel,
     required this.child,
   }) : frostSigma = frostSigma ?? AppFrost.sigma;
 
@@ -86,6 +90,7 @@ class GlassSurface extends StatelessWidget {
       return LiquidGlassSurface(
         borderRadius: borderRadius,
         tint: liquidTint,
+        preset: preset,
         fallbackColor: fallbackColor,
         child: decorated,
       );
@@ -112,6 +117,18 @@ class LiquidGlassSurface extends StatelessWidget {
   final Offset light;
   final double tintFeather;
   final double rimWidth;
+  final double band;
+  final double ior;
+  final double saturation;
+  final double adaptive;
+  final double rimAlpha;
+  final double bounceAlpha;
+  final double depthShade;
+  final double interior;
+
+  /// Surface tuning. When set, it supplies the values above; pass the
+  /// individual knobs only to deviate from a preset.
+  final GlassPreset? preset;
   final Color? fallbackColor;
   final Widget child;
 
@@ -127,6 +144,15 @@ class LiquidGlassSurface extends StatelessWidget {
     this.light = AppLiquidGlass.light,
     this.tintFeather = AppLiquidGlass.tintFeather,
     this.rimWidth = AppLiquidGlass.rimWidth,
+    this.band = AppLiquidGlass.band,
+    this.ior = AppLiquidGlass.ior,
+    this.saturation = AppLiquidGlass.saturation,
+    this.adaptive = AppLiquidGlass.adaptive,
+    this.rimAlpha = AppLiquidGlass.rimAlpha,
+    this.bounceAlpha = AppLiquidGlass.bounceAlpha,
+    this.depthShade = AppLiquidGlass.depthShade,
+    this.interior = AppLiquidGlass.interior,
+    this.preset,
     this.fallbackColor,
     this.child = const SizedBox.expand(),
   });
@@ -146,17 +172,26 @@ class LiquidGlassSurface extends StatelessWidget {
         ),
       );
     }
+    final tuning = preset;
     return _LiquidGlassBackdrop(
       borderRadius: borderRadius,
       tint: tint,
-      blurSigma: blurSigma,
+      blurSigma: tuning?.blurSigma ?? blurSigma,
       spread: spread,
-      refraction: refraction,
+      refraction: tuning?.refraction ?? refraction,
       chroma: chroma,
       specular: specular,
       light: light,
       tintFeather: tintFeather,
-      rimWidth: rimWidth,
+      rimWidth: tuning?.rimWidth ?? rimWidth,
+      band: tuning?.band ?? band,
+      ior: ior,
+      saturation: tuning?.saturation ?? saturation,
+      adaptive: tuning?.adaptive ?? adaptive,
+      rimAlpha: tuning?.rimAlpha ?? rimAlpha,
+      bounceAlpha: tuning?.bounceAlpha ?? bounceAlpha,
+      depthShade: depthShade,
+      interior: tuning?.interior ?? interior,
       devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
       child: child,
     );
@@ -174,6 +209,14 @@ class _LiquidGlassBackdrop extends SingleChildRenderObjectWidget {
   final Offset light;
   final double tintFeather;
   final double rimWidth;
+  final double band;
+  final double ior;
+  final double saturation;
+  final double adaptive;
+  final double rimAlpha;
+  final double bounceAlpha;
+  final double depthShade;
+  final double interior;
   final double devicePixelRatio;
 
   const _LiquidGlassBackdrop({
@@ -187,6 +230,14 @@ class _LiquidGlassBackdrop extends SingleChildRenderObjectWidget {
     required this.light,
     required this.tintFeather,
     required this.rimWidth,
+    required this.band,
+    required this.ior,
+    required this.saturation,
+    required this.adaptive,
+    required this.rimAlpha,
+    required this.bounceAlpha,
+    required this.depthShade,
+    required this.interior,
     required this.devicePixelRatio,
     required super.child,
   });
@@ -204,6 +255,14 @@ class _LiquidGlassBackdrop extends SingleChildRenderObjectWidget {
       light: light,
       tintFeather: tintFeather,
       rimWidth: rimWidth,
+      band: band,
+      ior: ior,
+      saturation: saturation,
+      adaptive: adaptive,
+      rimAlpha: rimAlpha,
+      bounceAlpha: bounceAlpha,
+      depthShade: depthShade,
+      interior: interior,
       devicePixelRatio: devicePixelRatio,
     );
   }
@@ -224,6 +283,14 @@ class _LiquidGlassBackdrop extends SingleChildRenderObjectWidget {
       ..light = light
       ..tintFeather = tintFeather
       ..rimWidth = rimWidth
+      ..band = band
+      ..ior = ior
+      ..saturation = saturation
+      ..adaptive = adaptive
+      ..rimAlpha = rimAlpha
+      ..bounceAlpha = bounceAlpha
+      ..depthShade = depthShade
+      ..interior = interior
       ..devicePixelRatio = devicePixelRatio;
   }
 }
@@ -240,6 +307,14 @@ class _RenderLiquidGlass extends RenderProxyBox {
     required Offset light,
     required double tintFeather,
     required double rimWidth,
+    required double band,
+    required double ior,
+    required double saturation,
+    required double adaptive,
+    required double rimAlpha,
+    required double bounceAlpha,
+    required double depthShade,
+    required double interior,
     required double devicePixelRatio,
   }) : _borderRadius = borderRadius,
        _tint = tint,
@@ -251,6 +326,14 @@ class _RenderLiquidGlass extends RenderProxyBox {
        _light = light,
        _tintFeather = tintFeather,
        _rimWidth = rimWidth,
+       _band = band,
+       _ior = ior,
+       _saturation = saturation,
+       _adaptive = adaptive,
+       _rimAlpha = rimAlpha,
+       _bounceAlpha = bounceAlpha,
+       _depthShade = depthShade,
+       _interior = interior,
        _devicePixelRatio = devicePixelRatio;
 
   final LayerHandle<ClipRRectLayer> _blurClipHandle =
@@ -333,6 +416,62 @@ class _RenderLiquidGlass extends RenderProxyBox {
     markNeedsPaint();
   }
 
+  double _band;
+  set band(double value) {
+    if (_band == value) return;
+    _band = value;
+    markNeedsPaint();
+  }
+
+  double _ior;
+  set ior(double value) {
+    if (_ior == value) return;
+    _ior = value;
+    markNeedsPaint();
+  }
+
+  double _saturation;
+  set saturation(double value) {
+    if (_saturation == value) return;
+    _saturation = value;
+    markNeedsPaint();
+  }
+
+  double _adaptive;
+  set adaptive(double value) {
+    if (_adaptive == value) return;
+    _adaptive = value;
+    markNeedsPaint();
+  }
+
+  double _rimAlpha;
+  set rimAlpha(double value) {
+    if (_rimAlpha == value) return;
+    _rimAlpha = value;
+    markNeedsPaint();
+  }
+
+  double _bounceAlpha;
+  set bounceAlpha(double value) {
+    if (_bounceAlpha == value) return;
+    _bounceAlpha = value;
+    markNeedsPaint();
+  }
+
+  double _depthShade;
+  set depthShade(double value) {
+    if (_depthShade == value) return;
+    _depthShade = value;
+    markNeedsPaint();
+  }
+
+  double _interior;
+  set interior(double value) {
+    if (_interior == value) return;
+    _interior = value;
+    markNeedsPaint();
+  }
+
   double _devicePixelRatio;
   set devicePixelRatio(double value) {
     if (_devicePixelRatio == value) return;
@@ -384,7 +523,15 @@ class _RenderLiquidGlass extends RenderProxyBox {
       ..setFloat(15, _light.dx)
       ..setFloat(16, _light.dy)
       ..setFloat(17, _tintFeather * dpr)
-      ..setFloat(18, _rimWidth * dpr);
+      ..setFloat(18, _rimWidth * dpr)
+      ..setFloat(19, _band * dpr)
+      ..setFloat(20, _ior)
+      ..setFloat(21, _saturation)
+      ..setFloat(22, _adaptive)
+      ..setFloat(23, _rimAlpha)
+      ..setFloat(24, _bounceAlpha)
+      ..setFloat(25, _depthShade)
+      ..setFloat(26, _interior * dpr);
 
     return ui.ImageFilter.shader(shader);
   }

@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../core/config/app_liquid_glass.dart';
 import '../../core/config/app_pill_gradient.dart';
 import '../../core/config/app_visual_style.dart';
 import 'liquid_glass.dart';
@@ -153,6 +154,7 @@ class GlossyPill extends StatelessWidget {
         child: LiquidGlassSurface(
           borderRadius: borderRadius,
           tint: Colors.transparent,
+          preset: GlassPreset.control,
           child: _inert
               ? content
               : Material(
