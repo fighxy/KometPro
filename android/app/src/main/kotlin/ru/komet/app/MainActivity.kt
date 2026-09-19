@@ -175,6 +175,20 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
+            "komet/system_transparency",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                // Android has no "reduce transparency" switch, but the
+                // compositor reports whether it runs cross-window blur at all:
+                // it is off on low-end devices, in battery saver and when the
+                // user disables it in developer options.
+                "allowsBlur" -> result.success(allowsBlur())
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
             "ru.komet.app/app_icon",
         ).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -736,6 +750,15 @@ class MainActivity : FlutterActivity() {
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun editVideoCancel(result: MethodChannel.Result) =
         VideoEditor.cancel(result)
+
+    private fun allowsBlur(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        return try {
+            windowManager.isCrossWindowBlurEnabled
+        } catch (e: Exception) {
+            true
+        }
+    }
 
     private fun nfcStatus(): Map<String, Any> {
         val adapter = nfcAdapter

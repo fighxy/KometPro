@@ -30,6 +30,7 @@ import 'core/config/app_bubble_shape.dart';
 import 'core/config/app_cache_extent.dart';
 import 'core/config/app_fonts.dart';
 import 'core/config/desktop_ui_scale.dart';
+import 'core/config/glass_intensity.dart';
 import 'core/config/custom_font_service.dart';
 import 'core/config/app_message_actions_style.dart';
 import 'core/config/app_audio_output.dart';
@@ -252,6 +253,7 @@ void main(List<String> args) async {
   await KometSettings.load();
   await DesktopUiScale.load();
   await AppDesktopDensity.load();
+  await GlassIntensity.load();
   if (KometSettings.ghostMode.value) SelfPresence.markOffline();
   await ContactCache.load();
   final initialFpsOverlay = prefs.getBool('dev_fps_overlay') ?? false;

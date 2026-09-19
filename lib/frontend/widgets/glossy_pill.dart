@@ -68,6 +68,20 @@ class GlossyDecor {
   }
 
   static bool isDark(Color base) => _parts(base).dark;
+
+  /// Rim for translucent glass, where no fill separates the control from what
+  /// is behind it.
+  static Border glassRim(Color base) => Border.all(
+    color: Colors.white.withValues(alpha: _parts(base).dark ? 0.3 : 0.72),
+    width: 0.9,
+  );
+
+  static BoxShadow glassShadow(Color base) => BoxShadow(
+    color: Colors.black.withValues(alpha: _parts(base).dark ? 0.42 : 0.2),
+    blurRadius: 18,
+    spreadRadius: -4,
+    offset: const Offset(0, 6),
+  );
   static Gradient fillGradient(Color base) => _parts(base).fill;
   static Border rimBorder(Color base) => _parts(base).rim;
   static Gradient topSheen(Color base) => _parts(base).topSheen;
@@ -148,8 +162,8 @@ class GlossyPill extends StatelessWidget {
           borderRadius: borderRadius,
           border: borderSide != null
               ? Border.fromBorderSide(borderSide!)
-              : GlossyDecor.rimBorder(base),
-          boxShadow: [GlossyDecor.dropShadow(base, depth)],
+              : GlossyDecor.glassRim(base),
+          boxShadow: [GlossyDecor.glassShadow(base)],
         ),
         child: LiquidGlassSurface(
           borderRadius: borderRadius,
@@ -214,8 +228,14 @@ class GlossyPill extends StatelessWidget {
           gradient: gradient ? GlossyDecor.fillGradient(base) : null,
           border: borderSide != null
               ? Border.fromBorderSide(borderSide!)
-              : GlossyDecor.rimBorder(base),
-          boxShadow: [GlossyDecor.dropShadow(base, depth)],
+              : (base.a < 0.9
+                    ? GlossyDecor.glassRim(base)
+                    : GlossyDecor.rimBorder(base)),
+          boxShadow: [
+            base.a < 0.9
+                ? GlossyDecor.glassShadow(base)
+                : GlossyDecor.dropShadow(base, depth),
+          ],
         ),
         child: ClipRRect(
           borderRadius: borderRadius,

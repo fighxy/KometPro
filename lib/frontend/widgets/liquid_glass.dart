@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 
 import '../../core/config/app_frost.dart';
 import '../../core/config/app_liquid_glass.dart';
+import '../../core/config/glass_intensity.dart';
 import '../../core/config/app_visual_style.dart';
 
 class LiquidGlass {
@@ -16,7 +17,9 @@ class LiquidGlass {
   static bool get isSupported => _program != null;
 
   static bool get active =>
-      isSupported && AppVisualStyle.current.value == VisualStyle.liquidGlass;
+      isSupported &&
+      AppVisualStyle.current.value == VisualStyle.liquidGlass &&
+      GlassIntensity.systemAllowsBlur.value;
 
   static Future<void> load() async {
     if (_loadAttempted) return;
@@ -63,10 +66,21 @@ class GlassSurface extends StatelessWidget {
     required this.child,
   }) : frostSigma = frostSigma ?? AppFrost.sigma;
 
+  static Listenable get _intensity => Listenable.merge([
+    GlassIntensity.scale,
+    GlassIntensity.systemAllowsBlur,
+  ]);
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: _intensity,
+    builder: (context, _) => _build(context),
+  );
+
+  Widget _build(BuildContext context) {
     if (MediaQuery.highContrastOf(context) ||
         MediaQuery.disableAnimationsOf(context) ||
+        !GlassIntensity.systemAllowsBlur.value ||
         AppVisualStyle.current.value == VisualStyle.materialYou) {
       return ClipRRect(
         borderRadius: borderRadius,
@@ -158,7 +172,12 @@ class LiquidGlassSurface extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: GlassSurface._intensity,
+    builder: (context, _) => _build(context),
+  );
+
+  Widget _build(BuildContext context) {
     if (!LiquidGlass.active ||
         MediaQuery.highContrastOf(context) ||
         MediaQuery.disableAnimationsOf(context)) {
@@ -173,10 +192,11 @@ class LiquidGlassSurface extends StatelessWidget {
       );
     }
     final tuning = preset;
+    final intensity = GlassIntensity.factor;
     return _LiquidGlassBackdrop(
       borderRadius: borderRadius,
       tint: tint,
-      blurSigma: tuning?.blurSigma ?? blurSigma,
+      blurSigma: (tuning?.blurSigma ?? blurSigma) * intensity,
       spread: spread,
       refraction: tuning?.refraction ?? refraction,
       chroma: chroma,
@@ -191,7 +211,7 @@ class LiquidGlassSurface extends StatelessWidget {
       rimAlpha: tuning?.rimAlpha ?? rimAlpha,
       bounceAlpha: tuning?.bounceAlpha ?? bounceAlpha,
       depthShade: depthShade,
-      interior: tuning?.interior ?? interior,
+      interior: (tuning?.interior ?? interior) * intensity,
       devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
       child: child,
     );

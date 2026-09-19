@@ -145,7 +145,7 @@ class PhotoViewerScreen extends StatefulWidget {
 }
 
 class _PhotoViewerScreenState extends State<PhotoViewerScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const int _prefetchThreshold = 3;
   static const int _maxCachedVideoPlayers = 5;
 
@@ -179,7 +179,12 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
   bool _saving = false;
   double _dragDy = 0;
   bool _dragging = false;
+  Offset _lastDoubleTap = Offset.zero;
   late final AnimationController _dragBack = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  );
+  late final AnimationController _zoomAnim = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 220),
   );
@@ -295,11 +300,50 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
       (_dragDy.abs() / _dismissTravel).clamp(0.0, 1.0).toDouble();
 
   Widget _dragToDismiss(Widget child) {
-    if (_dragDy == 0) return child;
-    return Transform.translate(
-      offset: Offset(0, _dragDy),
-      child: Transform.scale(scale: 1 - 0.18 * _dragProgress, child: child),
+    final scale = 1 - 0.18 * _dragProgress;
+    return Transform(
+      alignment: Alignment.center,
+      transform: Matrix4.translationValues(0, _dragDy, 0)
+        ..scaleByDouble(scale, scale, 1, 1),
+      child: child,
     );
+  }
+
+  /// Double tap returns the photo to its original zoom, or magnifies around
+  /// the tapped point when it is already at rest.
+  void _handleDoubleTap(String id, Offset localPosition) {
+    final controller = _transformFor(id);
+    final zoomedIn = controller.value.getMaxScaleOnAxis() > 1.01;
+    const zoom = 2.5;
+    final target = zoomedIn
+        ? Matrix4.identity()
+        : (Matrix4.translationValues(
+            -localPosition.dx * (zoom - 1),
+            -localPosition.dy * (zoom - 1),
+            0,
+          )..scaleByDouble(zoom, zoom, 1, 1));
+    _animateTransform(controller, target);
+  }
+
+  void _animateTransform(TransformationController controller, Matrix4 target) {
+    final animation = _zoomAnim.drive(
+      Matrix4Tween(
+        begin: controller.value,
+        end: target,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)),
+    );
+    void tick() => controller.value = animation.value;
+    animation.addListener(tick);
+    _zoomAnim
+      ..reset()
+      ..forward().whenComplete(() {
+        animation.removeListener(tick);
+        if (!mounted) return;
+        controller.value = target;
+        _syncZoom();
+        _syncHero();
+        setState(() {});
+      });
   }
 
   void _resetZoom() {
@@ -320,6 +364,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
   @override
   void dispose() {
     _dragBack.dispose();
+    _zoomAnim.dispose();
     _controller.dispose();
     _heroTransform.dispose();
     for (final transform in _pageTransforms.values) {
@@ -960,6 +1005,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
     final page = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _toggleChrome,
+      onDoubleTapDown: (d) => _lastDoubleTap = d.localPosition,
+      onDoubleTap: () => _handleDoubleTap(item.id, _lastDoubleTap),
       onVerticalDragStart: _canDragToDismiss ? _onDismissDragStart : null,
       onVerticalDragUpdate: _canDragToDismiss ? _onDismissDragUpdate : null,
       onVerticalDragEnd: _canDragToDismiss ? _onDismissDragEnd : null,

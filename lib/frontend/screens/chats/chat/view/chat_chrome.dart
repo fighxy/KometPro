@@ -7,6 +7,7 @@ class FrostedPanel extends StatelessWidget {
   final Border? border;
   final double sigma;
   final BackdropKey? backdropKey;
+  final bool liquid;
   final Widget child;
 
   FrostedPanel({
@@ -14,6 +15,7 @@ class FrostedPanel extends StatelessWidget {
     this.border,
     double? sigma,
     this.backdropKey,
+    this.liquid = false,
     required this.child,
   }) : sigma = sigma ?? AppFrost.panelSigma;
 
@@ -25,8 +27,10 @@ class FrostedPanel extends StatelessWidget {
       children: [
         Positioned.fill(
           child: GlassSurface(
+            liquid: liquid,
             frostTint: tint,
             frostSigma: sigma,
+            liquidTint: tint,
             border: border,
             backdropKey: backdropKey,
             child: const SizedBox.expand(),
