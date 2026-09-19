@@ -28,6 +28,14 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
   private var eventChannels: [FlutterEventChannel] = []
   private var streamHandlers: [KometStreamHandler] = []
   private var videoNote: KometVideoNote?
+  private var transparencySink: FlutterEventSink?
+  private var transparencyObserver: NSObjectProtocol?
+
+  deinit {
+    if let transparencyObserver {
+      NotificationCenter.default.removeObserver(transparencyObserver)
+    }
+  }
 
   override func application(
     _ application: UIApplication,
@@ -163,6 +171,18 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+
+    events("komet/system_transparency_events", messenger) { [weak self] sink in
+      self?.transparencySink = sink
+      sink?(!UIAccessibility.isReduceTransparencyEnabled)
+    }
+    transparencyObserver = NotificationCenter.default.addObserver(
+      forName: UIAccessibility.reduceTransparencyStatusDidChangeNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      self?.transparencySink?(!UIAccessibility.isReduceTransparencyEnabled)
     }
   }
 

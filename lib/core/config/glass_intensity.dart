@@ -15,7 +15,10 @@ class GlassIntensity {
   GlassIntensity._();
 
   static const _channel = MethodChannel('komet/system_transparency');
+  static const _events = EventChannel('komet/system_transparency_events');
   static const prefKey = 'glass_intensity';
+
+  static StreamSubscription<dynamic>? _systemSubscription;
 
   static const double min = 0.5;
   static const double max = 1.5;
@@ -44,6 +47,7 @@ class GlassIntensity {
       scale.value = clamp(prefs.getDouble(prefKey) ?? def);
     } catch (_) {}
     await refreshSystem();
+    _listenForSystemChanges();
   }
 
   static Future<void> save(double value) async {
@@ -71,5 +75,15 @@ class GlassIntensity {
       final allowed = await _channel.invokeMethod<bool>('allowsBlur');
       if (allowed != null) systemAllowsBlur.value = allowed;
     } catch (_) {}
+  }
+
+  static void _listenForSystemChanges() {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    _systemSubscription ??= _events.receiveBroadcastStream().listen(
+      (dynamic value) {
+        if (value is bool) systemAllowsBlur.value = value;
+      },
+      onError: (_) {},
+    );
   }
 }

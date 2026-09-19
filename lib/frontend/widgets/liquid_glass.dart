@@ -44,7 +44,7 @@ class GlassSurface extends StatelessWidget {
   final BackdropKey? backdropKey;
 
   /// Fill for the plain fallback (Material You, high contrast, reduced
-  /// animations). Defaults to a themed surface; pass a fixed colour where the
+  /// transparency). Defaults to a themed surface; pass a fixed colour where the
   /// surface sits on media instead of on the app background.
   final Color? fallbackColor;
 
@@ -66,20 +66,20 @@ class GlassSurface extends StatelessWidget {
     required this.child,
   }) : frostSigma = frostSigma ?? AppFrost.sigma;
 
-  static Listenable get _intensity => Listenable.merge([
+  static final Listenable _state = Listenable.merge([
+    AppVisualStyle.current,
     GlassIntensity.scale,
     GlassIntensity.systemAllowsBlur,
   ]);
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: _intensity,
+    listenable: _state,
     builder: (context, _) => _build(context),
   );
 
   Widget _build(BuildContext context) {
     if (MediaQuery.highContrastOf(context) ||
-        MediaQuery.disableAnimationsOf(context) ||
         !GlassIntensity.systemAllowsBlur.value ||
         AppVisualStyle.current.value == VisualStyle.materialYou) {
       return ClipRRect(
@@ -92,7 +92,7 @@ class GlassSurface extends StatelessWidget {
         ),
       );
     }
-    final glass = liquid && LiquidGlass.isSupported;
+    final glass = liquid && LiquidGlass.active;
     final decorated = DecoratedBox(
       decoration: BoxDecoration(
         color: glass ? null : frostTint,
@@ -173,14 +173,12 @@ class LiquidGlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: GlassSurface._intensity,
+    listenable: GlassSurface._state,
     builder: (context, _) => _build(context),
   );
 
   Widget _build(BuildContext context) {
-    if (!LiquidGlass.active ||
-        MediaQuery.highContrastOf(context) ||
-        MediaQuery.disableAnimationsOf(context)) {
+    if (!LiquidGlass.active || MediaQuery.highContrastOf(context)) {
       return ClipRRect(
         borderRadius: borderRadius,
         child: ColoredBox(
@@ -198,13 +196,13 @@ class LiquidGlassSurface extends StatelessWidget {
       tint: tint,
       blurSigma: (tuning?.blurSigma ?? blurSigma) * intensity,
       spread: spread,
-      refraction: tuning?.refraction ?? refraction,
+      refraction: (tuning?.refraction ?? refraction) * intensity,
       chroma: chroma,
       specular: specular,
       light: light,
       tintFeather: tintFeather,
-      rimWidth: tuning?.rimWidth ?? rimWidth,
-      band: tuning?.band ?? band,
+      rimWidth: (tuning?.rimWidth ?? rimWidth) * intensity,
+      band: (tuning?.band ?? band) * intensity,
       ior: ior,
       saturation: tuning?.saturation ?? saturation,
       adaptive: tuning?.adaptive ?? adaptive,
