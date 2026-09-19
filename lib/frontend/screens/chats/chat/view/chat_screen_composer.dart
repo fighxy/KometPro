@@ -160,6 +160,7 @@ extension _ChatComposerBuild on _ChatScreenState {
       }
       if (_effectiveChrome != ChatChromeStyle.blur) return child;
       return FrostedPanel(
+        liquid: _liquidChrome,
         tint: AppFrost.blurPanelTint(cs),
         border: Border(top: AppFrost.hairline(cs)),
         backdropKey: _barBackdrop,

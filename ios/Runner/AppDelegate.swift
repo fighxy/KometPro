@@ -45,6 +45,7 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
       registerScreen(messenger)
       registerCalls(messenger)
       registerHaptics(messenger)
+      registerTransparency(messenger)
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -151,6 +152,18 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
       return
     }
     body(recorder)
+  }
+
+  private func registerTransparency(_ messenger: FlutterBinaryMessenger) {
+    method("komet/system_transparency", messenger) { call, result in
+      switch call.method {
+      case "allowsBlur":
+        // Settings → Accessibility → Display & Text Size → Reduce Transparency.
+        result(!UIAccessibility.isReduceTransparencyEnabled)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 
   private func registerScreen(_ messenger: FlutterBinaryMessenger) {

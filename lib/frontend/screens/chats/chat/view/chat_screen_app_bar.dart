@@ -19,6 +19,7 @@ extension _ChatAppBarBuild on _ChatScreenState {
           : Colors.transparent,
       flexibleSpace: chrome == ChatChromeStyle.blur
           ? FrostedPanel(
+              liquid: _liquidChrome,
               tint: AppFrost.blurPanelTint(cs),
               border: Border(bottom: AppFrost.hairline(cs)),
               backdropKey: _barBackdrop,
@@ -44,6 +45,7 @@ extension _ChatAppBarBuild on _ChatScreenState {
             )
           : (chrome == ChatChromeStyle.transparent && !glossy)
           ? FrostedPanel(
+              liquid: _liquidChrome,
               sigma: AppFrost.sigma,
               tint: AppFrost.glassTint(cs),
               border: Border(bottom: AppFrost.hairline(cs)),

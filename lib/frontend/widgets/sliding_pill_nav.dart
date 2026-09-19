@@ -137,7 +137,7 @@ class SlidingPillNav extends StatelessWidget {
     final useGradient = glossy && gradient && !liquid;
     final frosted = frost && !liquid && base.a < 1;
 
-    return Container(
+    final nav = Container(
       height: height,
       padding: const EdgeInsets.all(6),
       clipBehavior: Clip.antiAlias,
@@ -162,15 +162,6 @@ class SlidingPillNav extends StatelessWidget {
           return Stack(
             clipBehavior: Clip.none,
             children: [
-              if (liquid)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: LiquidGlassSurface(
-                      borderRadius: BorderRadius.circular(28),
-                      tint: base,
-                    ),
-                  ),
-                ),
               if (frosted)
                 Positioned.fill(
                   child: IgnorePointer(
@@ -240,6 +231,26 @@ class SlidingPillNav extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+
+    if (!liquid) return nav;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(34),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: LiquidGlassSurface(
+        borderRadius: BorderRadius.circular(34),
+        tint: base,
+        preset: GlassPreset.control,
+        child: nav,
       ),
     );
   }

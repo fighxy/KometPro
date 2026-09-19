@@ -11,6 +11,8 @@ class MainFlutterWindow: NSWindow {
     RegisterGeneratedPlugins(registry: flutterViewController)
     ClipboardMediaChannel.register(
       messenger: flutterViewController.engine.binaryMessenger)
+    SystemTransparencyChannel.register(
+      messenger: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
   }

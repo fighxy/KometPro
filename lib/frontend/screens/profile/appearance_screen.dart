@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../widgets/connection_status.dart';
 
+import '../../../core/config/glass_intensity.dart';
 import '../../../core/config/app_bubble_behavior.dart';
 import '../../../core/config/app_bubble_shape.dart';
 import '../../../core/config/app_pill_gradient.dart';
@@ -225,7 +227,68 @@ class _VisualStyleCard extends StatelessWidget {
               );
             },
           ),
+          const _GlassIntensityRow(),
         ],
+      ),
+    );
+  }
+}
+
+/// Blur strength for frosted and liquid surfaces. The system only offers an
+/// on/off switch (Reduce Transparency on Apple platforms, cross-window blur on
+/// Android), which is honoured separately — the amount is set here.
+class _GlassIntensityRow extends StatelessWidget {
+  const _GlassIntensityRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ValueListenableBuilder<bool>(
+      valueListenable: GlassIntensity.systemAllowsBlur,
+      builder: (context, allowed, _) => ValueListenableBuilder<double>(
+        valueListenable: GlassIntensity.scale,
+        builder: (context, scale, _) => Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Интенсивность стекла',
+                      style: TextStyle(color: cs.onSurface, fontSize: 14),
+                    ),
+                  ),
+                  Text(
+                    '${GlassIntensity.percent}%',
+                    style: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              Slider(
+                min: GlassIntensity.min,
+                max: GlassIntensity.max,
+                divisions:
+                    ((GlassIntensity.max - GlassIntensity.min) /
+                            GlassIntensity.step)
+                        .round(),
+                value: scale,
+                onChanged: allowed
+                    ? (value) => unawaited(GlassIntensity.save(value))
+                    : null,
+              ),
+              if (!allowed)
+                Text(
+                  'Система просит уменьшить прозрачность — стекло отключено',
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12.5),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

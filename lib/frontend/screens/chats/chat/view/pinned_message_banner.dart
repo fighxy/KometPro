@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/core/config/app_frost.dart';
+import 'package:komet/core/config/app_liquid_glass.dart';
 import 'package:komet/frontend/widgets/animated_text_swap.dart';
 import 'package:komet/frontend/widgets/liquid_glass.dart';
 import 'package:komet/l10n/app_localizations.dart';
@@ -98,6 +99,7 @@ class PinnedMessageBanner extends StatelessWidget {
     if (frosted) {
       return GlassSurface(
         liquid: liquid,
+        preset: floating ? GlassPreset.control : GlassPreset.panel,
         borderRadius: floating ? BorderRadius.circular(16) : BorderRadius.zero,
         frostTint: Colors.transparent,
         border: floating ? null : bottomBorder,
