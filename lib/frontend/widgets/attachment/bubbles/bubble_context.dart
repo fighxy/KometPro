@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../../backend/modules/messages.dart';
 import '../../../../core/config/app_colors.dart';
 import '../../../../core/config/komet_settings.dart';
+import '../../../../core/design/ios_chrome.dart';
 import '../../../../core/utils/format.dart';
 import '../../../../core/utils/media_frame_size.dart';
 import '../../../../core/utils/text_format.dart';
@@ -188,9 +189,9 @@ class BubbleContext {
   Widget caption() {
     final style = TextStyle(
       color: text,
-      fontSize: 16,
+      fontSize: IosChrome.bubbleBodySize,
       height: 1.3,
-      fontWeight: FontWeight.w400,
+      fontWeight: IosChrome.bubbleBodyWeight,
     );
     final captionText = contentText;
     final ranges = contentFormatRanges;
@@ -223,8 +224,8 @@ class BubbleContext {
             clockText,
             style: TextStyle(
               color: dim,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontSize: IosChrome.bubbleMetaSize,
+              fontWeight: IosChrome.bubbleMetaWeight,
             ),
           ),
           if (isMe) ...[const SizedBox(width: 4), statusIcon()],
@@ -254,8 +255,8 @@ class BubbleContext {
             clockText,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
             ),
           ),
           if (message.deleted) ...[
