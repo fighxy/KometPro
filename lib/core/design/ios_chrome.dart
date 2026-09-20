@@ -30,6 +30,17 @@ class IosChrome {
   static const double collapseDistance = 56;
   static const double iconsOnlyAt = 0.55;
 
+  static const double listTitleSize = 17;
+  static const FontWeight listTitleWeight = FontWeight.w600;
+  static const double listPreviewSize = 15;
+  static const FontWeight listPreviewWeight = FontWeight.w400;
+  static const double listTimeSize = 14;
+  static const FontWeight listTimeWeight = FontWeight.w400;
+  static const double bubbleBodySize = 17;
+  static const FontWeight bubbleBodyWeight = FontWeight.w400;
+  static const double bubbleMetaSize = 12;
+  static const FontWeight bubbleMetaWeight = FontWeight.w400;
+
   static double heightAt(double collapse) =>
       lerpDouble(expandedHeight, compactHeight, collapse.clamp(0.0, 1.0))!;
 
