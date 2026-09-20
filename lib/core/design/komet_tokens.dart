@@ -32,7 +32,7 @@ class KometTokens {
   static const double control = 12;
   static const double card = 14;
   static const double dialog = 16;
-  static const double mobileSheet = 24;
+  static const double mobileSheet = 28;
   static const double space1 = 4;
   static const double space2 = 8;
   static const double space3 = 12;

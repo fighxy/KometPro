@@ -1,70 +1,39 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Liquid glass material parameters.
-///
-/// Values follow the optical model Apple's material is built on: a narrow
-/// bevel at the rim does the lensing, the body stays lightly frosted, colour
-/// behind the glass is amplified rather than greyed out, and a thin specular
-/// line rides the lit edge.
 class AppLiquidGlass {
   static const bool enabled = true;
 
-  /// Backdrop blur under the shader. It only covers the surface's own rect,
-  /// while the rim samples outward, past the clip — so the body can be frosted
-  /// hard without softening the magnified edge that makes it read as glass.
+  static bool get _ios {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
   static const double blurSigma = 14;
-
-  /// Extra softening the shader's own gather adds toward the middle, in
-  /// logical pixels. Kept small: eight taps cannot stand in for a Gaussian.
   static const double interior = 4;
-
-  /// Width of the bevel that refracts, in logical pixels.
   static const double band = 16;
-
-  /// Refractive index of the slab. Window glass is ~1.5.
   static const double ior = 1.5;
-
-  /// Largest edge displacement in logical pixels.
   static const double refraction = 20;
-
-  /// Multiplier on [band]; per-surface overrides use it to widen or tighten
-  /// the lens without changing the profile.
   static const double spread = 1;
-
-  /// Chromatic aberration as a fraction of the local displacement.
-  static const double chroma = 0.12;
-
-  /// Colour amplification behind the glass.
-  static const double saturation = 1.5;
-
-  /// How much the tint veil grows when the backdrop's brightness is far from
-  /// the glass's own tone. This is what keeps labels on the glass readable
-  /// over a bright photo without veiling a matching backdrop.
-  static const double adaptive = 0.3;
-
   static const double specular = 0.5;
-
-  /// Specular line on the lit edge and the dimmer bounce opposite it.
   static const double rimAlpha = 0.85;
   static const double bounceAlpha = 0.16;
-
-  /// Soft dark line where the bevel meets the flat body.
-  static const double depthShade = 0.1;
-
   static const double rimWidth = 6;
   static const Offset light = Offset(-0.4, -1);
   static const double tintFeather = 44;
 
-  static Color navTint(ColorScheme cs) =>
-      cs.surfaceContainerHigh.withValues(alpha: 0.2);
+  static double get chroma => _ios ? 0.07 : 0.12;
+  static double get adaptive => _ios ? 0.42 : 0.3;
+  static double get depthShade => _ios ? 0.18 : 0.1;
+  static double get saturation => _ios ? 1.38 : 1.5;
 
-  static Color panelTint(ColorScheme cs) => cs.surface.withValues(alpha: 0.24);
+  static Color navTint(ColorScheme cs) =>
+      cs.surfaceContainerHigh.withValues(alpha: _ios ? 0.34 : 0.2);
+
+  static Color panelTint(ColorScheme cs) =>
+      cs.surface.withValues(alpha: _ios ? 0.36 : 0.24);
 }
 
-/// Per-surface tuning. Apple's material behaves differently on small controls
-/// and on large panels: a control is mostly rim, so it keeps a tight bevel and
-/// a bright specular line, while a panel is mostly body, so it frosts more and
-/// lets the lens sit wider and softer.
 @immutable
 class GlassPreset {
   const GlassPreset({
@@ -77,6 +46,8 @@ class GlassPreset {
     required this.saturation,
     required this.adaptive,
     required this.rimWidth,
+    this.chroma,
+    this.depthShade,
   });
 
   final double blurSigma;
@@ -88,8 +59,13 @@ class GlassPreset {
   final double saturation;
   final double adaptive;
   final double rimWidth;
+  final double? chroma;
+  final double? depthShade;
 
-  static const GlassPreset control = GlassPreset(
+  static GlassPreset get control => AppLiquidGlass._ios ? _iosControl : _control;
+  static GlassPreset get panel => AppLiquidGlass._ios ? _iosPanel : _panel;
+
+  static const GlassPreset _control = GlassPreset(
     blurSigma: 12,
     interior: 3,
     band: 13,
@@ -101,7 +77,7 @@ class GlassPreset {
     rimWidth: 5,
   );
 
-  static const GlassPreset panel = GlassPreset(
+  static const GlassPreset _panel = GlassPreset(
     blurSigma: 18,
     interior: 5,
     band: 22,
@@ -111,5 +87,32 @@ class GlassPreset {
     saturation: 1.4,
     adaptive: 0.3,
     rimWidth: 8,
+  );n
+  static const GlassPreset _iosControl = GlassPreset(
+    blurSigma: 16,
+    interior: 3,
+    band: 12,
+    refraction: 14,
+    rimAlpha: 0.96,
+    bounceAlpha: 0.22,
+    saturation: 1.36,
+    adaptive: 0.46,
+    rimWidth: 6,
+    chroma: 0.06,
+    depthShade: 0.2,
+  );
+
+  static const GlassPreset _iosPanel = GlassPreset(
+    blurSigma: 22,
+    interior: 6,
+    band: 20,
+    refraction: 18,
+    rimAlpha: 0.82,
+    bounceAlpha: 0.16,
+    saturation: 1.28,
+    adaptive: 0.4,
+    rimWidth: 8,
+    chroma: 0.05,
+    depthShade: 0.18,
   );
 }
