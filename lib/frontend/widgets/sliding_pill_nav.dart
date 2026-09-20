@@ -361,7 +361,7 @@ class _PillNavCell extends StatelessWidget {
                       height: 1.1,
                     ),
                   ),
-                ),
+                ],
               ),
       ),
     );
