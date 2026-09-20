@@ -7,6 +7,7 @@ import '../../core/config/app_liquid_glass.dart';
 import '../../core/config/app_nav_pill_style.dart';
 import '../../core/config/app_pill_gradient.dart';
 import '../../core/config/app_visual_style.dart';
+import '../../core/design/ios_chrome.dart';
 import 'animated_lottie_icon.dart';
 import 'glossy_pill.dart';
 import 'liquid_glass.dart';
@@ -56,6 +57,7 @@ class SlidingPillNav extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
   final bool iconsOnly;
+  final double collapse;
   final BackdropKey? backdropKey;
 
   const SlidingPillNav({
@@ -71,12 +73,14 @@ class SlidingPillNav extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.iconsOnly = false,
+    this.collapse = 0,
     this.backdropKey,
   });
 
   static const double height = 68;
+  static const double compactHeight = 52;
 
-  double _interpWidth(int tab) => _interpWidthFor(geometry, tab);
+  static double heightAt(double collapse) => IosChrome.heightAt(collapse);
 
   double _interpWidthFor(PillNavGeometry geo, int tab) {
     final maxIndex = items.length - 1;
@@ -130,21 +134,25 @@ class SlidingPillNav extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final visualSel = position.round().clamp(0, items.length - 1);
     final translucent = backgroundColor != null && backgroundColor!.a < 1;
+    final hideLabels = iconsOnly || IosChrome.iconsOnly(collapse);
+    final barHeight = heightAt(collapse);
+    final outer = IosChrome.outerRadius * (barHeight / height);
+    final inner = IosChrome.innerRadius * (barHeight / height);
     final base = liquid
-        ? (translucent ? backgroundColor! : AppLiquidGlass.navTint(cs))
+        ? (translucent ? backgroundColor! : IosChrome.navTint(cs))
         : (backgroundColor ??
               (frost ? AppFrost.glassTint(cs) : cs.surfaceContainerHigh));
     final useGradient = glossy && gradient && !liquid;
     final frosted = frost && !liquid && base.a < 1;
 
     final nav = Container(
-      height: height,
+      height: barHeight,
       padding: const EdgeInsets.all(6),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: useGradient || liquid ? null : base,
         gradient: useGradient ? GlossyDecor.fillGradient(base) : null,
-        borderRadius: BorderRadius.circular(34),
+        borderRadius: BorderRadius.circular(outer),
         border: glossy
             ? GlossyDecor.rimBorder(base)
             : (borderColor != null
@@ -166,7 +174,7 @@ class SlidingPillNav extends StatelessWidget {
                 Positioned.fill(
                   child: IgnorePointer(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(inner),
                       child: BackdropFilter(
                         filter: ui.ImageFilter.blur(
                           sigmaX: AppFrost.sigma,
@@ -182,7 +190,7 @@ class SlidingPillNav extends StatelessWidget {
                 Positioned.fill(
                   child: IgnorePointer(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(inner),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: GlossyDecor.topSheen(base),
@@ -203,7 +211,7 @@ class SlidingPillNav extends StatelessWidget {
                     color: cs.brightness == Brightness.light
                         ? cs.primary.withValues(alpha: 0.14)
                         : cs.onSurface.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(inner),
                   ),
                 ),
               ),
@@ -218,7 +226,7 @@ class SlidingPillNav extends StatelessWidget {
                       animationDuration: animationDuration,
                       iconSize: iconSize,
                       labelGap: labelGap,
-                      iconsOnly: iconsOnly,
+                      iconsOnly: hideLabels,
                       onTap: () => onTap(i),
                       onLongPress:
                           (onItemLongPress == null || !items[i].longPressable)
@@ -237,7 +245,7 @@ class SlidingPillNav extends StatelessWidget {
     if (!liquid) return nav;
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(34),
+        borderRadius: BorderRadius.circular(outer),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.28),
@@ -247,9 +255,9 @@ class SlidingPillNav extends StatelessWidget {
         ],
       ),
       child: LiquidGlassSurface(
-        borderRadius: BorderRadius.circular(34),
+        borderRadius: BorderRadius.circular(outer),
         tint: base,
-        preset: GlassPreset.control,
+        preset: GlassPreset.resolvedControl,
         child: nav,
       ),
     );
@@ -279,9 +287,6 @@ class _PillNavCell extends StatelessWidget {
     required this.onLongPress,
   });
 
-  /// The animated nav icons are baked from Material Symbols at wght 400 and
-  /// GRAD 0, so the static ones use the same instance and every icon in the
-  /// bar keeps one stroke weight in both states.
   static const double _iconWeight = 400;
   static const double _iconGrade = 0;
   static const double _labelSize = 11.5;
@@ -356,7 +361,7 @@ class _PillNavCell extends StatelessWidget {
                       height: 1.1,
                     ),
                   ),
-                ],
+                ),
               ),
       ),
     );
