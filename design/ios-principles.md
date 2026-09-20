@@ -26,6 +26,20 @@ iOS 27: пользовательский слайдер интенсивност
 
 Sheets: радиус `KometTokens.mobileSheet` (28). Полулист слегка inset от краёв. Крупный заголовок списка — system/SF, semibold.
 
+## Типографика
+
+Рядом с Telegram iOS, не с Material.
+
+| Место | Telegram iOS | Токен |
+| --- | --- | --- |
+| Название чата | SF Pro Semibold 17 | `listTitle` 17 / w600 |
+| Превью / typing | Regular 15 | `listPreview` 15 / w400 |
+| Время в списке | Regular 14 | `listTime` 14 / w400 |
+| Текст пузыря | Regular 17 | `bubbleBody` 17 / w400 |
+| Время в пузыре | Regular 11–12 | `bubbleMeta` 12 / w400 |
+
+Bold (w700) в списке и Semibold (w600) на мета-времени пузыря тяжелее Telegram и Apple Messages. DesktopDensity ветки не менять.
+
 ## Движение
 
 Жесты системы не перехватывать. Reduced motion отключает сжатие и блик, но не убирает материал. Проверять Dynamic Island, home indicator и увеличенный текст.

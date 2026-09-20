@@ -2,6 +2,7 @@
 import 'package:flutter/gestures.dart';
 import '../../../../../core/design/komet_components.dart';
 import '../../../../../core/design/komet_tokens.dart';
+import '../../../../../core/design/ios_chrome.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -158,8 +159,8 @@ class _ActivitySubtitleState extends State<ActivitySubtitle> {
             _lastLabel,
             style: TextStyle(
               color: cs.primary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontSize: IosChrome.listPreviewSize,
+              fontWeight: IosChrome.listPreviewWeight,
               height: 1.15,
             ),
             maxLines: 1,

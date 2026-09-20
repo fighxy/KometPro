@@ -55,4 +55,17 @@ void main() {
     expect(IosChrome.edgeTint(light).a, greaterThan(0));
     expect(IosChrome.edgeTint(dark).a, greaterThan(IosChrome.edgeTint(light).a));
   });
+
+  test('type tokens match Telegram iOS defaults', () {
+    expect(IosChrome.listTitleSize, 17);
+    expect(IosChrome.listTitleWeight, FontWeight.w600);
+    expect(IosChrome.listPreviewSize, 15);
+    expect(IosChrome.listPreviewWeight, FontWeight.w400);
+    expect(IosChrome.listTimeSize, 14);
+    expect(IosChrome.listTimeWeight, FontWeight.w400);
+    expect(IosChrome.bubbleBodySize, 17);
+    expect(IosChrome.bubbleBodyWeight, FontWeight.w400);
+    expect(IosChrome.bubbleMetaSize, 12);
+    expect(IosChrome.bubbleMetaWeight, FontWeight.w400);
+  });
 }
