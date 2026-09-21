@@ -4,6 +4,15 @@ import 'package:komet/core/design/ios_chrome.dart';
 import 'package:komet/core/design/komet_tokens.dart';
 
 void main() {
+  test('navigation retains a 44 point target throughout collapse', () {
+    for (final collapse in [0.0, 0.25, 0.5, 0.75, 1.0]) {
+      expect(
+        IosChrome.heightAt(collapse) - 2 * IosChrome.navPaddingAt(collapse),
+        greaterThanOrEqualTo(IosChrome.minimumTarget),
+      );
+    }
+  });
+
   test('collapse tracks scroll offset', () {
     expect(IosChrome.collapseFromOffset(0), 0);
     expect(IosChrome.collapseFromOffset(28), 0.5);

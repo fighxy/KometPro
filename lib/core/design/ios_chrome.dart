@@ -29,6 +29,10 @@ class IosChrome {
   static const double sheetRadius = 28;
   static const double collapseDistance = 56;
   static const double iconsOnlyAt = 0.55;
+  static const double minimumTarget = 44;
+
+  static double navPaddingAt(double collapse) =>
+      lerpDouble(6, 4, collapse.clamp(0.0, 1.0))!;
 
   static const double listTitleSize = 17;
   static const FontWeight listTitleWeight = FontWeight.w600;

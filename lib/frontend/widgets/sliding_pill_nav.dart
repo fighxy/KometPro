@@ -7,6 +7,7 @@ import '../../core/config/app_liquid_glass.dart';
 import '../../core/config/app_nav_pill_style.dart';
 import '../../core/config/app_pill_gradient.dart';
 import '../../core/config/app_visual_style.dart';
+import '../../core/config/glass_intensity.dart';
 import '../../core/design/ios_chrome.dart';
 import 'animated_lottie_icon.dart';
 import 'glossy_pill.dart';
@@ -94,33 +95,36 @@ class SlidingPillNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<VisualStyle>(
-      valueListenable: AppVisualStyle.current,
-      builder: (context, style, _) {
-        if (style == VisualStyle.materialYou) {
-          return _buildNav(
-            context,
-            glossy: false,
-            gradient: false,
-            frost: false,
-            liquid: false,
-          );
-        }
-        return ValueListenableBuilder<bool>(
-          valueListenable: AppPillGradient.current,
-          builder: (context, gradient, _) =>
-              ValueListenableBuilder<NavPillStyle>(
-                valueListenable: AppNavPillStyle.current,
-                builder: (context, navStyle, _) => _buildNav(
-                  context,
-                  glossy: true,
-                  gradient: gradient,
-                  frost: NavPillMaterial.isFrost(navStyle),
-                  liquid: NavPillMaterial.isLiquid(navStyle),
+    return ValueListenableBuilder<bool>(
+      valueListenable: GlassIntensity.systemAllowsBlur,
+      builder: (context, _, _) => ValueListenableBuilder<VisualStyle>(
+        valueListenable: AppVisualStyle.current,
+        builder: (context, style, _) {
+          if (style == VisualStyle.materialYou) {
+            return _buildNav(
+              context,
+              glossy: false,
+              gradient: false,
+              frost: false,
+              liquid: false,
+            );
+          }
+          return ValueListenableBuilder<bool>(
+            valueListenable: AppPillGradient.current,
+            builder: (context, gradient, _) =>
+                ValueListenableBuilder<NavPillStyle>(
+                  valueListenable: AppNavPillStyle.current,
+                  builder: (context, navStyle, _) => _buildNav(
+                    context,
+                    glossy: true,
+                    gradient: gradient,
+                    frost: NavPillMaterial.isFrost(navStyle),
+                    liquid: NavPillMaterial.isLiquid(navStyle),
+                  ),
                 ),
-              ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -132,28 +136,37 @@ class SlidingPillNav extends StatelessWidget {
     required bool liquid,
   }) {
     final cs = Theme.of(context).colorScheme;
+    final ios = IosChrome.isPhone;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context) ||
+        MediaQuery.accessibleNavigationOf(context);
+    final duration = reduceMotion ? Duration.zero : animationDuration;
+    final opaque = MediaQuery.highContrastOf(context) ||
+        !GlassIntensity.systemAllowsBlur.value;
     final visualSel = position.round().clamp(0, items.length - 1);
     final translucent = backgroundColor != null && backgroundColor!.a < 1;
-    final hideLabels = iconsOnly || IosChrome.iconsOnly(collapse);
+    final hideLabels = iconsOnly || IosChrome.iconsOnly(collapse) ||
+        (ios && MediaQuery.textScalerOf(context).scale(11.5) > 17);
     final barHeight = heightAt(collapse);
     final outer = IosChrome.outerRadius * (barHeight / height);
-    final inner = IosChrome.innerRadius * (barHeight / height);
-    final base = liquid
+    final inner = ios
+        ? outer - IosChrome.navPaddingAt(collapse)
+        : IosChrome.innerRadius * (barHeight / height);
+    final base = opaque ? cs.surfaceContainerHigh : liquid
         ? (translucent ? backgroundColor! : IosChrome.navTint(cs))
         : (backgroundColor ??
               (frost ? AppFrost.glassTint(cs) : cs.surfaceContainerHigh));
-    final useGradient = glossy && gradient && !liquid;
-    final frosted = frost && !liquid && base.a < 1;
+    final useGradient = glossy && gradient && !liquid && !opaque;
+    final frosted = frost && !liquid && !opaque && base.a < 1;
 
     final nav = Container(
       height: barHeight,
-      padding: const EdgeInsets.all(6),
+      padding: EdgeInsets.all(ios ? IosChrome.navPaddingAt(collapse) : 6),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: useGradient || liquid ? null : base,
         gradient: useGradient ? GlossyDecor.fillGradient(base) : null,
         borderRadius: BorderRadius.circular(outer),
-        border: glossy
+        border: ios ? null : glossy
             ? GlossyDecor.rimBorder(base)
             : (borderColor != null
                   ? Border.all(color: borderColor!, width: 0.5)
@@ -161,7 +174,10 @@ class SlidingPillNav extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final geo = PillNavGeometry.fromInnerWidth(
+          final geo = ios ? PillNavGeometry.equal(
+            constraints.maxWidth / items.length,
+            items.length,
+          ) : PillNavGeometry.fromInnerWidth(
             constraints.maxWidth,
             items.length,
           );
@@ -199,10 +215,10 @@ class SlidingPillNav extends StatelessWidget {
                     ),
                   ),
                 ),
-              AnimatedPositioned(
-                duration: animationDuration,
+              AnimatedPositionedDirectional(
+                duration: duration,
                 curve: Curves.easeOutCubic,
-                left: t * geo.inactiveWidth,
+                start: t * geo.inactiveWidth,
                 top: 0,
                 bottom: 0,
                 width: geo.activeWidth,
@@ -219,11 +235,12 @@ class SlidingPillNav extends StatelessWidget {
                 children: List.generate(items.length, (i) {
                   return SizedBox(
                     width: _interpWidthFor(geo, i),
+                    height: constraints.maxHeight,
                     child: _PillNavCell(
                       item: items[i],
                       selected: i == visualSel,
                       cs: cs,
-                      animationDuration: animationDuration,
+                      animationDuration: duration,
                       iconSize: iconSize,
                       labelGap: labelGap,
                       iconsOnly: hideLabels,
@@ -242,7 +259,12 @@ class SlidingPillNav extends StatelessWidget {
       ),
     );
 
-    if (!liquid) return nav;
+    if (!liquid || opaque) {
+      return opaque ? ClipRRect(
+        borderRadius: BorderRadius.circular(outer),
+        child: ColoredBox(color: cs.surfaceContainerHigh, child: nav),
+      ) : nav;
+    }
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(outer),
@@ -316,53 +338,62 @@ class _PillNavCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPressStart: onLongPress == null
-          ? null
-          : (d) => onLongPress!(d.globalPosition),
-      behavior: HitTestBehavior.opaque,
-      child: Center(
-        child: iconsOnly
-            ? _buildIcon()
-            : selected
-            ? FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildIcon(),
-                    SizedBox(width: labelGap),
-                    Text(
-                      item.label,
-                      style: TextStyle(
-                        color: cs.primary,
-                        fontSize: _labelSize,
-                        fontWeight: _labelWeight,
-                        height: 1.1,
+    return Semantics(
+      label: item.label,
+      button: true,
+      selected: selected,
+      child: Tooltip(
+        message: item.label,
+        excludeFromSemantics: true,
+        child: GestureDetector(
+          onTap: onTap,
+          onLongPressStart: onLongPress == null
+              ? null
+              : (d) => onLongPress!(d.globalPosition),
+          behavior: HitTestBehavior.opaque,
+          child: ExcludeSemantics(child: Center(
+            child: iconsOnly
+                ? _buildIcon()
+                : selected && !IosChrome.isPhone
+                ? FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildIcon(),
+                        SizedBox(width: labelGap),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            color: cs.primary,
+                            fontSize: _labelSize,
+                            fontWeight: _labelWeight,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildIcon(),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected ? cs.primary : cs.onSurfaceVariant,
+                          fontSize: _labelSize,
+                          fontWeight: _labelWeight,
+                          height: 1.1,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildIcon(),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: cs.onSurfaceVariant,
-                      fontSize: _labelSize,
-                      fontWeight: _labelWeight,
-                      height: 1.1,
-                    ),
+                    ],
                   ),
-                ],
-              ),
+          )),
+        ),
       ),
     );
   }
