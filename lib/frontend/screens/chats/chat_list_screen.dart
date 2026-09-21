@@ -3047,17 +3047,14 @@ class _ChatListScreenState extends State<ChatListScreen>
     final sending = isSendingStatus(status);
     final effective = (read && !sending && status != 'error') ? 'read' : status;
     final visual = messageStatusVisual(effective, dimColor: cs.outline);
-    return Padding(
-      padding: const EdgeInsets.only(left: 6),
-      child: sending
-          ? SendingClockIcon(color: visual.color, size: _ownStatusIconSize)
-          : Icon(
-              visual.icon,
-              size: _ownStatusIconSize,
-              color: visual.color,
-              weight: 400,
-            ),
-    );
+    return sending
+        ? SendingClockIcon(color: visual.color, size: _ownStatusIconSize)
+        : Icon(
+            visual.icon,
+            size: _ownStatusIconSize,
+            color: visual.color,
+            weight: 400,
+          );
   }
 
   Widget _animateChatTile(String id, Widget child) {
@@ -3174,7 +3171,6 @@ class _ChatListScreenState extends State<ChatListScreen>
     String time,
     String imageUrl, {
     int presenceUserId = 0,
-    bool isRead = false,
     int unreadCount = 0,
     bool hasMention = false,
     bool isMuted = false,
@@ -3514,6 +3510,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 ),
                               ],
                               const SizedBox(width: 8),
+                              if (statusIcon != null) ...[
+                                statusIcon,
+                                const SizedBox(width: 4),
+                              ],
                               Text(
                                 time,
                                 style: TextStyle(
@@ -3539,7 +3539,6 @@ class _ChatListScreenState extends State<ChatListScreen>
                                   child: messageLine,
                                 ),
                               ),
-                              ?statusIcon,
                               const SizedBox(width: 8),
                               if (isPinned) ...[
                                 Icon(
@@ -3561,13 +3560,6 @@ class _ChatListScreenState extends State<ChatListScreen>
                                   cs,
                                   _compactUnread(unreadCount),
                                   muted: isMuted,
-                                )
-                              else if (isRead)
-                                Icon(
-                                  Symbols.done_all,
-                                  color: cs.primary,
-                                  size: 16,
-                                  weight: 400,
                                 ),
                               if (hasMiniApp) ...[
                                 const SizedBox(width: 8),
