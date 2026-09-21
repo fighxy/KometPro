@@ -114,6 +114,11 @@ Future<T?> pushSwipeable<T>(
   WidgetBuilder builder, {
   RouteSettings? settings,
 }) {
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    return Navigator.of(context).push<T>(
+      CupertinoPageRoute<T>(builder: builder, settings: settings),
+    );
+  }
   return Navigator.of(
     context,
   ).push<T>(SwipeRoute<T>(builder: builder, settings: settings));

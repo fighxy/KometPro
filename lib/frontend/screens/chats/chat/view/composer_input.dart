@@ -160,6 +160,7 @@ class ComposerInputBar extends StatelessWidget {
     }
 
     final bar = SafeArea(
+      top: false,
       bottom: bottomSafe,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -240,6 +241,12 @@ class ComposerInputBar extends StatelessWidget {
                                     Expanded(
                                       child: Focus(
                                         onKeyEvent: (node, event) {
+                                          final composing =
+                                              messageController.value.composing;
+                                          if (composing.isValid &&
+                                              !composing.isCollapsed) {
+                                            return KeyEventResult.ignored;
+                                          }
                                           if (event is KeyDownEvent &&
                                               event.logicalKey ==
                                                   LogicalKeyboardKey.enter &&
@@ -265,6 +272,8 @@ class ComposerInputBar extends StatelessWidget {
                                               fontSize: 16,
                                             ),
                                             maxLines: null,
+                                            textInputAction:
+                                                TextInputAction.newline,
                                             keyboardType:
                                                 TextInputType.multiline,
                                             textCapitalization:
