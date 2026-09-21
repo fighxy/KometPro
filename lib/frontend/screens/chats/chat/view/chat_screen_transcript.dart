@@ -329,27 +329,21 @@ extension _ChatTranscriptBuild on _ChatScreenState {
     final showShimmer = _messages.isEmpty
         ? _isLoading
         : (_awaitingPosition || _navigatingToTarget);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Opacity(
-          opacity: showShimmer ? 0.0 : 1.0,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollStartNotification &&
-                  notification.dragDetails != null) {
-                _userGestureEpoch++;
-              } else if (notification is ScrollEndNotification) {
-                _readMarker.flush();
-              }
-              return false;
-            },
-            child: _buildMessagesList(),
-          ),
-        ),
-        if (showShimmer)
-          Positioned.fill(child: ShimmerLoading(shimmer: _shimmerController)),
-      ],
+    return ShimmerCrossFade(
+      showShimmer: showShimmer,
+      shimmer: _shimmerController,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification is ScrollStartNotification &&
+              notification.dragDetails != null) {
+            _userGestureEpoch++;
+          } else if (notification is ScrollEndNotification) {
+            _readMarker.flush();
+          }
+          return false;
+        },
+        child: _buildMessagesList(),
+      ),
     );
   }
 

@@ -75,6 +75,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
         _messagesRev.value++;
       });
       _mergePendingMedia();
+      _syncReactionNotifiersFromMessages();
       _requestCommentCounts();
       _revealOrHoldInitial();
     }
@@ -1259,11 +1260,35 @@ extension _ChatHistoryLoad on _ChatScreenState {
 
   void _syncReactionNotifiersFromMessages() {
     for (final m in _messages) {
-      if (_reactionNotifiers.containsKey(m.id)) continue;
-      final info = m.payload?['reactionInfo'];
-      _reactionNotifiers[m.id] = ValueNotifier(
-        info is Map ? Map<String, dynamic>.from(info) : null,
-      );
+      final raw = m.payload?['reactionInfo'];
+      final info = raw is Map ? Map<String, dynamic>.from(raw) : null;
+      final existing = _reactionNotifiers[m.id];
+      if (existing == null) {
+        _reactionNotifiers[m.id] = ValueNotifier(info);
+        continue;
+      }
+      if (_reactionsInFlight.contains(m.id)) continue;
+      if (_sameReactionInfo(existing.value, info)) continue;
+      existing.value = info;
     }
+  }
+
+  bool _sameReactionInfo(Map<String, dynamic>? a, Map<String, dynamic>? b) {
+    if (a == null || b == null) return a == null && b == null;
+    if (a['yourReaction']?.toString() != b['yourReaction']?.toString()) {
+      return false;
+    }
+    final ca = a['counters'];
+    final cb = b['counters'];
+    if (ca is! List || cb is! List) return ca == cb;
+    if (ca.length != cb.length) return false;
+    for (var i = 0; i < ca.length; i++) {
+      final x = ca[i];
+      final y = cb[i];
+      if (x is! Map || y is! Map) return false;
+      if (x['reaction']?.toString() != y['reaction']?.toString()) return false;
+      if (x['count'] != y['count']) return false;
+    }
+    return true;
   }
 }

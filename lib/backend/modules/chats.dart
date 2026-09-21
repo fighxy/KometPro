@@ -468,8 +468,7 @@ class ChatsModule {
   ) async {
     final rows = await AppDatabase.loadChat(accountId, chatId);
     if (rows.isEmpty) return;
-    final row = Map<String, dynamic>.from(rows.first);
-    if ((row['unread_count'] as int? ?? 0) == 0) return;
+    if ((rows.first['unread_count'] as int? ?? 0) == 0) return;
 
     final msgIdNum = int.tryParse(messageId);
     if (msgIdNum != null && !KometSettings.antiRead.value) {
@@ -483,13 +482,12 @@ class ChatsModule {
       } catch (_) {}
     }
 
-    final cached = CachedChat.fromDbRow(row);
-    final currentMark = cached.participants[accountId] ?? 0;
-    final participants = Map<int, int>.from(cached.participants)
-      ..[accountId] = mark > currentMark ? mark : currentMark;
-    final updated = cached.copyWith(unreadCount: 0, participants: participants);
-    await AppDatabase.saveChats([updated.toDbRow()]);
-    _bump();
+    await _updateChat(accountId, chatId, (chat) {
+      final currentMark = chat.participants[accountId] ?? 0;
+      final participants = Map<int, int>.from(chat.participants)
+        ..[accountId] = mark > currentMark ? mark : currentMark;
+      return chat.copyWith(unreadCount: 0, participants: participants);
+    });
   }
 
   Future<void> markReadUpTo(
@@ -512,21 +510,15 @@ class ChatsModule {
       } catch (_) {}
     }
 
-    final rows = await AppDatabase.loadChat(accountId, chatId);
-    if (rows.isEmpty) return;
-    final cached = CachedChat.fromDbRow(rows.first);
-    final next = remaining < 0 ? 0 : remaining;
-    final currentMark = cached.participants[accountId] ?? 0;
-    final nextMark = mark > currentMark ? mark : currentMark;
-    if (cached.unreadCount == next && nextMark == currentMark) return;
-    final participants = Map<int, int>.from(cached.participants)
-      ..[accountId] = nextMark;
-    final updated = cached.copyWith(
-      unreadCount: next,
-      participants: participants,
-    );
-    await AppDatabase.saveChats([updated.toDbRow()]);
-    _bump();
+    await _updateChat(accountId, chatId, (chat) {
+      final next = remaining < 0 ? 0 : remaining;
+      final currentMark = chat.participants[accountId] ?? 0;
+      final nextMark = mark > currentMark ? mark : currentMark;
+      if (chat.unreadCount == next && nextMark == currentMark) return null;
+      final participants = Map<int, int>.from(chat.participants)
+        ..[accountId] = nextMark;
+      return chat.copyWith(unreadCount: next, participants: participants);
+    });
   }
 
   Future<int?> markUnread(Api api, int accountId, int chatId, int mark) async {
@@ -565,7 +557,12 @@ class ChatsModule {
     final thisId = int.tryParse(messageId);
     await _updateChat(accountId, chatId, (chat) {
       final existingTime = chat.lastMsgTime ?? 0;
-      if (time < existingTime && chat.lastMsgId != thisId) return null;
+      final sameMessage = thisId != null && chat.lastMsgId == thisId;
+      if (!sameMessage && time < existingTime) return null;
+      if (sameMessage && status == 'sent' && chat.lastMsgStatus == 'sent') {
+        return null;
+      }
+      final resolvedTime = time < existingTime ? existingTime : time;
       return chat.copyWith(
         lastMsgId: thisId,
         lastMsgText: text,
@@ -573,8 +570,8 @@ class ChatsModule {
             ? jsonEncode(elements)
             : null,
         lastMsgPreview: preview,
-        lastMsgTime: time,
-        lastEventTime: time,
+        lastMsgTime: resolvedTime,
+        lastEventTime: resolvedTime,
         lastMsgSenderId: accountId,
         lastMsgStatus: status,
       );
@@ -619,20 +616,53 @@ class ChatsModule {
     unawaited(ChatInfoFetch.get(chatId));
   }
 
+  final Map<int, Future<void>> _chatRowQueue = {};
+
+  Future<T> _serializeChatRow<T>(int chatId, Future<T> Function() action) {
+    final previous = _chatRowQueue[chatId] ?? Future<void>.value();
+    final result = previous.then<T>((_) => action());
+    final next = result.then<void>((_) {}, onError: (Object _) {});
+    _chatRowQueue[chatId] = next;
+    unawaited(
+      next.whenComplete(() {
+        if (identical(_chatRowQueue[chatId], next)) {
+          _chatRowQueue.remove(chatId);
+        }
+      }),
+    );
+    return result;
+  }
+
   Future<bool> _updateChat(
     int accountId,
     int chatId,
     CachedChat? Function(CachedChat chat) mutate,
-  ) async {
-    final rows = await AppDatabase.loadChat(accountId, chatId);
-    if (rows.isEmpty) return false;
-    final updated = mutate(CachedChat.fromDbRow(rows.first));
-    if (updated == null) return false;
-    final row = Map<String, dynamic>.from(rows.first)
-      ..addAll(updated.toDbRow());
-    await AppDatabase.saveChats([row]);
-    _bump();
-    return true;
+  ) {
+    return _serializeChatRow(chatId, () async {
+      final rows = await AppDatabase.loadChat(accountId, chatId);
+      if (rows.isEmpty) return false;
+      final updated = mutate(CachedChat.fromDbRow(rows.first));
+      if (updated == null) return false;
+      final row = Map<String, dynamic>.from(rows.first)
+        ..addAll(updated.toDbRow());
+      await AppDatabase.saveChats([row]);
+      _bump();
+      return true;
+    });
+  }
+
+  Future<void> _updateChatRow(
+    int accountId,
+    int chatId,
+    Map<String, dynamic>? Function(Map<String, dynamic> row) mutate,
+  ) {
+    return _serializeChatRow(chatId, () async {
+      final rows = await AppDatabase.loadChat(accountId, chatId);
+      if (rows.isEmpty) return;
+      final updated = mutate(Map<String, dynamic>.from(rows.first));
+      if (updated == null) return;
+      await AppDatabase.saveChats([updated]);
+    });
   }
 
   static Map<String, dynamic>? _decodePayload(dynamic raw) {
@@ -809,19 +839,22 @@ class ChatsModule {
       } else {
         await AppDatabase.deleteMessage(accountId, chatId, msgIdStr);
       }
-      final cachedChat = CachedChat.fromDbRow(rows.first);
-      if (cachedChat.lastMsgId == msgIdInt) {
-        await _reconcileLastMessage(
-          accountId,
-          chatId,
-          rows.first,
-          unread: unread,
-        );
-      } else if (unread != null) {
-        final newRow = Map<String, dynamic>.from(rows.first);
-        newRow['unread_count'] = unread;
-        await AppDatabase.saveChats([newRow]);
-      }
+      await _serializeChatRow(chatId, () async {
+        final fresh = await AppDatabase.loadChat(accountId, chatId);
+        if (fresh.isEmpty) return;
+        if (CachedChat.fromDbRow(fresh.first).lastMsgId == msgIdInt) {
+          await _reconcileLastMessage(
+            accountId,
+            chatId,
+            fresh.first,
+            unread: unread,
+          );
+        } else if (unread != null) {
+          final newRow = Map<String, dynamic>.from(fresh.first);
+          newRow['unread_count'] = unread;
+          await AppDatabase.saveChats([newRow]);
+        }
+      });
       _messageEventsController.add(
         keepDeleted
             ? MessageMarkedDeletedEvent(chatId, msgIdStr)
@@ -884,50 +917,47 @@ class ChatsModule {
       }
     }
 
-    final cached = CachedChat.fromDbRow(rows.first);
-    final isStaleLast =
-        status != 'REMOVED' &&
-        msgIdInt != null &&
-        cached.lastMsgId == msgIdInt &&
-        status != 'EDITED';
-    if (isStaleLast) {
-      _bump();
-      return;
-    }
+    await _updateChatRow(accountId, chatId, (newRow) {
+      final cached = CachedChat.fromDbRow(newRow);
+      final isStaleLast =
+          status != 'REMOVED' &&
+          msgIdInt != null &&
+          cached.lastMsgId == msgIdInt &&
+          status != 'EDITED';
+      if (isStaleLast) return null;
 
-    final newRow = Map<String, dynamic>.from(rows.first);
-    if (status != 'REMOVED') {
-      if (msgIdInt != null) newRow['last_msg_id'] = msgIdInt;
-      if (msgTime != null) {
-        newRow['last_msg_time'] = msgTime;
-        if (status != 'EDITED') {
-          newRow['last_event_time'] = msgTime;
+      if (status != 'REMOVED') {
+        if (msgIdInt != null) newRow['last_msg_id'] = msgIdInt;
+        if (msgTime != null) {
+          newRow['last_msg_time'] = msgTime;
+          if (status != 'EDITED') {
+            newRow['last_event_time'] = msgTime;
+          }
         }
+        newRow['last_msg_text'] = messagePreviewText(msg);
+        newRow['last_msg_elements'] = messagePreviewElements(msg);
+        newRow['last_msg_preview'] = messagePreviewMedia(msg);
+        if (senderId != null) newRow['last_msg_sender'] = senderId;
+        newRow['last_msg_status'] = 'sent';
       }
-      newRow['last_msg_text'] = messagePreviewText(msg);
-      newRow['last_msg_elements'] = messagePreviewElements(msg);
-      newRow['last_msg_preview'] = messagePreviewMedia(msg);
-      if (senderId != null) newRow['last_msg_sender'] = senderId;
-      newRow['last_msg_status'] = 'sent';
-    }
-    if (unread != null) newRow['unread_count'] = unread;
+      if (unread != null) newRow['unread_count'] = unread;
 
-    if (msgIdInt != null &&
-        status != 'REMOVED' &&
-        senderId != accountId &&
-        messageMentionsUser(msg, accountId)) {
-      newRow['last_mention_msg_id'] = msgIdInt;
-    }
+      if (msgIdInt != null &&
+          status != 'REMOVED' &&
+          senderId != accountId &&
+          messageMentionsUser(msg, accountId)) {
+        newRow['last_mention_msg_id'] = msgIdInt;
+      }
 
-    final pinned = _extractPinnedMessage(msg);
-    if (pinned != null) {
-      newRow['pinned_msg_id'] = pinned.id;
-      newRow['pinned_msg_text'] = pinned.text;
-      newRow['pinned_msg_time'] = pinned.time;
-      newRow['pinned_msg_is_preview'] = pinned.isPreview ? 1 : 0;
-    }
-
-    await AppDatabase.saveChats([newRow]);
+      final pinned = _extractPinnedMessage(msg);
+      if (pinned != null) {
+        newRow['pinned_msg_id'] = pinned.id;
+        newRow['pinned_msg_text'] = pinned.text;
+        newRow['pinned_msg_time'] = pinned.time;
+        newRow['pinned_msg_is_preview'] = pinned.isPreview ? 1 : 0;
+      }
+      return newRow;
+    });
     _bump();
   }
 
@@ -1010,19 +1040,22 @@ class ChatsModule {
     int accountId,
     int chatId,
   ) async {
-    final rows = await AppDatabase.loadChat(accountId, chatId);
-    if (rows.isEmpty) return;
-    final chat = CachedChat.fromDbRow(rows.first);
-    if (!chat.isLastMsgDeleted) return;
-    await _reconcileLastMessage(accountId, chatId, rows.first);
-    _bump();
+    await _serializeChatRow(chatId, () async {
+      final rows = await AppDatabase.loadChat(accountId, chatId);
+      if (rows.isEmpty) return;
+      if (!CachedChat.fromDbRow(rows.first).isLastMsgDeleted) return;
+      await _reconcileLastMessage(accountId, chatId, rows.first);
+      _bump();
+    });
   }
 
   Future<void> reconcileLastMessage(int accountId, int chatId) async {
-    final rows = await AppDatabase.loadChat(accountId, chatId);
-    if (rows.isEmpty) return;
-    await _reconcileLastMessage(accountId, chatId, rows.first);
-    _bump();
+    await _serializeChatRow(chatId, () async {
+      final rows = await AppDatabase.loadChat(accountId, chatId);
+      if (rows.isEmpty) return;
+      await _reconcileLastMessage(accountId, chatId, rows.first);
+      _bump();
+    });
   }
 
   Future<List<String>> reconcileDeletedFromFetch(
@@ -1134,13 +1167,12 @@ class ChatsModule {
     final accountId = await TokenStorage.getActiveAccountId();
     if (accountId == null) return;
 
-    final rows = await AppDatabase.loadChat(accountId, chatId);
-    if (rows.isEmpty) return;
-    final cached = CachedChat.fromDbRow(rows.first);
-    if (cached.participants[userId] == mark) return;
-    cached.participants[userId] = mark;
-    await AppDatabase.saveChats([cached.toDbRow()]);
-    _bump();
+    await _updateChat(accountId, chatId, (chat) {
+      if (chat.participants[userId] == mark) return null;
+      final participants = Map<int, int>.from(chat.participants)
+        ..[userId] = mark;
+      return chat.copyWith(participants: participants);
+    });
   }
 
   final Set<int> _pendingContactUpdates = {};

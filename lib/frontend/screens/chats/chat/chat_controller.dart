@@ -70,6 +70,8 @@ class ChatController extends ChangeNotifier {
 
   final List<HistoryGap> gaps = [];
 
+  final Map<String, String> _adoptedTempIds = {};
+
   bool get hasGap => gaps.isNotEmpty;
 
   static bool gapFillLeavesViewportInPlace(
@@ -87,6 +89,7 @@ class ChatController extends ChangeNotifier {
 
   int attach({required int chatId, int? myId}) {
     _sessionGen++;
+    _adoptedTempIds.clear();
     this.chatId = chatId;
     if (myId != null) this.myId = myId;
     return _sessionGen;
@@ -142,7 +145,26 @@ class ChatController extends ChangeNotifier {
         a.status == b.status &&
         a.text == b.text &&
         a.senderId == b.senderId &&
-        a.deleted == b.deleted;
+        a.deleted == b.deleted &&
+        _reactionSignature(a) == _reactionSignature(b);
+  }
+
+  static String _reactionSignature(CachedMessage message) {
+    final info = message.payload?['reactionInfo'];
+    if (info is! Map) return '';
+    final buffer = StringBuffer(info['yourReaction']?.toString() ?? '');
+    final counters = info['counters'];
+    if (counters is List) {
+      for (final counter in counters) {
+        if (counter is! Map) continue;
+        buffer
+          ..write('|')
+          ..write(counter['reaction'])
+          ..write(':')
+          ..write(counter['count']);
+      }
+    }
+    return buffer.toString();
   }
 
   Future<List<CachedMessage>> loadInitialFromDb({
@@ -495,14 +517,25 @@ class ChatController extends ChangeNotifier {
     messagesRev.value++;
   }
 
+  void adoptTempId(String tempId, String realId) {
+    if (tempId == realId) return;
+    _adoptedTempIds[tempId] = realId;
+  }
+
   void replaceMessage(String id, CachedMessage next) {
-    final i = messages.indexWhere((m) => m.id == id);
-    if (i == -1) return;
-    messages[i] = next;
+    final adopted = _adoptedTempIds.remove(id);
+    var index = messages.indexWhere((m) => m.id == id);
+    if (index == -1 && adopted != null) {
+      index = messages.indexWhere((m) => m.id == adopted);
+    }
+    if (index == -1) return;
+    messages[index] = next;
+    messages.removeWhere((m) => m.id == next.id && !identical(m, next));
     messagesRev.value++;
   }
 
   void removeMessage(String id) {
+    _adoptedTempIds.remove(id);
     final before = messages.length;
     messages.removeWhere((m) => m.id == id);
     if (messages.length != before) messagesRev.value++;

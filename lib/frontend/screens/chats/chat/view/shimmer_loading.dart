@@ -101,3 +101,72 @@ class ShimmerLoading extends StatelessWidget {
     );
   }
 }
+
+class ShimmerCrossFade extends StatefulWidget {
+  const ShimmerCrossFade({
+    super.key,
+    required this.showShimmer,
+    required this.shimmer,
+    required this.child,
+  });
+
+  final bool showShimmer;
+  final Animation<double> shimmer;
+  final Widget child;
+
+  @override
+  State<ShimmerCrossFade> createState() => _ShimmerCrossFadeState();
+}
+
+class _ShimmerCrossFadeState extends State<ShimmerCrossFade>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _fade = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+    reverseDuration: const Duration(milliseconds: 180),
+    value: widget.showShimmer ? 1.0 : 0.0,
+  );
+
+  @override
+  void didUpdateWidget(ShimmerCrossFade old) {
+    super.didUpdateWidget(old);
+    if (widget.showShimmer == old.showShimmer) return;
+    if (widget.showShimmer) {
+      _fade.forward();
+    } else {
+      _fade.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _fade.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _fade,
+      child: widget.child,
+      builder: (context, child) {
+        final t = _fade.value;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Opacity(opacity: 1 - t, child: child),
+            if (t > 0)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: t,
+                    child: ShimmerLoading(shimmer: widget.shimmer),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}

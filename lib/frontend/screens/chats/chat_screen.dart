@@ -331,6 +331,7 @@ class _ChatScreenState extends State<ChatScreen>
   StreamSubscription<SessionState>? _connSub;
   final Map<String, ValueNotifier<Map<String, dynamic>?>> _reactionNotifiers =
       {};
+  final Set<String> _reactionsInFlight = <String>{};
   final ValueNotifier<ReactionAnimationEvent?> _reactionAnimation =
       ValueNotifier(null);
   int _reactionAnimationToken = 0;
@@ -373,6 +374,7 @@ class _ChatScreenState extends State<ChatScreen>
     final previous = notifier.value;
     final applied = _applyLocalReaction(previous, emoji);
     notifier.value = applied;
+    _reactionsInFlight.add(message.id);
     final isToggleOff = applied == null || applied['yourReaction'] == null;
     unawaited(_sendReaction(message, emoji, isToggleOff, previous));
   }
@@ -391,17 +393,16 @@ class _ChatScreenState extends State<ChatScreen>
     } catch (_) {
       result = (ok: false, info: null);
     }
+    _reactionsInFlight.remove(message.id);
     if (!mounted) return;
-    final notifier = _reactionNotifiers[message.id];
-    if (notifier == null) return;
+    if (_reactionNotifiers[message.id] == null) return;
     if (!result.ok) {
-      notifier.value = previous;
+      _applyReactionInfo(message.id, previous);
       Haptics.error();
       showCustomNotification(context, 'Не удалось обновить реакцию');
       return;
     }
-    notifier.value = result.info;
-    _applyReactionInfoToMessage(message.id, result.info);
+    _applyReactionInfo(message.id, result.info);
     final appliedReaction = result.info?['yourReaction']?.toString();
     if (!isToggleOff &&
         appliedReaction != null &&
@@ -415,6 +416,16 @@ class _ChatScreenState extends State<ChatScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _reactionAnimation.value = event;
       });
+    }
+  }
+
+  void _applyReactionInfo(String messageId, Map<String, dynamic>? info) {
+    _applyReactionInfoToMessage(messageId, info);
+    final notifier = _reactionNotifiers[messageId];
+    if (notifier != null) {
+      notifier.value = info;
+    } else if (_messages.any((m) => m.id == messageId)) {
+      _reactionNotifiers[messageId] = ValueNotifier(info);
     }
   }
 
@@ -493,6 +504,7 @@ class _ChatScreenState extends State<ChatScreen>
         .toList();
     for (final id in dead) {
       _reactionNotifiers.remove(id)?.dispose();
+      _reactionsInFlight.remove(id);
     }
     _messageKeys.removeWhere((id, _) => !liveIds.contains(id));
   }
@@ -1138,6 +1150,21 @@ class _ChatScreenState extends State<ChatScreen>
     _messagesRev.value++;
   }
 
+  bool _isPendingOutgoing(CachedMessage m) =>
+      m.senderId == _myId &&
+      (m.id.startsWith('temp_') ||
+          m.status == 'sending' ||
+          m.status == 'pending');
+
+  int _pendingSlotFor(CachedMessage message) {
+    final text = message.text ?? '';
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      final candidate = _messages[i];
+      if (!_isPendingOutgoing(candidate)) continue;
+      if ((candidate.text ?? '') == text) return i;
+    }
+    return -1;
+  }
 
   void _onMessageEvent(MessageEvent event) {
     if (!mounted) return;
@@ -1146,15 +1173,10 @@ class _ChatScreenState extends State<ChatScreen>
       case MessageAddedEvent(:final message):
         if (_messages.any((m) => m.id == message.id)) return;
         if (message.senderId == _myId && !message.isControl) {
-          final pendingIdx = _messages.indexWhere(
-            (m) =>
-                m.senderId == _myId &&
-                (m.id.startsWith('temp_') ||
-                    m.status == 'sending' ||
-                    m.status == 'pending'),
-          );
+          final pendingIdx = _pendingSlotFor(message);
           if (pendingIdx != -1) {
             _lastSentId = message.id;
+            _chatController.adoptTempId(_messages[pendingIdx].id, message.id);
             _messages[pendingIdx] = message;
             _bumpMessages();
             return;
@@ -1199,7 +1221,8 @@ class _ChatScreenState extends State<ChatScreen>
         _messages[idx] = _messages[idx].copyWith(deleted: true);
         _bumpMessages();
       case MessageReactionsChangedEvent(:final messageId, :final reactionInfo):
-        _reactionNotifiers[messageId]?.value = reactionInfo;
+        if (_reactionsInFlight.contains(messageId)) return;
+        _applyReactionInfo(messageId, reactionInfo);
     }
   }
 
@@ -1906,7 +1929,9 @@ class _ChatScreenState extends State<ChatScreen>
                   child: underlap ? _buildUnderlapBody() : _buildColorBody(),
                 ),
                 builder: (context, body) => Scaffold(
-                  backgroundColor: underlap ? Colors.transparent : cs.surface,
+                  backgroundColor: underlap && widget.embedded
+                      ? Colors.transparent
+                      : cs.surface,
                   extendBodyBehindAppBar: underlap,
                   appBar: _buildAppBar(cs),
                   body: DesktopFileDrop(
