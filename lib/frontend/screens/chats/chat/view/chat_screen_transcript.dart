@@ -114,18 +114,22 @@ extension _ChatTranscriptBuild on _ChatScreenState {
   }) {
     final pinned = chat;
     if (pinned == null || !pinned.hasPinnedMessage) return null;
-    return PinnedMessageBanner(
-      text: pinned.pinnedMsgText,
-      isPreview: pinned.pinnedMsgIsPreview,
-      floating: floating,
-      borderRadius: borderRadius,
-      frosted: _effectiveChrome == ChatChromeStyle.transparent,
-      liquid: _liquidChrome,
-      backdropKey: _pillBackdrop,
-      onTap: _jumpToPinnedMessage,
-      onUnpin: pinned.canPinMessages(_myId)
-          ? () => unawaited(_unpinCurrentMessage())
-          : null,
+    return ValueListenableBuilder<CachedMessage?>(
+      valueListenable: _pinnedBannerMessage,
+      builder: (context, pinnedMessage, _) => PinnedMessageBanner(
+        text: pinned.pinnedMsgText,
+        isPreview: pinned.pinnedMsgIsPreview,
+        attachments: pinnedMessage?.attachments,
+        floating: floating,
+        borderRadius: borderRadius,
+        frosted: _effectiveChrome == ChatChromeStyle.transparent,
+        liquid: _liquidChrome,
+        backdropKey: _pillBackdrop,
+        onTap: _jumpToPinnedMessage,
+        onUnpin: pinned.canPinMessages(_myId)
+            ? () => unawaited(_unpinCurrentMessage())
+            : null,
+      ),
     );
   }
 

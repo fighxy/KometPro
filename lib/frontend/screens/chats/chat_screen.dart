@@ -585,6 +585,10 @@ class _ChatScreenState extends State<ChatScreen>
   bool _sessionAlive([int? gen]) =>
       mounted && (gen == null || _chatController.accept(gen));
   CachedChat? chat;
+  final ValueNotifier<CachedMessage?> _pinnedBannerMessage = ValueNotifier(
+    null,
+  );
+  int? _pinnedBannerId;
   bool _peerIsBot = false;
   bool _botStartRequested = false;
   ChatWallpaper? _wallpaper;
@@ -938,6 +942,7 @@ class _ChatScreenState extends State<ChatScreen>
     AppComposerStyle.current.removeListener(_onVisualStyleChanged);
     AppComposerBackground.current.removeListener(_onVisualStyleChanged);
     _composerHeight.dispose();
+    _pinnedBannerMessage.dispose();
     _pinnedBannerHeight.dispose();
     _floatingDateTimer?.cancel();
     _floatingDateCurved.dispose();

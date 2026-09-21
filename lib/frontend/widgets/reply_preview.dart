@@ -17,13 +17,14 @@ class ReplyPreview {
   static ReplyPreview of({
     String? text,
     List<MessageAttachment>? attachments,
+    bool keepMediaWithCaption = false,
   }) {
     final list = attachments;
     if (list == null || list.isEmpty) return const ReplyPreview._();
     final attachment = list.first;
     final icon = _iconFor(attachment.type);
     final captioned = text != null && text.trim().isNotEmpty;
-    if (captioned || !_hasThumbnail(attachment)) {
+    if (!_hasThumbnail(attachment) || (captioned && !keepMediaWithCaption)) {
       return ReplyPreview._(icon: icon);
     }
     return ReplyPreview._(
@@ -32,6 +33,18 @@ class ReplyPreview {
       round: attachment is VideoAttachment && attachment.isNote,
     );
   }
+
+  String? get kindLabel => switch (media?.type) {
+    AttachmentType.photo => 'Фото',
+    AttachmentType.video =>
+      (media is VideoAttachment && (media as VideoAttachment).isNote)
+          ? 'Видеосообщение'
+          : 'Видео',
+    AttachmentType.audio => 'Голосовое сообщение',
+    AttachmentType.file => 'Файл',
+    AttachmentType.sticker => 'Стикер',
+    _ => null,
+  };
 
   Size box({required double maxSide, double minSide = 72}) {
     final attachment = media;

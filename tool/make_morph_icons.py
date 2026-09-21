@@ -665,6 +665,8 @@ VOLUME_UP = 0xE050
 VOLUME_OFF = 0xE04F
 FLASH_ON = 0xE3E7
 FLASH_OFF = 0xE3E6
+BELL = 0xE7F5
+BELL_OFF = 0xE7F6
 
 POINTS = 56
 FPS = 60
@@ -1004,6 +1006,12 @@ SLASH_SPECS = [
     dict(
         name='ic_videocam_on_to_off',
         plain_cp=CAM, slashed_cp=CAM_OFF,
+        fill=1.0,
+        scale=[(0, 100), (11, 92), (DUR, 100)],
+    ),
+    dict(
+        name='ic_bell_on_to_off',
+        plain_cp=BELL, slashed_cp=BELL_OFF,
         fill=1.0,
         scale=[(0, 100), (11, 92), (DUR, 100)],
     ),

@@ -232,6 +232,8 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   int _currentNavIndex = 0;
 
+  static const int _listPreviewMaxLines = 2;
+
   static const List<PillNavItem> _chatsNavItems = [
     PillNavItem(icon: Symbols.chat_bubble, label: 'Чаты'),
     PillNavItem(icon: Symbols.call, label: 'Звонки'),
@@ -3078,6 +3080,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     bool messageItalic, {
     String prefix = '',
     ChatPreviewMedia? media,
+    int maxLines = 1,
   }) {
     if (draft != null) {
       return Text.rich(
@@ -3098,7 +3101,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             height: 1.15,
           ),
         ),
-        maxLines: 1,
+        maxLines: maxLines,
         overflow: TextOverflow.ellipsis,
       );
     }
@@ -3108,6 +3111,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       ranges: messageRanges,
       media: media,
       italic: messageItalic,
+      maxLines: maxLines,
       style: TextStyle(
         color: cs.outline,
         fontSize: 14,
@@ -3209,6 +3213,7 @@ class _ChatListScreenState extends State<ChatListScreen>
         draft == null &&
         previewMessageId != null &&
         (previewCipherText?.isNotEmpty ?? false);
+    final previewLines = DesktopDensity.enabled ? 1 : _listPreviewMaxLines;
     final Widget messageLine = canDecryptPreview
         ? DecryptedContent(
             accountId: _profile?.id ?? 0,
@@ -3224,6 +3229,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 messageItalic,
                 prefix: previewPrefix,
                 media: previewMedia,
+                maxLines: previewLines,
               ),
               MessageDecryptionState.wrongKey => _buildPreviewLine(
                 cs,
@@ -3232,6 +3238,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 draft,
                 true,
                 prefix: previewPrefix,
+                maxLines: previewLines,
               ),
               MessageDecryptionState.decrypted => _buildPreviewLine(
                 cs,
@@ -3240,6 +3247,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 draft,
                 messageItalic,
                 prefix: previewPrefix,
+                maxLines: previewLines,
               ),
             },
           )
@@ -3251,6 +3259,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             messageItalic,
             prefix: previewPrefix,
             media: previewMedia,
+            maxLines: previewLines,
           );
 
     final storyOwnerId = chatType == 'DIALOG'
@@ -3442,11 +3451,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: SizedBox(
-                    height: dense ? DesktopDensity.rowInnerHeight : 54,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
+                  child: ChatRowLines(
+                    height: dense ? DesktopDensity.rowInnerHeight : null,
+                    children: [
                         Padding(
                           padding: const EdgeInsets.only(top: 5),
                           child: Row(
@@ -3574,8 +3581,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
               ],
