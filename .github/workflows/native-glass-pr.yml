@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'lib/**'
-      - 'test/native_glass_test.dart'
+      - 'test/**'
       - 'ios/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
@@ -34,7 +34,7 @@ jobs:
       - run: flutter pub get --enforce-lockfile
       - run: flutter gen-l10n
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings lib test tool native/komet_crypto/lib
-      - run: flutter test test/native_glass_test.dart
+      - run: flutter test test/native_glass_test.dart test/desktop_design_test.dart
 
   ios:
     runs-on: macos-26
