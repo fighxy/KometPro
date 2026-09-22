@@ -20,7 +20,7 @@ class PinnedMessageBanner extends StatelessWidget {
   final BackdropKey? backdropKey;
   final List<MessageAttachment>? attachments;
 
-  static const double _thumbSide = 34;
+  static const double _thumbSide = 30;
 
   const PinnedMessageBanner({
     required this.text,
@@ -43,9 +43,7 @@ class PinnedMessageBanner extends StatelessWidget {
     );
     if (!preview.hasMedia) return null;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(
-        preview.round ? _thumbSide / 2 : 6,
-      ),
+      borderRadius: BorderRadius.circular(preview.round ? _thumbSide / 2 : 6),
       child: preview.thumbnail(
         size: const Size(_thumbSide, _thumbSide),
         cs: cs,
@@ -70,7 +68,7 @@ class PinnedMessageBanner extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Row(
             children: [
               Container(
@@ -96,10 +94,11 @@ class PinnedMessageBanner extends StatelessWidget {
                       style: TextStyle(
                         color: cs.primary,
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 13,
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     PinnedMessageText(
                       text: text,
                       isPreview: isPreview,
@@ -112,8 +111,12 @@ class PinnedMessageBanner extends StatelessWidget {
                 const SizedBox(width: 8),
                 IconButton(
                   icon: Icon(Symbols.close, color: cs.onSurfaceVariant),
-                  iconSize: 20,
-                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: _thumbSide,
+                    height: _thumbSide,
+                  ),
                   onPressed: onUnpin,
                 ),
               ],
@@ -216,7 +219,8 @@ class PinnedMessageTextState extends State<PinnedMessageText> {
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
         color: widget.color,
-        fontSize: 14,
+        fontSize: 13,
+        height: 1.2,
         fontStyle: isPreview ? FontStyle.italic : null,
       ),
     );

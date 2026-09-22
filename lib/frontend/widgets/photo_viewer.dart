@@ -13,9 +13,11 @@ import '../../backend/modules/messages.dart';
 import '../../backend/modules/shared_content.dart';
 import '../../core/cache/info_cache.dart';
 import '../../core/config/app_frost.dart';
+import '../../core/media/media_audio_session.dart';
 import '../../core/media/preview_image.dart';
 import '../../core/utils/download_history.dart';
 import '../../core/utils/format.dart';
+import '../../core/utils/logger.dart';
 import '../../core/utils/media_cache.dart';
 import '../../core/utils/media_saver.dart';
 import '../../core/utils/save_file_as.dart';
@@ -1264,6 +1266,7 @@ class _VideoPlaybackSession extends ChangeNotifier {
     required this.loadSources,
     required bool active,
   }) : _active = active {
+    if (active) MediaAudioSession.instance.hold(this);
     unawaited(_prepare());
   }
 
@@ -1348,7 +1351,8 @@ class _VideoPlaybackSession extends ChangeNotifier {
       if (_playWhenActive && _active) await controller.play();
       _loading = false;
       _notify();
-    } catch (_) {
+    } catch (e) {
+      logger.w('video playback failed: quality=$quality $e');
       if (!installed) await controller.dispose();
       if (generation == _loadGeneration && !_disposed) {
         if (!installed) {
@@ -1416,6 +1420,11 @@ class _VideoPlaybackSession extends ChangeNotifier {
   void setActive(bool active) {
     if (_active == active) return;
     _active = active;
+    if (active) {
+      MediaAudioSession.instance.hold(this);
+    } else {
+      MediaAudioSession.instance.release(this);
+    }
     final controller = _controller;
     if (!active) {
       if (controller != null && controller.value.isInitialized) {
@@ -1443,6 +1452,7 @@ class _VideoPlaybackSession extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _loadGeneration++;
+    MediaAudioSession.instance.release(this);
     _controller?.removeListener(_onTick);
     _controller?.dispose();
     super.dispose();

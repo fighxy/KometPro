@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/media/media_audio_session.dart';
 import '../../../core/utils/haptics.dart';
 import 'package:komet/backend/app_services.dart';
 import '../../../models/story.dart';
@@ -169,6 +170,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _video?.removeListener(_onVideoTick);
     _video?.dispose();
     _video = null;
+    MediaAudioSession.instance.release(this);
   }
 
   Future<void> _loadOwner(int index, {bool autostart = false}) async {
@@ -226,6 +228,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   Future<void> _startVideo(String url) async {
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     _video = controller;
+    MediaAudioSession.instance.hold(this);
     try {
       await controller.initialize();
       if (!mounted || _video != controller) {

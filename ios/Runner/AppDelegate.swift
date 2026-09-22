@@ -43,6 +43,7 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
     KometNotifications.shared.start()
+    KometCalls.shared.start()
 
     if let controller = window?.rootViewController as? FlutterViewController {
       let messenger = controller.binaryMessenger
@@ -52,6 +53,7 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
       registerNotifications(messenger)
       registerScreen(messenger)
       registerCalls(messenger)
+      registerAudioSession(messenger)
       registerHaptics(messenger)
       registerTransparency(messenger)
     }
@@ -212,20 +214,17 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
 
   private func registerCalls(_ messenger: FlutterBinaryMessenger) {
     method("ru.komet.app/calls", messenger) { call, result in
-      switch call.method {
-      case "consumeInitialCall",
-           "notifyAccepted",
-           "ensureOngoing",
-           "setScreenShare",
-           "dropOngoing",
-           "notifyEnded",
-           "cancelIncoming":
-        result(nil)
-      default:
-        result(FlutterMethodNotImplemented)
-      }
+      KometCalls.shared.handle(call, result: result)
     }
-    events("ru.komet.app/calls_events", messenger) { _ in }
+    events("ru.komet.app/calls_events", messenger) { sink in
+      KometCalls.shared.attach(sink)
+    }
+  }
+
+  private func registerAudioSession(_ messenger: FlutterBinaryMessenger) {
+    method("ru.komet.app/audio_session", messenger) { call, result in
+      KometAudioSession.shared.handle(call, result: result)
+    }
   }
 
   private func registerHaptics(_ messenger: FlutterBinaryMessenger) {

@@ -22,17 +22,25 @@ class IosChrome {
 
   static const double navInset = 16;
   static const double navLift = 10;
-  static const double expandedHeight = 68;
+  static const double expandedHeight = capsuleSide + 2 * _expandedPadding;
   static const double compactHeight = 52;
-  static const double outerRadius = 34;
-  static const double innerRadius = 26;
+  static const double outerRadius = expandedHeight / 2;
+  static const double innerRadius = expandedHeight * 0.382;
   static const double sheetRadius = 28;
   static const double collapseDistance = 56;
   static const double iconsOnlyAt = 0.55;
   static const double minimumTarget = 44;
 
+  static const double _expandedPadding = 6;
+  static const double _compactPadding = 4;
+
   static double navPaddingAt(double collapse) =>
-      lerpDouble(6, 4, collapse.clamp(0.0, 1.0))!;
+      lerpDouble(_expandedPadding, _compactPadding, collapse.clamp(0.0, 1.0))!;
+
+  /// Capsules in the chat header and the composer share one size and one
+  /// shadow depth; both read them from here so they cannot drift apart.
+  static const double capsuleSide = 46;
+  static const double capsuleDepth = 4;
 
   static const double listTitleSize = 17;
   static const FontWeight listTitleWeight = FontWeight.w600;
@@ -40,6 +48,14 @@ class IosChrome {
   static const FontWeight listPreviewWeight = FontWeight.w400;
   static const double listTimeSize = 14;
   static const FontWeight listTimeWeight = FontWeight.w400;
+
+  /// Read receipts take their size from the clock they sit next to: the chat
+  /// list's is 14pt, the bubble meta line's is smaller.
+  static const double statusIconSize = 16;
+  static const double statusIconDenseSize = 15;
+
+  static const double fieldTextSize = 16;
+  static const FontWeight fieldTextWeight = FontWeight.w500;
   static const double bubbleBodySize = 17;
   static const FontWeight bubbleBodyWeight = FontWeight.w400;
   static const double bubbleMetaSize = 12;

@@ -18,6 +18,7 @@ import 'package:komet/frontend/widgets/profile_hero.dart';
 import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/models/story.dart';
 import '../../../../../core/config/app_fonts.dart';
+import '../../../../../core/design/ios_chrome.dart';
 
 class ChatHeaderRow extends StatelessWidget {
   final bool glossy;
@@ -73,10 +74,10 @@ class ChatHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) =>
       glossy ? _glossyRow(context) : _materialRow(context);
 
-  static const double _controlSide = 46;
+  static const double _controlSide = IosChrome.capsuleSide;
   static const double _avatarSide = 36;
   static const double _pillGap = 6;
-  static const double _pillDepth = 4;
+  static const double _pillDepth = IosChrome.capsuleDepth;
 
   Color? get _pillColor => frosted || liquid ? AppFrost.glassTint(cs) : null;
 

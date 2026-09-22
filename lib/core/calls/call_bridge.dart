@@ -34,6 +34,29 @@ class CallBridge {
 
   bool get _native => _android || _ios;
 
+  /// iOS has neither FCM nor PushKit here, so a call that arrives over the
+  /// socket while the app is backgrounded is only visible if the platform
+  /// posts a local notification for it. Android has FKM for that instead.
+  bool get showsIncomingLocally => _ios;
+
+  Future<void> ensureNotificationPermission() async {
+    if (!_ios) return;
+    try {
+      await _method.invokeMethod<bool>('requestPermission');
+    } catch (e) {
+      logger.w('CallBridge.ensureNotificationPermission: $e');
+    }
+  }
+
+  Future<void> showIncoming(Map<String, String> data) async {
+    if (!showsIncomingLocally) return;
+    try {
+      await _method.invokeMethod<void>('showIncoming', {'data': data});
+    } catch (e) {
+      logger.w('CallBridge.showIncoming: $e');
+    }
+  }
+
   void init() {
     if (_started || !_native) return;
     _started = true;

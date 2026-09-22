@@ -32,7 +32,10 @@ void main() {
   test('height interpolates between expanded and compact', () {
     expect(IosChrome.heightAt(0), IosChrome.expandedHeight);
     expect(IosChrome.heightAt(1), IosChrome.compactHeight);
-    expect(IosChrome.heightAt(0.5), 60);
+    expect(
+      IosChrome.heightAt(0.5),
+      (IosChrome.expandedHeight + IosChrome.compactHeight) / 2,
+    );
     expect(IosChrome.iconsOnly(0.54), isFalse);
     expect(IosChrome.iconsOnly(0.55), isTrue);
   });

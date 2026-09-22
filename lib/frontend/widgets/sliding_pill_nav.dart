@@ -78,8 +78,8 @@ class SlidingPillNav extends StatelessWidget {
     this.backdropKey,
   });
 
-  static const double height = 68;
-  static const double compactHeight = 52;
+  static const double height = IosChrome.expandedHeight;
+  static const double compactHeight = IosChrome.compactHeight;
 
   static double heightAt(double collapse) => IosChrome.heightAt(collapse);
 

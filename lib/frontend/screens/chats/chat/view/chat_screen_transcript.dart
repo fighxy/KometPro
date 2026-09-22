@@ -195,8 +195,8 @@ extension _ChatTranscriptBuild on _ChatScreenState {
   double _pinnedBannerTop() {
     final glossy = AppVisualStyle.current.value.glossyChrome;
     return MediaQuery.paddingOf(context).top +
-        (glossy ? _glossyHeaderHeight : kToolbarHeight) -
-        _pinnedBannerLift;
+        (glossy ? _glossyHeaderHeight : kToolbarHeight) +
+        _pinnedBannerGap;
   }
 
   Widget _buildUnderlapBody() {

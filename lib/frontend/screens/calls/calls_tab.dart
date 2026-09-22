@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/backend/app_services.dart';
 import '../../../backend/modules/account.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/design/ios_chrome.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/calls/call_controller.dart';
 import '../../../backend/modules/calls.dart';
@@ -200,8 +201,8 @@ class _CallsTabState extends State<CallsTab>
                       displayName,
                       style: TextStyle(
                         color: isMissed ? cs.error : cs.onSurface,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                        fontSize: IosChrome.listTitleSize,
+                        fontWeight: IosChrome.listTitleWeight,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -215,7 +216,8 @@ class _CallsTabState extends State<CallsTab>
                           statusText,
                           style: TextStyle(
                             color: cs.onSurfaceVariant,
-                            fontSize: 14,
+                            fontSize: IosChrome.listPreviewSize,
+                            fontWeight: IosChrome.listPreviewWeight,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -230,7 +232,8 @@ class _CallsTabState extends State<CallsTab>
                 _formatDate(call.time),
                 style: TextStyle(
                   color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                  fontSize: 12,
+                  fontSize: IosChrome.listTimeSize,
+                  fontWeight: IosChrome.listTimeWeight,
                 ),
               ),
               const SizedBox(width: 4),

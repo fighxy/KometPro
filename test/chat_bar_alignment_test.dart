@@ -8,6 +8,7 @@ import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/core/config/app_chat_chrome.dart';
 import 'package:komet/core/config/app_composer_background.dart';
 import 'package:komet/core/config/app_composer_style.dart';
+import 'package:komet/core/design/ios_chrome.dart';
 import 'package:komet/frontend/screens/chats/chat/upload_status.dart';
 import 'package:komet/frontend/screens/chats/chat/view/chat_header.dart';
 import 'package:komet/frontend/screens/chats/chat/video_note_controller.dart';
@@ -181,12 +182,22 @@ void main() {
     expect(width - tester.getCenter(find.byType(ComposerMorphIcon)).dx, menu);
   });
 
-  testWidgets('glossy action geometry is untouched', (tester) async {
+  testWidgets('glossy action geometry follows the capsule token', (
+    tester,
+  ) async {
+    const barInset = 12.0;
+    const attachGap = 34.0;
     await pumpBar(tester, ComposerStyle.glossy);
     final width = tester.getSize(find.byType(ComposerInputBar)).width;
 
-    expect(tester.getCenter(find.byType(ComposerMorphIcon)).dx, width - 39);
+    expect(
+      tester.getCenter(find.byType(ComposerMorphIcon)).dx,
+      width - (barInset + IosChrome.capsuleSide / 2),
+    );
     expect(tester.getCenter(find.byIcon(Symbols.face)).dx, 38);
-    expect(tester.getCenter(find.byIcon(Symbols.attachment)).dx, width - 100);
+    expect(
+      tester.getCenter(find.byIcon(Symbols.attachment)).dx,
+      width - (barInset + IosChrome.capsuleSide + attachGap),
+    );
   });
 }

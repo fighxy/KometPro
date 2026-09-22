@@ -20,7 +20,7 @@ class MediaPlaybackPill extends StatelessWidget {
   final EdgeInsets margin;
   final int? onlyChatId;
 
-  static const double height = 48;
+  static const double height = 42;
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +238,7 @@ class _PillSurface extends StatelessWidget {
                                 ? Symbols.pause
                                 : Symbols.play_arrow,
                             color: cs.primary,
-                            size: 26,
+                            size: 22,
                             onTap: onToggle,
                           ),
                         ),
@@ -249,7 +249,7 @@ class _PillSurface extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: cs.onSurfaceVariant,
-                              fontSize: 15,
+                              fontSize: 14,
                             ),
                           ),
                         ),
@@ -257,7 +257,7 @@ class _PillSurface extends StatelessWidget {
                         _IconTap(
                           icon: Symbols.close,
                           color: cs.onSurfaceVariant,
-                          size: 22,
+                          size: 19,
                           onTap: onClose,
                         ),
                       ],
@@ -307,9 +307,9 @@ class _IconTap extends StatelessWidget {
         Haptics.tap();
         onTap();
       },
-      radius: 22,
+      radius: 20,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Icon(icon, color: color, size: size, fill: 1),
       ),
     );
@@ -330,19 +330,19 @@ class _SpeedChip extends StatelessWidget {
         Haptics.selection();
         onTap();
       },
-      radius: 22,
+      radius: 20,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
         decoration: BoxDecoration(
           color: cs.primaryContainer,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(9),
         ),
         child: Text(
           label,
           style: TextStyle(
             color: cs.onPrimaryContainer,
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
         ),

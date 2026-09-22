@@ -11,6 +11,7 @@ import '../../core/protocol/opcode_map.dart';
 import '../../core/protocol/packet.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/storage/token_storage.dart';
+import '../calls/call_bridge.dart';
 import '../config/komet_settings.dart';
 import '../utils/logger.dart';
 import 'fkm_bridge.dart';
@@ -86,13 +87,22 @@ class FkmController {
 
   /// Входящий звонок, когда приложение не на переднем плане.
   ///
-  /// Отдаётся тому же нативному коду, что и FCM-пуш: CallStyle, полноэкранный
-  /// интент, рингтон, приём и отклонение уже реализованы там.
+  /// На Android отдаётся тому же нативному коду, что и FCM-пуш: CallStyle,
+  /// полноэкранный интент, рингтон, приём и отклонение уже реализованы там.
+  /// На iOS нет ни FCM, ни PushKit, поэтому звонок показывает системное
+  /// локальное уведомление — общим остаётся только сбор полей ниже.
   Future<void> showIncomingCall(Map<dynamic, dynamic> payload) async {
-    if (!enabled.value) return;
+    final viaFkm = enabled.value;
+    final viaSystem = CallBridge.instance.showsIncomingLocally;
+    if (!viaFkm && !viaSystem) return;
     try {
       final data = await _buildCallNotification(payload);
-      if (data != null) await FkmBridge.instance.showCall(data);
+      if (data == null) return;
+      if (viaFkm) {
+        await FkmBridge.instance.showCall(data);
+      } else {
+        await CallBridge.instance.showIncoming(data);
+      }
     } catch (e) {
       logger.w('FKM: не удалось показать звонок: $e');
     }
