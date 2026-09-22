@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/cache/info_cache.dart';
+import '../../../core/design/ios_chrome.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/config/debug_test.dart';
 import '../../../core/contacts/contact_labels.dart';
@@ -279,8 +280,8 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
                               nameToDisplay,
                               style: TextStyle(
                                 color: cs.onSurface,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                                fontSize: IosChrome.listTitleSize,
+                                fontWeight: IosChrome.listTitleWeight,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -304,7 +305,8 @@ class _ContactsTabState extends State<ContactsTab> with SpectrumSurface {
                           subtitle,
                           style: TextStyle(
                             color: cs.onSurfaceVariant,
-                            fontSize: 14,
+                            fontSize: IosChrome.listPreviewSize,
+                            fontWeight: IosChrome.listPreviewWeight,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

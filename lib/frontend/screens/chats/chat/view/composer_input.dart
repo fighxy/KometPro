@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/core/config/desktop_density.dart';
+import 'package:komet/core/design/ios_chrome.dart';
 import 'package:komet/core/config/app_chat_chrome.dart';
 import 'package:komet/core/config/app_colors.dart';
 import 'package:komet/core/config/app_composer_background.dart';
@@ -338,7 +339,9 @@ class ComposerInputBar extends StatelessWidget {
                                             focusNode: messageFocusNode,
                                             style: TextStyle(
                                               color: cs.onSurface,
-                                              fontSize: 16,
+                                              fontSize: IosChrome.fieldTextSize,
+                                              fontWeight:
+                                                  IosChrome.fieldTextWeight,
                                             ),
                                             maxLines: null,
                                             textInputAction:
@@ -355,7 +358,10 @@ class ComposerInputBar extends StatelessWidget {
                                               hintText: hintText,
                                               hintStyle: TextStyle(
                                                 color: cs.onSurfaceVariant,
-                                                fontSize: 16,
+                                                fontSize:
+                                                    IosChrome.fieldTextSize,
+                                                fontWeight:
+                                                    IosChrome.fieldTextWeight,
                                               ),
                                               border: InputBorder.none,
                                               isDense: true,
@@ -620,7 +626,7 @@ class ComposerInputBar extends StatelessWidget {
 
   bool get _translucent => _frost || _liquid;
 
-  double get _controlSize => _flat ? 48 : 54;
+  double get _controlSize => _flat ? 48 : IosChrome.capsuleSide;
 
   bool get _island => DesktopDensity.enabled;
 
@@ -679,12 +685,8 @@ class ComposerInputBar extends StatelessWidget {
       blurSigma: _frost ? AppFrost.sigma : null,
       liquid: _liquid,
       backdropKey: backdropKey,
-      borderRadius: BorderRadius.circular(28),
-      depth: 8,
-      borderSide: BorderSide(
-        color: cs.outlineVariant.withValues(alpha: 0.5),
-        width: 0.5,
-      ),
+      borderRadius: BorderRadius.circular(_controlSize / 2),
+      depth: IosChrome.capsuleDepth,
       child: child,
     );
   }
@@ -731,7 +733,7 @@ class ComposerInputBar extends StatelessWidget {
       onTap: onTap,
       onLongPress: onLongPress,
       keepInkLayer: true,
-      depth: 8,
+      depth: IosChrome.capsuleDepth,
       child: child,
     );
   }

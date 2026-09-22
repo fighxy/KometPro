@@ -34,12 +34,19 @@ class IosChrome {
   static double navPaddingAt(double collapse) =>
       lerpDouble(6, 4, collapse.clamp(0.0, 1.0))!;
 
+  /// Capsules in the chat header and the composer share one size and one
+  /// shadow depth; both read them from here so they cannot drift apart.
+  static const double capsuleSide = 46;
+  static const double capsuleDepth = 4;
+
   static const double listTitleSize = 17;
   static const FontWeight listTitleWeight = FontWeight.w600;
   static const double listPreviewSize = 15;
   static const FontWeight listPreviewWeight = FontWeight.w400;
   static const double listTimeSize = 14;
   static const FontWeight listTimeWeight = FontWeight.w400;
+  static const double fieldTextSize = 16;
+  static const FontWeight fieldTextWeight = FontWeight.w500;
   static const double bubbleBodySize = 17;
   static const FontWeight bubbleBodyWeight = FontWeight.w400;
   static const double bubbleMetaSize = 12;
