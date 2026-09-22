@@ -26,6 +26,7 @@ import '../../../core/storage/hidden_story_authors.dart';
 import '../../widgets/glossy_pill.dart';
 import '../../widgets/sheet_helpers.dart';
 import '../../widgets/swipe_route.dart';
+import '../../../core/design/ios_chrome.dart';
 import '../../widgets/sliding_pill_nav.dart';
 import '../../widgets/informer_banner_tile.dart';
 import '../../../backend/modules/share_sender.dart';
@@ -2418,6 +2419,7 @@ class _ChatListScreenState extends State<ChatListScreen>
               );
             }
             final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+            final fabBottom = bottomInset + 12 + SlidingPillNav.height + 10;
             final pageW = constraints.maxWidth;
             final pageH = constraints.maxHeight;
             final navInnerW = pageW - 40;
@@ -2565,7 +2567,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                           if (_fabController.value > 0)
                             Positioned(
                               right: 20,
-                              bottom: bottomInset + 90 + 74,
+                              bottom: fabBottom + IosChrome.capsuleSide + 18,
                               child: RepaintBoundary(
                                 child: Transform.scale(
                                   scale: val,
@@ -2579,7 +2581,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                             ),
                           Positioned(
                             right: 20,
-                            bottom: bottomInset + 90,
+                            bottom: fabBottom,
                             child: ValueListenableBuilder<VisualStyle>(
                               valueListenable: AppVisualStyle.current,
                               builder: (context, style, child) =>
@@ -2602,7 +2604,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                                             : null,
                                         liquid: liquid,
                                         backdropKey: _frostBackdrop,
-                                        borderRadius: BorderRadius.circular(28),
+                                        borderRadius: BorderRadius.circular(
+                                          IosChrome.capsuleSide / 2,
+                                        ),
                                         elevated: true,
                                         depth: 12,
                                         child: child!,
@@ -2611,15 +2615,15 @@ class _ChatListScreenState extends State<ChatListScreen>
                                     child: child,
                                   ),
                               child: SizedBox(
-                                width: 56,
-                                height: 56,
+                                width: IosChrome.capsuleSide,
+                                height: IosChrome.capsuleSide,
                                 child: Center(
                                   child: Transform.rotate(
                                     angle: val * (pi / 4),
                                     child: Icon(
                                       Symbols.add,
                                       color: cs.onPrimaryContainer,
-                                      size: 28,
+                                      size: 24,
                                       weight: 400,
                                     ),
                                   ),
