@@ -4,6 +4,8 @@ import 'package:komet/core/config/app_frost.dart';
 import 'package:komet/core/config/app_liquid_glass.dart';
 import 'package:komet/frontend/widgets/animated_text_swap.dart';
 import 'package:komet/frontend/widgets/liquid_glass.dart';
+import 'package:komet/frontend/widgets/reply_preview.dart';
+import 'package:komet/models/attachment.dart';
 import 'package:komet/l10n/app_localizations.dart';
 
 class PinnedMessageBanner extends StatelessWidget {
@@ -16,6 +18,9 @@ class PinnedMessageBanner extends StatelessWidget {
   final bool liquid;
   final BorderRadius? borderRadius;
   final BackdropKey? backdropKey;
+  final List<MessageAttachment>? attachments;
+
+  static const double _thumbSide = 34;
 
   const PinnedMessageBanner({
     required this.text,
@@ -27,7 +32,27 @@ class PinnedMessageBanner extends StatelessWidget {
     this.frosted = false,
     this.liquid = false,
     this.backdropKey,
+    this.attachments,
   });
+
+  Widget? _thumbnail(ColorScheme cs) {
+    final preview = ReplyPreview.of(
+      text: text,
+      attachments: attachments,
+      keepMediaWithCaption: true,
+    );
+    if (!preview.hasMedia) return null;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(
+        preview.round ? _thumbSide / 2 : 6,
+      ),
+      child: preview.thumbnail(
+        size: const Size(_thumbSide, _thumbSide),
+        cs: cs,
+        radius: 0,
+      ),
+    );
+  }
 
   BorderRadius get _radius => borderRadius ?? BorderRadius.circular(16);
 
@@ -50,13 +75,17 @@ class PinnedMessageBanner extends StatelessWidget {
             children: [
               Container(
                 width: 3,
-                height: 34,
+                height: _thumbSide,
                 decoration: BoxDecoration(
                   color: cs.primary,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(width: 10),
+              if (_thumbnail(cs) case final thumb?) ...[
+                thumb,
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

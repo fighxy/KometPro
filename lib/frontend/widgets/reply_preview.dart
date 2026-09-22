@@ -17,13 +17,14 @@ class ReplyPreview {
   static ReplyPreview of({
     String? text,
     List<MessageAttachment>? attachments,
+    bool keepMediaWithCaption = false,
   }) {
     final list = attachments;
     if (list == null || list.isEmpty) return const ReplyPreview._();
     final attachment = list.first;
     final icon = _iconFor(attachment.type);
     final captioned = text != null && text.trim().isNotEmpty;
-    if (captioned || !_hasThumbnail(attachment)) {
+    if (!_hasThumbnail(attachment) || (captioned && !keepMediaWithCaption)) {
       return ReplyPreview._(icon: icon);
     }
     return ReplyPreview._(

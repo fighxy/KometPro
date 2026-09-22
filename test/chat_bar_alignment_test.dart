@@ -137,12 +137,9 @@ void main() {
                 headerStatus: status,
                 scheduledCount: scheduled,
                 otherUnread: unread,
-                showCall: true,
                 onClose: null,
                 onOpenInfo: () {},
                 onOpenScheduled: () {},
-                onCall: () {},
-                onSearch: () {},
                 onMenu: (_) {},
               ),
             ),
@@ -174,7 +171,6 @@ void main() {
     await pumpHeader(tester);
     final headerWidth = tester.getSize(find.byType(ChatHeaderRow)).width;
     final back = tester.getCenter(find.byIcon(Symbols.arrow_back)).dx;
-    final call = headerWidth - tester.getCenter(find.byIcon(Symbols.call)).dx;
     final menu =
         headerWidth - tester.getCenter(find.byIcon(Symbols.more_vert)).dx;
 
@@ -182,7 +178,6 @@ void main() {
     final width = tester.getSize(find.byType(ComposerInputBar)).width;
 
     expect(tester.getCenter(find.byIcon(Symbols.face)).dx, back);
-    expect(width - tester.getCenter(find.byIcon(Symbols.attachment)).dx, call);
     expect(width - tester.getCenter(find.byType(ComposerMorphIcon)).dx, menu);
   });
 

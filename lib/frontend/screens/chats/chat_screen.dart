@@ -41,9 +41,7 @@ import '../../../backend/modules/contacts.dart';
 import '../../../backend/modules/animoji.dart';
 import '../../../models/animoji.dart';
 import '../../../backend/modules/complaints.dart';
-import '../../../core/calls/call_controller.dart';
 import '../../../core/media/rlottie/rlottie.dart';
-import '../calls/call_screen.dart';
 import '../../../core/protocol/opcode_map.dart';
 import '../../../core/protocol/packet.dart';
 import '../../../core/push/notification_bridge.dart';
@@ -585,6 +583,10 @@ class _ChatScreenState extends State<ChatScreen>
   bool _sessionAlive([int? gen]) =>
       mounted && (gen == null || _chatController.accept(gen));
   CachedChat? chat;
+  final ValueNotifier<CachedMessage?> _pinnedBannerMessage = ValueNotifier(
+    null,
+  );
+  int? _pinnedBannerId;
   bool _peerIsBot = false;
   bool _botStartRequested = false;
   ChatWallpaper? _wallpaper;
@@ -610,6 +612,9 @@ class _ChatScreenState extends State<ChatScreen>
   bool get _liquidChrome =>
       AppVisualStyle.current.value.glossyChrome &&
       ChatChromeMaterial.isLiquid(AppChatChrome.current.value);
+
+  bool get _channelBarVisible =>
+      !_commentsMode && widget.chatType == 'CHANNEL' && !_previewChat;
 
   ChatChromeStyle get _effectiveChrome {
     final chrome = AppChatChrome.current.value;
@@ -938,6 +943,7 @@ class _ChatScreenState extends State<ChatScreen>
     AppComposerStyle.current.removeListener(_onVisualStyleChanged);
     AppComposerBackground.current.removeListener(_onVisualStyleChanged);
     _composerHeight.dispose();
+    _pinnedBannerMessage.dispose();
     _pinnedBannerHeight.dispose();
     _floatingDateTimer?.cancel();
     _floatingDateCurved.dispose();
@@ -1325,17 +1331,23 @@ class _ChatScreenState extends State<ChatScreen>
             dividerAfter: true,
             onTap: () => unawaited(_openMiniApp()),
           ),
-        ChatMenuItem(
-          icon: (chat?.isMuted ?? false)
-              ? Symbols.volume_off
-              : Symbols.volume_up,
-          label: (chat?.isMuted ?? false)
-              ? 'Включить уведомления'
-              : 'Отключить уведомления',
-          dividerAfter: true,
-          onTap: _toggleChatMute,
-        ),
-        ChatMenuItem(icon: Symbols.search, label: 'Поиск', onTap: _openSearch),
+        if (!_channelBarVisible)
+          ChatMenuItem(
+            icon: (chat?.isMuted ?? false)
+                ? Symbols.volume_off
+                : Symbols.volume_up,
+            label: (chat?.isMuted ?? false)
+                ? 'Включить уведомления'
+                : 'Отключить уведомления',
+            dividerAfter: true,
+            onTap: _toggleChatMute,
+          ),
+        if (!_channelBarVisible)
+          ChatMenuItem(
+            icon: Symbols.search,
+            label: 'Поиск',
+            onTap: _openSearch,
+          ),
         ChatMenuItem(
           icon: Symbols.wallpaper,
           label: 'Изменить обои',
@@ -1595,54 +1607,6 @@ class _ChatScreenState extends State<ChatScreen>
       embedded: widget.embedded,
       onClose: widget.onClose,
     );
-  }
-
-  Future<void> _startCall() async {
-    if (widget.chatType != 'DIALOG' || _peerIsBot) {
-      showCustomNotification(context, 'Звонки доступны только в диалогах');
-      return;
-    }
-    // Звонок уже идёт (возможно, свёрнут) — просто открываем его экран снова.
-    final navigator = Navigator.of(context);
-    final active = CallController.instance.activeSession;
-    if (active != null) {
-      await navigator.push(
-        MaterialPageRoute(
-          builder: (_) => CallScreen(
-            name: widget.name,
-            avatarUrl: widget.imageUrl.isNotEmpty ? widget.imageUrl : null,
-            session: active,
-          ),
-        ),
-      );
-      _onCallScreenClosed();
-      return;
-    }
-    final peerId = widget.chatId ^ _myId;
-    if (peerId <= 0) return;
-    try {
-      final session = await CallController.instance.startOutgoing(peerId);
-      if (!mounted) return;
-      await navigator.push(
-        MaterialPageRoute(
-          builder: (_) => CallScreen(
-            name: widget.name,
-            avatarUrl: widget.imageUrl.isNotEmpty ? widget.imageUrl : null,
-            session: session,
-          ),
-        ),
-      );
-      _onCallScreenClosed();
-    } catch (_) {
-      if (!mounted) return;
-      showCustomNotification(context, 'Не удалось начать звонок');
-    }
-  }
-
-  void _onCallScreenClosed() {
-    if (!mounted) return;
-    if (CallController.instance.activeSession != null) return;
-    unawaited(_refreshAfterCall());
   }
 
   Future<void> _refreshAfterCall() async {

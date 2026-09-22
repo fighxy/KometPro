@@ -38,6 +38,7 @@ extension _ChatHistoryLoad on _ChatScreenState {
         _seedPresenceFromChat();
         _recomputeHeaderStatus();
         _syncOtherReadTime();
+        unawaited(_syncPinnedMessage());
       }
     } catch (_) {}
 
@@ -360,7 +361,8 @@ extension _ChatHistoryLoad on _ChatScreenState {
     }
     final navigator = Navigator.of(context);
     final chatRoute = ModalRoute.of(context);
-    navigator.push(
+    final callable = widget.chatType == 'DIALOG';
+    final opened = navigator.push(
       MaterialPageRoute(
         builder: (_) => ChatInfoScreen(
           chatId: widget.chatId,
@@ -379,6 +381,13 @@ extension _ChatHistoryLoad on _ChatScreenState {
         ),
       ),
     );
+    if (callable) {
+      unawaited(
+        opened.then((_) {
+          if (mounted) unawaited(_refreshAfterCall());
+        }),
+      );
+    }
   }
 
   void _forwardMessageById(String messageId) {
@@ -715,6 +724,31 @@ extension _ChatHistoryLoad on _ChatScreenState {
       return;
     }
     setState(() => chat = fresh);
+    unawaited(_syncPinnedMessage());
+  }
+
+  Future<void> _syncPinnedMessage() async {
+    final id = chat?.pinnedMsgId;
+    if (id == null) {
+      _pinnedBannerId = null;
+      _pinnedBannerMessage.value = null;
+      return;
+    }
+    if (_pinnedBannerId == id) return;
+    _pinnedBannerId = id;
+    _pinnedBannerMessage.value = null;
+
+    final messageId = id.toString();
+    final loaded = _messages.where((m) => m.id == messageId).firstOrNull;
+    if (loaded != null) {
+      _pinnedBannerMessage.value = loaded;
+      return;
+    }
+    final row = await AppDatabase.loadMessage(_myId, widget.chatId, messageId);
+    if (!mounted || _pinnedBannerId != id) return;
+    _pinnedBannerMessage.value = row == null
+        ? null
+        : CachedMessage.fromDbRow(row);
   }
 
   Future<void> _runBadgeRefresh() async {

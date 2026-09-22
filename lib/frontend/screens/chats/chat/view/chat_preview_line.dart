@@ -82,6 +82,7 @@ class ChatPreviewLine extends StatelessWidget {
   final ChatPreviewMedia? media;
   final TextStyle style;
   final bool italic;
+  final int maxLines;
 
   const ChatPreviewLine({
     super.key,
@@ -91,6 +92,7 @@ class ChatPreviewLine extends StatelessWidget {
     this.ranges = const [],
     this.media,
     this.italic = false,
+    this.maxLines = 1,
   });
 
   @override
@@ -145,7 +147,7 @@ class ChatPreviewLine extends StatelessWidget {
 
     return Text.rich(
       TextSpan(style: bodyStyle, children: spans),
-      maxLines: 1,
+      maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
     );
   }

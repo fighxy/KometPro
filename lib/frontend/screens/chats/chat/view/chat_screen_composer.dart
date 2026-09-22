@@ -103,6 +103,7 @@ extension _ChatComposerBuild on _ChatScreenState {
                   channelSubscribed: !_previewChat,
                   channelSubscribing: _subscribing,
                   onSubscribe: _subscribeChannel,
+                  onOpenSearch: _commentsMode ? null : _openSearch,
                   showStickerButton: !_commentsMode,
                   showAttachButton: !_commentsMode,
                   forceSend: _commentsMode,

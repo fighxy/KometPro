@@ -16,7 +16,9 @@ import 'package:komet/frontend/screens/chats/chat/upload_status.dart';
 import 'package:komet/frontend/screens/chats/chat/video_note_controller.dart';
 import 'package:komet/frontend/screens/chats/chat/voice_record_controller.dart';
 import 'package:komet/frontend/widgets/composer_morph_icon.dart';
+import 'package:komet/core/config/app_animations.dart';
 import 'package:komet/frontend/widgets/glossy_pill.dart';
+import 'package:komet/frontend/widgets/lottie_slash_icon.dart';
 import 'package:komet/frontend/widgets/liquid_glass.dart';
 import 'package:komet/frontend/widgets/paste_media_scope.dart';
 import 'package:komet/frontend/widgets/reply_preview.dart';
@@ -57,6 +59,7 @@ class ComposerInputBar extends StatelessWidget {
     this.channelSubscribed = true,
     this.channelSubscribing = false,
     this.onSubscribe,
+    this.onOpenSearch,
     this.showStickerButton = true,
     this.showAttachButton = true,
     this.forceSend = false,
@@ -97,6 +100,7 @@ class ComposerInputBar extends StatelessWidget {
   final bool channelSubscribed;
   final bool channelSubscribing;
   final VoidCallback? onSubscribe;
+  final VoidCallback? onOpenSearch;
   final bool showStickerButton;
   final bool showAttachButton;
   final bool forceSend;
@@ -109,6 +113,72 @@ class ComposerInputBar extends StatelessWidget {
     return ValueListenableBuilder<List<CachedMessage>>(
       valueListenable: forwardMessages,
       builder: (context, forwards, _) => _build(context, forwards),
+    );
+  }
+
+  Widget _channelActionBar(BuildContext context, ColorScheme cs) {
+    return SafeArea(
+      top: false,
+      bottom: bottomSafe,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: GlossyPill(
+                onTap: onToggleMute,
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(22),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                depth: 4,
+                child: SizedBox(
+                  height: 24,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      LottieSlashIcon(
+                        asset: AppAnimations.bellOnToOff,
+                        slashed: isMuted,
+                        color: cs.onSurface,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isMuted ? 'Вкл. звук' : 'Выкл. звук',
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (onOpenSearch != null) ...[
+              const SizedBox(width: 10),
+              GlossyPill(
+                onTap: onOpenSearch,
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(22),
+                padding: const EdgeInsets.all(10),
+                depth: 4,
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: Icon(
+                    Symbols.search,
+                    size: 22,
+                    color: cs.onSurface,
+                    weight: 500,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -155,8 +225,7 @@ class ComposerInputBar extends StatelessWidget {
           ),
         );
       }
-      // Subscribed: no bottom bar. Mute lives in the ⋮ menu, like Telegram.
-      return const SizedBox.shrink();
+      return _channelActionBar(context, cs);
     }
 
     final bar = SafeArea(

@@ -9,4 +9,5 @@ class AppAnimations {
   static const String chat = '$_dir/ic_chat.json';
   static const String call = '$_dir/ic_call.json';
   static const String contacts = '$_dir/ic_contacts.json';
+  static const String bellOnToOff = '$_dir/ic_bell_on_to_off.json';
 }

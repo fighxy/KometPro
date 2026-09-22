@@ -102,7 +102,7 @@ void main() {
     expect(find.text('Видео'), findsNothing);
   });
 
-  testWidgets('ответ на видео с подписью — подпись и иконка видео', (
+  testWidgets('ответ на видео с подписью — подпись и миниатюра кадра', (
     tester,
   ) async {
     await _pump(
@@ -111,8 +111,8 @@ void main() {
     );
 
     expect(find.text('смотри что нашёл'), findsOneWidget);
-    expect(find.byIcon(Symbols.videocam), findsOneWidget);
-    expect(find.byType(Image), findsNothing);
+    expect(find.byType(Image), findsWidgets);
+    expect(find.byIcon(Symbols.videocam), findsNothing);
   });
 
   testWidgets('ответ на голосовое — иконка микрофона и подпись', (

@@ -414,6 +414,69 @@ class _RenderStackMatchTopWidth extends RenderBox
 /// enclosing [IntrinsicWidth] grows the bubble to fit the chips on one line
 /// instead of collapsing to the widest single chip (which makes them stack).
 /// It still wraps to multiple lines when the available width is smaller.
+class _CollapsibleReactions extends StatefulWidget {
+  const _CollapsibleReactions({
+    super.key,
+    required this.chips,
+    required this.builder,
+  });
+
+  final List<Widget> chips;
+  final Widget Function(List<Widget> children) builder;
+
+  @override
+  State<_CollapsibleReactions> createState() => _CollapsibleReactionsState();
+}
+
+class _CollapsibleReactionsState extends State<_CollapsibleReactions> {
+  bool _expanded = false;
+
+  @override
+  void didUpdateWidget(_CollapsibleReactions old) {
+    super.didUpdateWidget(old);
+    if (widget.chips.length <= MessageBubble._reactionCollapseLimit) {
+      _expanded = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const limit = MessageBubble._reactionCollapseLimit;
+    final chips = widget.chips;
+    if (_expanded || chips.length <= limit + 1) return widget.builder(chips);
+
+    final cs = Theme.of(context).colorScheme;
+    return widget.builder([
+      ...chips.take(limit),
+      Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: MessageBubble._reactionChipRadius,
+          onTap: () => setState(() => _expanded = true),
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.92),
+              borderRadius: MessageBubble._reactionChipRadius,
+            ),
+            child: Text(
+              '+${chips.length - limit}',
+              style: TextStyle(
+                color: cs.onSurfaceVariant,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                height: 1,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
 class _ReactionsWrap extends Wrap {
   const _ReactionsWrap({
     super.spacing,
@@ -713,6 +776,8 @@ class _ReactionPopState extends State<_ReactionPop>
 }
 
 class MessageBubble extends StatelessWidget {
+  static const int _reactionCollapseLimit = 8;
+
   static const BorderRadius _reactionChipRadius = BorderRadius.all(
     Radius.circular(14),
   );
@@ -999,6 +1064,7 @@ class MessageBubble extends StatelessWidget {
   }
 
   static const double _replyWidthShare = 0.75;
+  static const double _replyThumbSide = 32;
 
   static const List<Color> _senderPalette = [
     Color(0xFFE57373),
@@ -1022,30 +1088,43 @@ class MessageBubble extends StatelessWidget {
       padding: needsInset
           ? const EdgeInsets.fromLTRB(12, 6, 12, 2)
           : const EdgeInsets.only(bottom: 2),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: name,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: _senderColor(message.senderId),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (role != null && role.isNotEmpty)
-              TextSpan(
-                text: ' $role',
+          ),
+          if (role != null && role.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                role,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: cs.onSurfaceVariant,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  height: 1.25,
                 ),
               ),
+            ),
           ],
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        ],
       ),
     );
 
@@ -1645,10 +1724,14 @@ class MessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
-            child: _ReactionsWrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: chips,
+            child: _CollapsibleReactions(
+              key: ValueKey('reactions_${message.id}'),
+              chips: chips,
+              builder: (children) => _ReactionsWrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: children,
+              ),
             ),
           ),
           if (carriesMeta) ...[
@@ -1795,7 +1878,12 @@ class MessageBubble extends StatelessWidget {
     if (chips.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: inset,
-      child: Wrap(spacing: 6, runSpacing: 6, children: chips),
+      child: _CollapsibleReactions(
+        key: ValueKey('reactions_${message.id}'),
+        chips: chips,
+        builder: (children) =>
+            Wrap(spacing: 6, runSpacing: 6, children: children),
+      ),
     );
   }
 
@@ -1833,11 +1921,6 @@ class MessageBubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: chipBackground,
           borderRadius: _reactionChipRadius,
-          border: Border.all(
-            color: isYours
-                ? cs.primary.withValues(alpha: 0.5)
-                : cs.outlineVariant.withValues(alpha: 0.7),
-          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2109,10 +2192,14 @@ class MessageBubble extends StatelessWidget {
     final preview = ReplyPreview.of(
       text: reply.text,
       attachments: reply.attachments,
+      keepMediaWithCaption: true,
     );
 
-    final Widget? body;
-    if (preview.hasMedia) {
+    final hasCaption = reply.text?.trim().isNotEmpty ?? false;
+
+    Widget? body;
+    Widget? thumb;
+    if (preview.hasMedia && !hasCaption) {
       final maxSide = math.max(
         72.0,
         math.min(150.0, maxBubbleWidth * _replyWidthShare - 24),
@@ -2130,10 +2217,28 @@ class MessageBubble extends StatelessWidget {
           ),
         ),
       );
-    } else if (rawPreview.isNotEmpty) {
-      body = _replyQuoteText(cs, textColor, preview.icon, rawPreview, quotedId);
     } else {
-      body = null;
+      if (rawPreview.isNotEmpty) {
+        body = _replyQuoteText(
+          cs,
+          textColor,
+          preview.hasMedia ? null : preview.icon,
+          rawPreview,
+          hasCaption ? quotedId : null,
+        );
+      }
+      if (preview.hasMedia) {
+        thumb = ClipRRect(
+          borderRadius: BorderRadius.circular(
+            preview.round ? _replyThumbSide / 2 : 4,
+          ),
+          child: preview.thumbnail(
+            size: const Size(_replyThumbSide, _replyThumbSide),
+            cs: cs,
+            radius: 0,
+          ),
+        );
+      }
     }
 
     final quote = Container(
@@ -2143,21 +2248,30 @@ class MessageBubble extends StatelessWidget {
         color: accent.withValues(alpha: 0.10),
         border: Border(left: BorderSide(color: accent, width: 3)),
       ),
-      child: Column(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: accent,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
+          if (thumb != null) ...[thumb, const SizedBox(width: 6)],
+          Flexible(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                ?body,
+              ],
             ),
           ),
-          ?body,
         ],
       ),
     );

@@ -259,3 +259,24 @@ class _DesktopChatChromeState extends State<DesktopChatChrome> {
     return child;
   }
 }
+
+class ChatRowLines extends StatelessWidget {
+  const ChatRowLines({super.key, required this.children, this.height});
+
+  final List<Widget> children;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    if (height == null) {
+      return Column(mainAxisSize: MainAxisSize.min, children: children);
+    }
+    return SizedBox(
+      height: height,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: children,
+      ),
+    );
+  }
+}
