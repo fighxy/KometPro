@@ -73,6 +73,10 @@ class ChatHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) =>
       glossy ? _glossyRow(context) : _materialRow(context);
 
+  static const double _controlSide = 46;
+  static const double _avatarSide = 36;
+  static const double _pillGap = 6;
+
   Color? get _pillColor => frosted || liquid ? AppFrost.glassTint(cs) : null;
 
   double? get _pillBlur =>
@@ -81,19 +85,20 @@ class ChatHeaderRow extends StatelessWidget {
   Widget _glossyRow(BuildContext context) {
     final nameStyle = TextStyle(
       color: cs.onSurface,
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: FontWeight.w600,
+      height: 1.2,
       fontFamily: displayFontOf(context),
     );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+      padding: const EdgeInsets.fromLTRB(10, 3, 10, 7),
       child: Row(
         children: [
           _backWithBadge(
             cs,
             SizedBox(
-              width: 56,
-              height: 56,
+              width: _controlSide,
+              height: _controlSide,
               child: GlossyPill(
                 color: _pillColor,
                 blurSigma: _pillBlur,
@@ -121,7 +126,7 @@ class ChatHeaderRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: _pillGap),
           Expanded(
             child: GlossyPill(
               color: _pillColor,
@@ -129,14 +134,14 @@ class ChatHeaderRow extends StatelessWidget {
               liquid: liquid,
               backdropKey: backdropKey,
               onTap: onOpenInfo,
-              padding: const EdgeInsets.fromLTRB(6, 6, 16, 6),
+              padding: const EdgeInsets.fromLTRB(5, 5, 14, 5),
               child: Row(
                 children: [
                   _withOnlineDot(
                     cs,
                     _heroAvatar(
                       context,
-                      44,
+                      _avatarSide,
                       (d) => imageUrl.isNotEmpty
                           ? CircleAvatar(
                               radius: d / 2,
@@ -161,7 +166,7 @@ class ChatHeaderRow extends StatelessWidget {
                             ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -203,8 +208,9 @@ class ChatHeaderRow extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: cs.onSurfaceVariant,
-                              fontSize: 13,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w400,
+                              height: 1.2,
                             ),
                           ),
                         ),
@@ -215,39 +221,28 @@ class ChatHeaderRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: _pillGap),
           GlossyPill(
             color: _pillColor,
             blurSigma: _pillBlur,
             liquid: liquid,
             backdropKey: backdropKey,
-            padding: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 1),
             child: SizedBox(
-              height: 56,
+              height: _controlSide,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ValueListenableBuilder<int>(
                     valueListenable: scheduledCount,
                     builder: (_, count, _) => count > 0
-                        ? IconButton(
-                            icon: Icon(
-                              Symbols.schedule,
-                              weight: 500,
-                              color: cs.onSurface,
-                            ),
-                            onPressed: onOpenScheduled,
-                          )
+                        ? _headerAction(Symbols.schedule, onOpenScheduled)
                         : const SizedBox.shrink(),
                   ),
                   Builder(
-                    builder: (btnContext) => IconButton(
-                      icon: Icon(
-                        Symbols.more_vert,
-                        weight: 500,
-                        color: cs.onSurface,
-                      ),
-                      onPressed: () => onMenu(btnContext),
+                    builder: (btnContext) => _headerAction(
+                      Symbols.more_vert,
+                      () => onMenu(btnContext),
                     ),
                   ),
                 ],
@@ -490,6 +485,21 @@ class ChatHeaderRow extends StatelessWidget {
             child: EncryptionLockBadge(size: dotSize + 4),
           ),
       ],
+    );
+  }
+
+  Widget _headerAction(IconData icon, VoidCallback onPressed) {
+    return SizedBox(
+      width: 42,
+      height: _controlSide,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+        visualDensity: VisualDensity.compact,
+        iconSize: 22,
+        icon: Icon(icon, weight: 500, color: cs.onSurface),
+        onPressed: onPressed,
+      ),
     );
   }
 
