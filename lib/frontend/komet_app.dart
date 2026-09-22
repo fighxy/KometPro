@@ -749,16 +749,25 @@ class KometAppState extends State<KometApp>
   ColorScheme _adjustLightScheme(ColorScheme base) {
     return base.copyWith(
       surface: Color.alphaBlend(
+        base.primary.withValues(alpha: 0.04),
+        const Color(0xFFFFFFFF),
+      ),
+      surfaceContainerLowest: const Color(0xFFFFFFFF),
+      surfaceContainerLow: Color.alphaBlend(
+        base.primary.withValues(alpha: 0.05),
+        const Color(0xFFF1F1F8),
+      ),
+      surfaceContainer: Color.alphaBlend(
         base.primary.withValues(alpha: 0.06),
-        const Color(0xFFF5F5FA),
+        const Color(0xFFEAEAF3),
       ),
       surfaceContainerHigh: Color.alphaBlend(
-        base.primary.withValues(alpha: 0.08),
-        const Color(0xFFEAEAF2),
+        base.primary.withValues(alpha: 0.07),
+        const Color(0xFFE2E2EE),
       ),
       surfaceContainerHighest: Color.alphaBlend(
-        base.primary.withValues(alpha: 0.11),
-        const Color(0xFFDEDEE8),
+        base.primary.withValues(alpha: 0.10),
+        const Color(0xFFD7D7E5),
       ),
     );
   }

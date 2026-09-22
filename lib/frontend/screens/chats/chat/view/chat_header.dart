@@ -76,6 +76,7 @@ class ChatHeaderRow extends StatelessWidget {
   static const double _controlSide = 46;
   static const double _avatarSide = 36;
   static const double _pillGap = 6;
+  static const double _pillDepth = 4;
 
   Color? get _pillColor => frosted || liquid ? AppFrost.glassTint(cs) : null;
 
@@ -102,6 +103,7 @@ class ChatHeaderRow extends StatelessWidget {
               child: GlossyPill(
                 color: _pillColor,
                 blurSigma: _pillBlur,
+                depth: _pillDepth,
                 liquid: liquid,
                 backdropKey: backdropKey,
                 onTap: () {
@@ -131,6 +133,7 @@ class ChatHeaderRow extends StatelessWidget {
             child: GlossyPill(
               color: _pillColor,
               blurSigma: _pillBlur,
+              depth: _pillDepth,
               liquid: liquid,
               backdropKey: backdropKey,
               onTap: onOpenInfo,
@@ -225,6 +228,7 @@ class ChatHeaderRow extends StatelessWidget {
           GlossyPill(
             color: _pillColor,
             blurSigma: _pillBlur,
+            depth: _pillDepth,
             liquid: liquid,
             backdropKey: backdropKey,
             padding: const EdgeInsets.symmetric(horizontal: 1),

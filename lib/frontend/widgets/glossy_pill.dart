@@ -89,8 +89,9 @@ class GlossyDecor {
 
   static BoxShadow dropShadow(Color base, double depth) {
     final dark = _parts(base).dark;
+    final strength = (depth / 10).clamp(0.0, 1.0);
     return BoxShadow(
-      color: Colors.black.withValues(alpha: dark ? 0.5 : 0.22),
+      color: Colors.black.withValues(alpha: (dark ? 0.5 : 0.22) * strength),
       blurRadius: depth * 1.6,
       spreadRadius: -depth * 0.3,
       offset: Offset(0, depth * 0.6),
