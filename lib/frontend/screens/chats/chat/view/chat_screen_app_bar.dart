@@ -104,16 +104,9 @@ extension _ChatAppBarBuild on _ChatScreenState {
                             headerStatus: _headerStatusNotifier,
                             scheduledCount: _scheduledCount,
                             otherUnread: _otherUnread,
-                            showCall:
-                                !_commentsMode &&
-                                widget.chatType == 'DIALOG' &&
-                                widget.chatId != 0 &&
-                                !_peerIsBot,
-                            onSearch: _openSearch,
                             onClose: widget.onClose,
                             onOpenInfo: _commentsMode ? () {} : _openChatInfo,
                             onOpenScheduled: _openScheduledMessages,
-                            onCall: _startCall,
                             onMenu: _commentsMode ? (_) {} : _openChatMenu,
                           ),
                         ),

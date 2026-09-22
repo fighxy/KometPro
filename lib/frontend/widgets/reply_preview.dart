@@ -34,18 +34,6 @@ class ReplyPreview {
     );
   }
 
-  String? get kindLabel => switch (media?.type) {
-    AttachmentType.photo => 'Фото',
-    AttachmentType.video =>
-      (media is VideoAttachment && (media as VideoAttachment).isNote)
-          ? 'Видеосообщение'
-          : 'Видео',
-    AttachmentType.audio => 'Голосовое сообщение',
-    AttachmentType.file => 'Файл',
-    AttachmentType.sticker => 'Стикер',
-    _ => null,
-  };
-
   Size box({required double maxSide, double minSide = 72}) {
     final attachment = media;
     if (round) return Size(maxSide, maxSide);

@@ -361,7 +361,8 @@ extension _ChatHistoryLoad on _ChatScreenState {
     }
     final navigator = Navigator.of(context);
     final chatRoute = ModalRoute.of(context);
-    navigator.push(
+    final callable = widget.chatType == 'DIALOG';
+    final opened = navigator.push(
       MaterialPageRoute(
         builder: (_) => ChatInfoScreen(
           chatId: widget.chatId,
@@ -380,6 +381,13 @@ extension _ChatHistoryLoad on _ChatScreenState {
         ),
       ),
     );
+    if (callable) {
+      unawaited(
+        opened.then((_) {
+          if (mounted) unawaited(_refreshAfterCall());
+        }),
+      );
+    }
   }
 
   void _forwardMessageById(String messageId) {

@@ -38,12 +38,9 @@ class ChatHeaderRow extends StatelessWidget {
   final ValueListenable<String> headerStatus;
   final ValueListenable<int> scheduledCount;
   final ValueListenable<int> otherUnread;
-  final bool showCall;
-  final VoidCallback onSearch;
   final VoidCallback? onClose;
   final VoidCallback onOpenInfo;
   final VoidCallback onOpenScheduled;
-  final VoidCallback onCall;
   final void Function(BuildContext) onMenu;
 
   const ChatHeaderRow({
@@ -66,12 +63,9 @@ class ChatHeaderRow extends StatelessWidget {
     required this.headerStatus,
     required this.scheduledCount,
     required this.otherUnread,
-    required this.showCall,
-    required this.onSearch,
     required this.onClose,
     required this.onOpenInfo,
     required this.onOpenScheduled,
-    required this.onCall,
     required this.onMenu,
   });
 
@@ -246,24 +240,6 @@ class ChatHeaderRow extends StatelessWidget {
                           )
                         : const SizedBox.shrink(),
                   ),
-                  IconButton(
-                    tooltip: 'Поиск в переписке',
-                    icon: Icon(
-                      Symbols.search,
-                      weight: 500,
-                      color: cs.onSurface,
-                    ),
-                    onPressed: onSearch,
-                  ),
-                  if (showCall)
-                    IconButton(
-                      icon: Icon(
-                        Symbols.call,
-                        weight: 500,
-                        color: cs.onSurface,
-                      ),
-                      onPressed: onCall,
-                    ),
                   Builder(
                     builder: (btnContext) => IconButton(
                       icon: Icon(
@@ -414,16 +390,6 @@ class ChatHeaderRow extends StatelessWidget {
                 )
               : const SizedBox.shrink(),
         ),
-        IconButton(
-          tooltip: 'Поиск в переписке',
-          icon: Icon(Symbols.search, weight: 400, color: cs.onSurface),
-          onPressed: onSearch,
-        ),
-        if (showCall)
-          IconButton(
-            icon: Icon(Symbols.call, weight: 400, color: cs.onSurface),
-            onPressed: onCall,
-          ),
         Builder(
           builder: (btnContext) => IconButton(
             icon: Icon(Symbols.more_vert, weight: 400, color: cs.onSurface),

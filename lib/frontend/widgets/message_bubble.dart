@@ -1318,7 +1318,13 @@ class MessageBubble extends StatelessWidget {
                 if (reply != null) ...[
                   _CapIntrinsicWidth(
                     cap: maxBubbleWidth * _replyWidthShare,
-                    child: _buildReplyQuote(context, cs, textColor, reply),
+                    child: _buildReplyQuote(
+                      context,
+                      cs,
+                      textColor,
+                      reply,
+                      maxBubbleWidth,
+                    ),
                   ),
                   const SizedBox(height: 4),
                 ],
@@ -1342,7 +1348,13 @@ class MessageBubble extends StatelessWidget {
                       right: padding == EdgeInsets.zero ? 8 : 0,
                       bottom: 4,
                     ),
-                    child: _buildReplyQuote(context, cs, textColor, reply),
+                    child: _buildReplyQuote(
+                      context,
+                      cs,
+                      textColor,
+                      reply,
+                      maxBubbleWidth,
+                    ),
                   ),
                 ),
             ],
@@ -2147,6 +2159,7 @@ class MessageBubble extends StatelessWidget {
     ColorScheme cs,
     Color textColor,
     ReplyInfo reply,
+    double maxBubbleWidth,
   ) {
     final accent = _senderColor(reply.senderId);
     final name = reply.senderId == myId
@@ -2182,29 +2195,51 @@ class MessageBubble extends StatelessWidget {
       keepMediaWithCaption: true,
     );
 
-    final caption = rawPreview.isNotEmpty ? rawPreview : preview.kindLabel;
-    final Widget? body = caption == null
-        ? null
-        : _replyQuoteText(
-            cs,
-            textColor,
-            preview.hasMedia ? null : preview.icon,
-            caption,
-            rawPreview.isNotEmpty ? quotedId : null,
-          );
+    final hasCaption = reply.text?.trim().isNotEmpty ?? false;
 
-    final Widget? thumb = preview.hasMedia
-        ? ClipRRect(
-            borderRadius: BorderRadius.circular(
-              preview.round ? _replyThumbSide / 2 : 4,
-            ),
-            child: preview.thumbnail(
-              size: const Size(_replyThumbSide, _replyThumbSide),
-              cs: cs,
-              radius: 0,
-            ),
-          )
-        : null;
+    Widget? body;
+    Widget? thumb;
+    if (preview.hasMedia && !hasCaption) {
+      final maxSide = math.max(
+        72.0,
+        math.min(150.0, maxBubbleWidth * _replyWidthShare - 24),
+      );
+      final size = preview.box(maxSide: maxSide);
+      body = Padding(
+        padding: const EdgeInsets.only(top: 2, bottom: 1),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: SizedBox(
+            width: size.width,
+            height: size.height,
+            child: preview.thumbnail(size: size, cs: cs),
+          ),
+        ),
+      );
+    } else {
+      if (rawPreview.isNotEmpty) {
+        body = _replyQuoteText(
+          cs,
+          textColor,
+          preview.hasMedia ? null : preview.icon,
+          rawPreview,
+          hasCaption ? quotedId : null,
+        );
+      }
+      if (preview.hasMedia) {
+        thumb = ClipRRect(
+          borderRadius: BorderRadius.circular(
+            preview.round ? _replyThumbSide / 2 : 4,
+          ),
+          child: preview.thumbnail(
+            size: const Size(_replyThumbSide, _replyThumbSide),
+            cs: cs,
+            radius: 0,
+          ),
+        );
+      }
+    }
 
     final quote = Container(
       padding: const EdgeInsets.fromLTRB(8, 3, 8, 3),
