@@ -7,6 +7,7 @@ on:
       - 'lib/**'
       - 'test/**'
       - 'ios/**'
+      - 'third_party/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - '.github/workflows/native-glass-pr.yml'

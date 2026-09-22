@@ -31,7 +31,15 @@ Pod::Spec.new do |s|
     'rlottie/src/vector/pixman/*.S',
     'rlottie/src/lottie/rapidjson/msinttypes/*.h',
   ]
-  s.public_header_files = 'rlottie/inc/*.h'
+  s.public_header_files = [
+    'rlottie/inc/rlottie_capi.h',
+    'rlottie/inc/rlottiecommon.h',
+  ]
+  s.project_header_files = [
+    'rlottie/inc/rlottie.h',
+    'rlottie_build/apple/config.h',
+    'rlottie/src/**/*.h',
+  ]
 
   s.pod_target_xcconfig = {
     # On Apple arm64 the compiler predefines __ARM_NEON__, which pulls in
