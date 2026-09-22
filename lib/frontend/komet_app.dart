@@ -969,9 +969,20 @@ class _StartupScreenState extends State<_StartupScreen> {
     KometApp.stateOf(context)?.markShellReady();
   }
 
+  /// Picks up the session the app left behind when no account is marked
+  /// active — after a crash, or after an add-profile that never finished.
+  ///
+  /// Most-recently-used order first, so the profile that comes back is the
+  /// one the switcher would also call the previous account.
   Future<int?> _recoverActiveAccount() async {
     final profiles = await AppDatabase.loadAllProfiles();
-    for (final profile in profiles) {
+    final order = await TokenStorage.recentAccountIds();
+    final byId = {for (final profile in profiles) profile.id: profile};
+    final candidates = <ProfileData>[
+      for (final id in order) ?byId.remove(id),
+      ...byId.values,
+    ];
+    for (final profile in candidates) {
       if (await TokenStorage.readToken(profile.id) != null) {
         await TokenStorage.setActiveAccount(profile.id);
         await AppDatabase.setActiveAccount(profile.id);

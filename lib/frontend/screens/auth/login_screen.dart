@@ -725,6 +725,20 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    return PopScope(
+      canPop: widget.returnToAccountId == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_onBackPressed());
+      },
+      child: _buildBody(context, cs, l10n),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    ColorScheme cs,
+    AppLocalizations l10n,
+  ) {
     return Scaffold(
       backgroundColor: cs.surface,
       body: GestureDetector(
