@@ -48,8 +48,7 @@ import '../../../models/informer_banner.dart';
 import '../calls/calls_tab.dart';
 import '../contacts/contacts_tab.dart';
 import '../profile/settings_tab.dart';
-import '../auth/login_screen.dart';
-import '../digital_id/digital_id_web_screen.dart';
+import '../../widgets/account_switch_bar.dart';
 import '../../widgets/account_switcher_overlay.dart';
 import 'chat/view/chat_list_shimmer.dart';
 import 'chat/view/chat_list_tile.dart';
@@ -80,7 +79,6 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/storage/draft_store.dart';
 import '../../../core/storage/archived_chats_store.dart';
 import '../../../core/storage/chat_encryption_store.dart';
-import '../../../core/storage/token_storage.dart';
 import '../../../core/storage/chat_activity_store.dart';
 import 'package:komet/backend/app_deps.dart';
 import '../../widgets/app_scope.dart';
@@ -4011,33 +4009,10 @@ class _ChatListScreenState extends State<ChatListScreen>
         controller.dispose();
         if (!mounted) return;
         if (accountId == null) {
-          final previousId = await TokenStorage.getActiveAccountId();
-          await resetDigitalIdSession();
-          try {
-            await _deps.account.beginAddAccount();
-          } catch (_) {}
-          if (!mounted) return;
-          await Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (_) => LoginScreen(returnToAccountId: previousId),
-            ),
-            (route) => false,
-          );
+          await AccountFlows.addProfile(context);
           return;
         }
-        await resetDigitalIdSession();
-        try {
-          await _deps.account.switchAccount(accountId);
-        } catch (e) {
-          if (!mounted) return;
-          showCustomNotification(context, 'Не удалось переключить аккаунт');
-          return;
-        }
-        if (!mounted) return;
-        await Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AdaptiveShell()),
-          (route) => false,
-        );
+        await AccountFlows.switchTo(context, accountId);
       },
     );
   }

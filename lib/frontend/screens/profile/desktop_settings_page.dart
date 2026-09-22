@@ -20,12 +20,11 @@ import '../../../core/utils/haptics.dart';
 import '../../../core/utils/update_checker.dart';
 import '../../../l10n/app_localizations.dart';
 import 'package:komet/frontend/komet_app.dart' show KometApp;
-import '../../widgets/app_scope.dart';
+import '../../widgets/account_switch_bar.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/settings_card.dart';
 import '../../widgets/small_spinner.dart';
 import '../../widgets/update_dialog.dart';
-import '../auth/login_screen.dart';
 import '../auth/proxy_settings_sheet.dart';
 import 'app_icon_screen.dart';
 import 'appearance_screen.dart';
@@ -157,19 +156,7 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
       ),
     );
     if (ok != true || !mounted) return;
-    final nav = KometApp.navigatorKey.currentState;
-    try {
-      await AppScope.read(context).account.logout();
-    } catch (e) {
-      if (mounted) showCustomNotification(context, 'Не удалось выйти: $e');
-      return;
-    }
-    if (nav != null) {
-      await nav.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
+    await AccountFlows.logout(context);
   }
 
   Future<void> _checkUpdate() async {
@@ -301,6 +288,7 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
               avatarUrl: _profile!.baseUrl,
             );
           },
+          onAddProfile: () => unawaited(AccountFlows.addProfile(context)),
           onLogout: _logout,
         );
       case DesktopSettingsSection.appearance:
@@ -627,12 +615,14 @@ class _AccountPane extends StatelessWidget {
     required this.profile,
     required this.onEdit,
     required this.onQr,
+    required this.onAddProfile,
     required this.onLogout,
   });
 
   final ProfileData? profile;
   final VoidCallback onEdit;
   final VoidCallback onQr;
+  final VoidCallback onAddProfile;
   final VoidCallback onLogout;
 
   @override
@@ -744,6 +734,11 @@ class _AccountPane extends StatelessWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 16),
+                  const SizedBox(
+                    width: 220,
+                    child: AccountSwitchBar(compact: true),
+                  ),
                 ],
               ),
             ),
@@ -767,6 +762,11 @@ class _AccountPane extends StatelessWidget {
         const SizedBox(height: 16),
         SettingsCard(
           children: [
+            SettingsNavTile(
+              icon: Symbols.person_add,
+              label: 'Добавить профиль',
+              onTap: onAddProfile,
+            ),
             SettingsNavTile(
               icon: Symbols.logout,
               label: 'Выйти из аккаунта',

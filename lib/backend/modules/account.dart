@@ -332,6 +332,18 @@ class AccountModule {
   Future<void> authorizeWebQrLogin(String qrLink) =>
       _sessions.authorizeWebQrLogin(qrLink);
 
+  /// Everything an account keeps in memory. Adding, switching, logging in and
+  /// logging out all leave one account for another, so they all drop it here
+  /// rather than each keeping its own list that the next cache can fall out of.
+  void _dropAccountScopedCaches() {
+    ContactCache.clear();
+    TranscriptionCache.clear();
+    ComplaintsModule.clear();
+    ContactsModule.clearBlockedCache();
+    banners.clear();
+    chats.resetForAccountSwitch();
+  }
+
   Future<void> beginAddAccount() async {
     final existing = await AppDatabase.loadAllProfiles();
     await SpoofingService.prepareNewAccountSpoof(
@@ -344,12 +356,7 @@ class AccountModule {
 
     await TokenStorage.clearActiveAccount();
 
-    ContactCache.clear();
-    TranscriptionCache.clear();
-    ComplaintsModule.clear();
-    ContactsModule.clearBlockedCache();
-    banners.clear();
-    chats.resetForAccountSwitch();
+    _dropAccountScopedCaches();
 
     logger.i('Добавление аккаунта: сессия сброшена, активный аккаунт очищен');
   }
@@ -360,12 +367,7 @@ class AccountModule {
       await _api.disconnect();
     } catch (_) {}
 
-    ContactCache.clear();
-    TranscriptionCache.clear();
-    ComplaintsModule.clear();
-    ContactsModule.clearBlockedCache();
-    banners.clear();
-    chats.resetForAccountSwitch();
+    _dropAccountScopedCaches();
 
     await _api.connect();
     if (_api.state != SessionState.online) {
@@ -393,12 +395,7 @@ class AccountModule {
     await AppDatabase.setActiveAccount(accountId);
     await TokenStorage.setActiveAccount(accountId);
 
-    ContactCache.clear();
-    TranscriptionCache.clear();
-    ComplaintsModule.clear();
-    ContactsModule.clearBlockedCache();
-    banners.clear();
-    chats.resetForAccountSwitch();
+    _dropAccountScopedCaches();
     await ContactsModule.primeCacheFromDb(accountId);
 
     try {
@@ -422,6 +419,33 @@ class AccountModule {
 
   Future<List<ProfileData>> listAccounts() async {
     return AppDatabase.loadAllProfiles();
+  }
+
+  /// Signed-in profiles other than the active one, most recently used first.
+  ///
+  /// A profile counts only while its token survives, so an account that was
+  /// logged out elsewhere never shows up as something to switch back to.
+  Future<List<ProfileData>> otherAccounts() async {
+    final activeId = await TokenStorage.getActiveAccountId();
+    final order = await TokenStorage.recentAccountIds();
+    final profiles = await AppDatabase.loadAllProfiles();
+    final others = <ProfileData>[];
+    for (final profile in profiles) {
+      if (profile.id == activeId) continue;
+      final token = await TokenStorage.readToken(profile.id);
+      if (token == null || token.isEmpty) continue;
+      others.add(profile);
+    }
+    int rank(ProfileData p) {
+      final index = order.indexOf(p.id);
+      return index < 0 ? order.length : index;
+    }
+
+    others.sort((a, b) {
+      final byRank = rank(a).compareTo(rank(b));
+      return byRank != 0 ? byRank : a.id.compareTo(b.id);
+    });
+    return others;
   }
 
   Future<void> removeAccount(int accountId) async {
@@ -478,12 +502,7 @@ class AccountModule {
     if (accountId != null) {
       await removeAccount(accountId);
     }
-    ContactCache.clear();
-    TranscriptionCache.clear();
-    ComplaintsModule.clear();
-    ContactsModule.clearBlockedCache();
-    banners.clear();
-    chats.resetForAccountSwitch();
+    _dropAccountScopedCaches();
   }
 
   Future<void> _logoutOnServer(int? accountId) async {

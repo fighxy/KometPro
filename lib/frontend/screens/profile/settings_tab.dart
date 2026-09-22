@@ -20,6 +20,7 @@ import '../../../core/utils/update_checker.dart';
 import '../../../l10n/app_localizations.dart';
 import 'package:komet/frontend/widgets/app_scope.dart';
 import 'package:komet/frontend/komet_app.dart' show KometApp;
+import '../../widgets/account_switch_bar.dart';
 import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/avatar_history_screen.dart';
 import '../../widgets/connection_status.dart';
@@ -31,7 +32,6 @@ import '../../widgets/sheet_helpers.dart';
 import '../../widgets/small_spinner.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/update_dialog.dart';
-import '../auth/login_screen.dart';
 import '../auth/proxy_settings_sheet.dart';
 import '../../../core/config/app_digital_id_mode.dart';
 import '../../../core/utils/webview_support.dart';
@@ -324,25 +324,7 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
     await _doLogout();
   }
 
-  Future<void> _doLogout() async {
-    final navState = KometApp.navigatorKey.currentState;
-    try {
-      await AppScope.read(context).account.logout();
-    } catch (e) {
-      if (mounted) showCustomNotification(context, 'Не удалось выйти: $e');
-      return;
-    }
-    await resetDigitalIdSession();
-    try {
-      await AppScope.read(context).api.connect();
-    } catch (_) {}
-    if (navState != null) {
-      await navState.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
-  }
+  Future<void> _doLogout() => AccountFlows.logout(context);
 
   @override
   Widget build(BuildContext context) {
@@ -395,6 +377,7 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
                         _buildHeader(ctx, cs, fullName, phone, t),
                   ),
                 ),
+                const SliverToBoxAdapter(child: AccountSwitchBar()),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -641,6 +624,12 @@ class _SettingsTabState extends State<SettingsTab> with SpectrumSurface {
                               ),
                             );
                           },
+                        ),
+                        _SettingsItem(
+                          icon: Symbols.person_add,
+                          label: 'Добавить профиль',
+                          onTap: () =>
+                              unawaited(AccountFlows.addProfile(context)),
                         ),
                         _SettingsItem(
                           icon: Symbols.logout,

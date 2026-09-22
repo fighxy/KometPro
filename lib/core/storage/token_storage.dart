@@ -9,6 +9,7 @@ class SecureStorageLockedException implements Exception {
 class TokenStorage {
   static const _tokenPrefix = 'auth_token_';
   static const _activeAccountKey = 'active_account_id';
+  static const _recentAccountsKey = 'recent_account_ids';
 
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(),
@@ -96,6 +97,31 @@ class TokenStorage {
   static Future<void> setActiveAccount(int accountId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_activeAccountKey, accountId.toString());
+    final order = _readRecent(prefs)..remove(accountId);
+    order.insert(0, accountId);
+    await _writeRecent(prefs, order);
+  }
+
+  /// Signed-in accounts in most-recently-used order. The head is whichever
+  /// account is active now, so the next entry is the profile a switch — or a
+  /// logout — should fall back to.
+  static Future<List<int>> recentAccountIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    return _readRecent(prefs);
+  }
+
+  static List<int> _readRecent(SharedPreferences prefs) => [
+    for (final raw in prefs.getStringList(_recentAccountsKey) ?? const [])
+      if (int.tryParse(raw) case final id?) id,
+  ];
+
+  static Future<void> _writeRecent(
+    SharedPreferences prefs,
+    List<int> order,
+  ) async {
+    await prefs.setStringList(_recentAccountsKey, [
+      for (final id in order) '$id',
+    ]);
   }
 
   static Future<void> clearActiveAccount() async {
@@ -118,9 +144,10 @@ class TokenStorage {
   static Future<void> deleteAccount(int accountId) async {
     await deleteToken(accountId);
     final activeId = await getActiveAccountId();
+    final prefs = await SharedPreferences.getInstance();
     if (activeId == accountId) {
-      final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_activeAccountKey);
     }
+    await _writeRecent(prefs, _readRecent(prefs)..remove(accountId));
   }
 }

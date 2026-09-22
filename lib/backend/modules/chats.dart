@@ -715,6 +715,8 @@ class ChatsModule {
     ContactInfoFetch.clear();
     PresenceFetch.clear();
     ChatInfoFetch.clear();
+    BotInfoFetch.clear();
+    MessageSessionCache.clearAll();
     SharedContentModule.clearMediaIndex();
   }
 
