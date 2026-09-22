@@ -274,7 +274,10 @@ class BubbleContext {
 
   Widget deletedIcon() => Icon(Symbols.delete, size: 13, color: dim);
 
-  Widget statusIcon({Color? color, double size = 14}) {
+  Widget statusIcon({
+    Color? color,
+    double size = IosChrome.statusIconDenseSize,
+  }) {
     final base = overrideStatus ?? message.status;
     final rt = otherReadTime;
     if (rt == null) return _statusIconFor(base, color: color, size: size);
@@ -297,7 +300,11 @@ class BubbleContext {
     return base;
   }
 
-  Widget _statusIconFor(String? status, {Color? color, double size = 14}) {
+  Widget _statusIconFor(
+    String? status, {
+    Color? color,
+    double size = IosChrome.statusIconDenseSize,
+  }) {
     final v = messageStatusVisual(status, dimColor: color ?? dim);
     if (isSendingStatus(status)) {
       return SendingClockIcon(color: v.color, size: size);

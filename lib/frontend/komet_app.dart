@@ -724,10 +724,10 @@ class KometAppState extends State<KometApp>
       return base.copyWith(
         surface: Colors.black,
         surfaceContainerLowest: Colors.black,
-        surfaceContainerLow: const Color(0xFF080808),
-        surfaceContainer: const Color(0xFF101010),
-        surfaceContainerHigh: const Color(0xFF161616),
-        surfaceContainerHighest: const Color(0xFF1C1C1C),
+        surfaceContainerLow: const Color(0xFF1A1A1A),
+        surfaceContainer: const Color(0xFF202020),
+        surfaceContainerHigh: const Color(0xFF272727),
+        surfaceContainerHighest: const Color(0xFF313131),
       );
     }
     return base.copyWith(
@@ -735,13 +735,25 @@ class KometAppState extends State<KometApp>
         base.primary.withValues(alpha: 0.05),
         const Color(0xFF0D0D14),
       ),
+      surfaceContainerLowest: Color.alphaBlend(
+        base.primary.withValues(alpha: 0.04),
+        const Color(0xFF08080E),
+      ),
+      surfaceContainerLow: Color.alphaBlend(
+        base.primary.withValues(alpha: 0.06),
+        const Color(0xFF212132),
+      ),
+      surfaceContainer: Color.alphaBlend(
+        base.primary.withValues(alpha: 0.07),
+        const Color(0xFF262637),
+      ),
       surfaceContainerHigh: Color.alphaBlend(
         base.primary.withValues(alpha: 0.08),
-        const Color(0xFF1A1A26),
+        const Color(0xFF2B2B3E),
       ),
       surfaceContainerHighest: Color.alphaBlend(
         base.primary.withValues(alpha: 0.12),
-        const Color(0xFF262636),
+        const Color(0xFF35354B),
       ),
     );
   }

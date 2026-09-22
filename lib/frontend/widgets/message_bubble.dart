@@ -2076,7 +2076,7 @@ class MessageBubble extends StatelessWidget {
 
     final metaRow = Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (decryption?.isDecrypted ?? false) ...[
           Icon(Symbols.lock, size: 11, weight: 700, fill: 1, color: ctx.dim),

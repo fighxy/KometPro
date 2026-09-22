@@ -48,6 +48,12 @@ class IosChrome {
   static const FontWeight listPreviewWeight = FontWeight.w400;
   static const double listTimeSize = 14;
   static const FontWeight listTimeWeight = FontWeight.w400;
+
+  /// Read receipts take their size from the clock they sit next to: the chat
+  /// list's is 14pt, the bubble meta line's is smaller.
+  static const double statusIconSize = 16;
+  static const double statusIconDenseSize = 15;
+
   static const double fieldTextSize = 16;
   static const FontWeight fieldTextWeight = FontWeight.w500;
   static const double bubbleBodySize = 17;

@@ -3038,8 +3038,6 @@ class _ChatListScreenState extends State<ChatListScreen>
     return oneLine.isEmpty ? null : oneLine;
   }
 
-  static const double _ownStatusIconSize = 14;
-
   String? _ownStatusFor(CachedChat chat, bool isPlaceholder) {
     if (isPlaceholder || chat.id == 0) return null;
     final me = _profile?.id;
@@ -3052,10 +3050,10 @@ class _ChatListScreenState extends State<ChatListScreen>
     final effective = (read && !sending && status != 'error') ? 'read' : status;
     final visual = messageStatusVisual(effective, dimColor: cs.outline);
     return sending
-        ? SendingClockIcon(color: visual.color, size: _ownStatusIconSize)
+        ? SendingClockIcon(color: visual.color, size: IosChrome.statusIconSize)
         : Icon(
             visual.icon,
-            size: _ownStatusIconSize,
+            size: IosChrome.statusIconSize,
             color: visual.color,
             weight: 400,
           );
@@ -3514,19 +3512,25 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 ),
                               ],
                               const SizedBox(width: 8),
-                              if (statusIcon != null) ...[
-                                statusIcon,
-                                const SizedBox(width: 4),
-                              ],
-                              Text(
-                                time,
-                                style: TextStyle(
-                                  color: cs.outline,
-                                  fontSize: dense
-                                      ? DesktopDensity.timeSize
-                                      : 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  if (statusIcon != null) ...[
+                                    statusIcon,
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Text(
+                                    time,
+                                    style: TextStyle(
+                                      color: cs.outline,
+                                      fontSize: dense
+                                          ? DesktopDensity.timeSize
+                                          : 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
