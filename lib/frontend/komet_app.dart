@@ -184,6 +184,7 @@ class KometAppState extends State<KometApp>
         ShareIntentBridge.instance.markReady();
         unawaited(_refreshWallpaperSeed());
         CallController.instance.init(api);
+        unawaited(CallBridge.instance.ensureNotificationPermission());
         OutboxService.instance.init(api, messagesModule);
         SelfCheckService.instance.init(api);
         SelfCheckService.instance.checkNow();

@@ -9,6 +9,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:komet/core/media/gallery_source.dart';
+import 'package:komet/core/media/media_audio_session.dart';
 import 'package:komet/core/media/video_transcoder.dart';
 import 'package:komet/frontend/widgets/custom_notification.dart';
 import 'package:komet/frontend/widgets/lottie_slash_icon.dart';
@@ -88,6 +89,7 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
   void dispose() {
     _releaseFlights();
     _caption.dispose();
+    MediaAudioSession.instance.release(this);
     final controller = _controller;
     _controller = null;
     controller?.removeListener(_onTick);
@@ -127,6 +129,7 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
     controller.addListener(_onTick);
     await controller.setVolume(_edit.muted ? 0 : 1);
     setState(() => _controller = controller);
+    MediaAudioSession.instance.hold(this);
     unawaited(controller.play());
     unawaited(_loadStrip(file, duration));
   }

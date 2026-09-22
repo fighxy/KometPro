@@ -82,6 +82,14 @@ extension KometNotifications: UNUserNotificationCenterDelegate {
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
+    if KometCalls.shared.isCallNotification(notification) {
+      if #available(iOS 14.0, *) {
+        completionHandler([.banner, .list, .sound])
+      } else {
+        completionHandler([.alert, .sound])
+      }
+      return
+    }
     let chatId = Self.chatId(from: notification.request.content.userInfo)
     if chatId > 0, chatId == activeChatId {
       completionHandler([])
@@ -99,6 +107,10 @@ extension KometNotifications: UNUserNotificationCenterDelegate {
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
+    if KometCalls.shared.handleResponse(response) {
+      completionHandler()
+      return
+    }
     deliver(chatId: Self.chatId(from: response.notification.request.content.userInfo))
     completionHandler()
   }

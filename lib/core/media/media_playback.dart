@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
 
+import 'media_audio_session.dart';
 import 'voice_audio_controller.dart';
 
 enum PlaybackKind { voice, videoNote }
@@ -48,13 +49,23 @@ class VideoNoteTrack {
 }
 
 class MediaPlayback {
-  MediaPlayback._();
+  MediaPlayback._() {
+    primary.addListener(_syncAudioSession);
+  }
 
   static final MediaPlayback instance = MediaPlayback._();
 
   static const List<double> speeds = [1.0, 1.5, 2.0];
 
   final ValueNotifier<PlaybackKind?> primary = ValueNotifier(null);
+
+  void _syncAudioSession() {
+    if (primary.value == null) {
+      MediaAudioSession.instance.release(this);
+    } else {
+      MediaAudioSession.instance.hold(this);
+    }
+  }
 
   final ValueNotifier<int?> visibleChatId = ValueNotifier(null);
 

@@ -146,6 +146,7 @@ class CallController {
   void dismissIncoming() {
     if (_pending == null) return;
     _pending = null;
+    CallBridge.instance.cancelIncoming();
     _canceled.add(null);
   }
 
