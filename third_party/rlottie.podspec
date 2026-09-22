@@ -13,15 +13,13 @@ Pod::Spec.new do |s|
   s.requires_arc     = false
 
   s.source_files = [
-    'rlottie/inc/*.h',
-    'rlottie_build/apple/config.h',
-    'rlottie/src/lottie/*.{cpp,h}',
-    'rlottie/src/lottie/zip/*.{cpp,h}',
-    'rlottie/src/lottie/rapidjson/**/*.h',
-    'rlottie/src/vector/*.{cpp,h}',
-    'rlottie/src/vector/freetype/*.{cpp,h}',
-    'rlottie/src/vector/pixman/pixman-arm-neon-asm.h',
-    'rlottie/src/vector/stb/*.{cpp,h}',
+    'rlottie/inc/rlottie_capi.h',
+    'rlottie/inc/rlottiecommon.h',
+    'rlottie/src/lottie/*.cpp',
+    'rlottie/src/lottie/zip/*.cpp',
+    'rlottie/src/vector/*.cpp',
+    'rlottie/src/vector/freetype/*.cpp',
+    'rlottie/src/vector/stb/*.cpp',
     'rlottie/src/binding/c/*.cpp',
   ]
   # rapidjson's msinttypes/ are MSVC-only shims (guarded by _MSC_VER in
@@ -34,11 +32,6 @@ Pod::Spec.new do |s|
   s.public_header_files = [
     'rlottie/inc/rlottie_capi.h',
     'rlottie/inc/rlottiecommon.h',
-  ]
-  s.project_header_files = [
-    'rlottie/inc/rlottie.h',
-    'rlottie_build/apple/config.h',
-    'rlottie/src/**/*.h',
   ]
 
   s.pod_target_xcconfig = {
