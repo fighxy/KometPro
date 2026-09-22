@@ -56,6 +56,17 @@ final class KometStreamHandler: NSObject, FlutterStreamHandler {
       registerAudioSession(messenger)
       registerHaptics(messenger)
       registerTransparency(messenger)
+      method("komet/native_glass", messenger) { [weak self] call, result in
+        guard call.method == "setBrightness",
+              let brightness = call.arguments as? String,
+              ["dark", "light", "system"].contains(brightness) else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        self?.window?.overrideUserInterfaceStyle = brightness == "system"
+          ? .unspecified : (brightness == "dark" ? .dark : .light)
+        result(nil)
+      }
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

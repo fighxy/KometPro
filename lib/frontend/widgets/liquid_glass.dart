@@ -8,16 +8,19 @@ import '../../core/config/app_liquid_glass.dart';
 import '../../core/config/glass_intensity.dart';
 import '../../core/config/app_visual_style.dart';
 
+import '../../core/config/app_native_glass.dart';
+import 'native_glass.dart';
+
 class LiquidGlass {
   static const String _asset = 'shaders/liquid_glass.frag';
 
   static ui.FragmentProgram? _program;
   static bool _loadAttempted = false;
 
-  static bool get isSupported => _program != null;
+  static bool get isSupported => _program != null || AppNativeGlass.supported;
 
   static bool get active =>
-      isSupported &&
+      _program != null &&
       AppVisualStyle.current.value == VisualStyle.liquidGlass &&
       GlassIntensity.systemAllowsBlur.value;
 
@@ -35,6 +38,7 @@ class LiquidGlass {
 }
 
 class GlassSurface extends StatelessWidget {
+  final bool nativeGlass;
   final bool liquid;
   final BorderRadius borderRadius;
   final Color frostTint;
@@ -54,6 +58,7 @@ class GlassSurface extends StatelessWidget {
 
   GlassSurface({
     super.key,
+    this.nativeGlass = false,
     this.liquid = false,
     this.borderRadius = BorderRadius.zero,
     required this.frostTint,
@@ -79,6 +84,26 @@ class GlassSurface extends StatelessWidget {
   );
 
   Widget _build(BuildContext context) {
+    if (nativeGlass) {
+      return NativeGlassSurface(
+        enabled: true,
+        borderRadius: borderRadius,
+        tint: liquidTint.a == 0 ? null : liquidTint,
+        fallback: GlassSurface(
+          liquid: liquid,
+          borderRadius: borderRadius,
+          frostTint: frostTint,
+          frostSigma: frostSigma,
+          liquidTint: liquidTint,
+          border: border,
+          backdropKey: backdropKey,
+          fallbackColor: fallbackColor,
+          preset: preset,
+          child: const SizedBox.expand(),
+        ),
+        child: child,
+      );
+    }
     if (MediaQuery.highContrastOf(context) ||
         !GlassIntensity.systemAllowsBlur.value ||
         AppVisualStyle.current.value == VisualStyle.materialYou) {

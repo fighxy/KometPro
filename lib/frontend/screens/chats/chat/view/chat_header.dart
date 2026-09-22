@@ -106,6 +106,7 @@ class ChatHeaderRow extends StatelessWidget {
                 blurSigma: _pillBlur,
                 depth: _pillDepth,
                 liquid: liquid,
+                nativeGlass: liquid,
                 backdropKey: backdropKey,
                 onTap: () {
                   if (embedded) {
@@ -136,6 +137,7 @@ class ChatHeaderRow extends StatelessWidget {
               blurSigma: _pillBlur,
               depth: _pillDepth,
               liquid: liquid,
+                nativeGlass: liquid,
               backdropKey: backdropKey,
               onTap: onOpenInfo,
               padding: const EdgeInsets.fromLTRB(5, 5, 14, 5),
@@ -231,6 +233,7 @@ class ChatHeaderRow extends StatelessWidget {
             blurSigma: _pillBlur,
             depth: _pillDepth,
             liquid: liquid,
+                nativeGlass: liquid,
             backdropKey: backdropKey,
             padding: const EdgeInsets.symmetric(horizontal: 1),
             child: SizedBox(

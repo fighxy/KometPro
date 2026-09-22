@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:m3e_collection/m3e_collection.dart';
+import 'package:native_liquid_glass/native_liquid_glass.dart' as native;
+
+import 'native_glass.dart';
 
 import '../../backend/api.dart';
 import 'app_scope.dart';
@@ -125,7 +128,8 @@ class ConnectionTitleText extends StatelessWidget {
   );
 }
 
-class ConnectionTitleBar extends StatelessWidget implements PreferredSizeWidget {
+class ConnectionTitleBar extends StatelessWidget
+    implements PreferredSizeWidget {
   final String titleText;
   final Color? backgroundColor;
 
@@ -140,9 +144,44 @@ class ConnectionTitleBar extends StatelessWidget implements PreferredSizeWidget 
 
   @override
   Widget build(BuildContext context) => ConnectionStatusBuilder(
-    builder: (context, label) => AppBarM3E(
-      titleText: label ?? titleText,
-      backgroundColor: backgroundColor,
+    builder: (context, label) => NativeGlassBuilder(
+      builder: (context, useNative) {
+        if (!useNative || Scaffold.maybeOf(context)?.hasDrawer == true) {
+          return AppBarM3E(
+            titleText: label ?? titleText,
+            backgroundColor: backgroundColor,
+          );
+        }
+        final cs = Theme.of(context).colorScheme;
+        return SafeArea(
+          bottom: false,
+          child: native.LiquidGlassNavigationBar(
+            title: label ?? titleText,
+            height: preferredSize.height,
+            brightness: cs.brightness,
+            tintColor: cs.onSurface,
+            titleTextStyle: TextStyle(color: cs.onSurface),
+            leadingItems: ModalRoute.of(context)?.impliesAppBarDismissal == true
+                ? [
+                    native.LiquidGlassNavBarItem(
+                      id: 'back',
+                      label: MaterialLocalizations.of(
+                        context,
+                      ).backButtonTooltip,
+                      icon: native.NativeLiquidGlassIcon.sfSymbol(
+                        Directionality.of(context) == TextDirection.rtl
+                            ? 'chevron.right'
+                            : 'chevron.left',
+                      ),
+                    ),
+                  ]
+                : const [],
+            onItemTapped: (id) {
+              if (id == 'back') Navigator.of(context).maybePop();
+            },
+          ),
+        );
+      },
     ),
   );
 }
@@ -177,9 +216,7 @@ class ConnectionSpinner extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Center(
-                  child: SmallSpinner(size: 20, color: cs.primary),
-                ),
+                child: Center(child: SmallSpinner(size: 20, color: cs.primary)),
               ),
       ),
     );

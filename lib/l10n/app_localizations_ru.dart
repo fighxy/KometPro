@@ -3002,4 +3002,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get trayQuit => 'Выйти';
+
+  @override
+  String get appearanceNativeGlassTitle => 'Системный Liquid Glass';
+
+  @override
+  String get appearanceNativeGlassSubtitle => 'Нативные панели на iOS 26+. Работает в стиле Liquid Glass; интенсивностью управляет iOS.';
 }

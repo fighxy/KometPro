@@ -6,6 +6,7 @@ import '../../core/config/app_liquid_glass.dart';
 import '../../core/config/app_pill_gradient.dart';
 import '../../core/config/app_visual_style.dart';
 import 'liquid_glass.dart';
+import 'native_glass.dart';
 
 class _GlossyParts {
   final bool dark;
@@ -100,6 +101,7 @@ class GlossyDecor {
 }
 
 class GlossyPill extends StatelessWidget {
+  final bool nativeGlass;
   final Widget child;
   final EdgeInsetsGeometry padding;
   final BorderRadius borderRadius;
@@ -116,6 +118,7 @@ class GlossyPill extends StatelessWidget {
 
   const GlossyPill({
     super.key,
+    this.nativeGlass = false,
     required this.child,
     this.padding = EdgeInsets.zero,
     BorderRadius? borderRadius,
@@ -139,6 +142,35 @@ class GlossyPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (nativeGlass) {
+      return NativeGlassSurface(
+        enabled: true,
+        borderRadius: borderRadius,
+        fallback: GlossyPill(
+          color: color,
+          borderRadius: borderRadius,
+          depth: depth,
+          elevated: elevated,
+          borderSide: borderSide,
+          blurSigma: blurSigma,
+          liquid: liquid,
+          backdropKey: backdropKey,
+          child: const SizedBox.expand(),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          shape: RoundedRectangleBorder(borderRadius: borderRadius),
+          clipBehavior: Clip.antiAlias,
+          child: _inert
+              ? Padding(padding: padding, child: child)
+              : InkWell(
+                  onTap: onTap,
+                  onLongPress: onLongPress,
+                  child: Padding(padding: padding, child: child),
+                ),
+        ),
+      );
+    }
     return ValueListenableBuilder<VisualStyle>(
       valueListenable: AppVisualStyle.current,
       builder: (context, style, _) {

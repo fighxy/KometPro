@@ -19,7 +19,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 0.7.0+1
 
 environment:
-  sdk: ^3.10.4
+  sdk: ^3.11.0
+  flutter: ">=3.41.2"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -33,6 +34,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
+  native_liquid_glass: 0.3.1
 
   # Rust networking core (kolibri) — FFI plugin, replaces the Dart transport.
   # Published from the KometTeam/kolibri repo; the native core is compiled at

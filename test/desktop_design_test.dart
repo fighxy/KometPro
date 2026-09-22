@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -90,10 +91,10 @@ void main() {
     expect(find.byType(GlossyPill), findsNothing);
   });
 
-  testWidgets('hover actions wait and archive without opening the chat', (
+  testWidgets('secondary click opens the menu without opening the chat', (
     tester,
   ) async {
-    var archived = false;
+    var menuOpened = false;
     var opened = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -108,7 +109,7 @@ void main() {
                 active: false,
                 selected: false,
                 enableHover: true,
-                onArchive: () => archived = true,
+                onSecondaryTapDown: (_) => menuOpened = true,
                 child: InkWell(
                   onTap: () => opened = true,
                   child: const SizedBox.expand(child: Text('Synthetic chat')),
@@ -119,17 +120,18 @@ void main() {
         ),
       ),
     );
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await mouse.addPointer(location: const Offset(600, 400));
-    await mouse.moveTo(const Offset(20, 20));
-    await tester.pump(const Duration(milliseconds: 249));
-    expect(find.byTooltip('В архив'), findsNothing);
-    await tester.pump(const Duration(milliseconds: 1));
-    expect(find.byTooltip('В архив'), findsOneWidget);
-    await tester.tap(find.byTooltip('В архив'));
-    expect(archived, isTrue);
+    final mouse = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+      buttons: kSecondaryMouseButton,
+    );
+    await mouse.down(const Offset(20, 20));
+    await mouse.up();
+    await tester.pump();
+    expect(menuOpened, isTrue);
     expect(opened, isFalse);
     await mouse.removePointer();
+    await tester.tap(find.text('Synthetic chat'));
+    expect(opened, isTrue);
   });
 
   testWidgets('disabled settings cannot toggle', (tester) async {

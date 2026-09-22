@@ -103,6 +103,7 @@ class SearchTopBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 4, 10, 6),
       child: GlossyPill(
+        nativeGlass: true,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         child: SizedBox(
           height: 44,

@@ -1100,6 +1100,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.2.0"
+  native_liquid_glass:
+    dependency: "direct main"
+    description:
+      name: native_liquid_glass
+      sha256: "1df94e5998f7eb5fe57a8fff5228f9c9b1650f26aa6d6799b2c78dcc73f5261a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.1"
   native_toolchain_c:
     dependency: transitive
     description:

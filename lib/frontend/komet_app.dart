@@ -54,6 +54,9 @@ import 'package:komet/l10n/app_localizations.dart';
 import 'package:m3e_collection/m3e_collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:komet/core/config/app_native_glass.dart';
+import 'package:komet/frontend/widgets/native_glass.dart';
+
 const ProgressIndicatorThemeData _expressiveProgressTheme =
     // ignore: deprecated_member_use
     ProgressIndicatorThemeData(year2023: false);
@@ -506,7 +509,8 @@ class KometAppState extends State<KometApp>
       apply();
       return;
     }
-    if (MediaQuery.disableAnimationsOf(ctx) || DesktopDensity.enabled) {
+    if (MediaQuery.disableAnimationsOf(ctx) || DesktopDensity.enabled ||
+        AppNativeGlass.enabled) {
       apply();
       return;
     }
@@ -843,7 +847,10 @@ class KometAppState extends State<KometApp>
               builder: (context, child) {
                 return ValueListenableBuilder<double>(
                   valueListenable: fontScale,
-                  child: child ?? const SizedBox.shrink(),
+                  child: NativeGlassTheme(
+                    followSystem: _effectiveThemeMode == ThemeMode.system,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                   builder: (context, scale, appChild) {
                     Widget scaledChild = appChild!;
                     final effective = AppFonts.effectiveScale(_fontId, scale);

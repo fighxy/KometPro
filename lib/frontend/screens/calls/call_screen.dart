@@ -3,6 +3,7 @@ import 'dart:math' show cos, pi;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:komet/frontend/widgets/native_glass.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart'
     show MediaStream, RTCVideoRenderer, RTCVideoValue, RTCVideoViewObjectFit;
@@ -1971,8 +1972,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildControls(ColorScheme cs) {
-    if (_incomingPending) return _incomingControls(cs);
-    return _activeControls(cs);
+    return NativeGlassSurface(
+      borderRadius: BorderRadius.circular(28),
+      fallback: const SizedBox.expand(),
+      child: _incomingPending ? _incomingControls(cs) : _activeControls(cs),
+    );
   }
 
   Widget _incomingControls(ColorScheme cs) {

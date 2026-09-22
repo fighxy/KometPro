@@ -25,6 +25,8 @@ import '../../widgets/liquid_glass.dart';
 import '../../widgets/settings_card.dart';
 import '../../../core/config/app_shape.dart';
 
+import '../../../core/config/app_native_glass.dart';
+
 class AppearanceScreen extends StatefulWidget {
   const AppearanceScreen({super.key});
 
@@ -227,6 +229,17 @@ class _VisualStyleCard extends StatelessWidget {
               );
             },
           ),
+          if (AppNativeGlass.supported)
+            ValueListenableBuilder<bool>(
+              valueListenable: AppNativeGlass.current,
+              builder: (context, enabled, _) => SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.appearanceNativeGlassTitle),
+                subtitle: Text(l10n.appearanceNativeGlassSubtitle),
+                value: enabled,
+                onChanged: (value) => AppNativeGlass.save(value),
+              ),
+            ),
           const _GlassIntensityRow(),
         ],
       ),

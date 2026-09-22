@@ -1545,6 +1545,7 @@ class _ViewerGlassSurface extends StatelessWidget {
         child: SizedBox(
           width: double.infinity,
           child: GlassSurface(
+            nativeGlass: true,
             borderRadius: BorderRadius.circular(12),
             frostTint: Colors.black.withValues(alpha: 0.28),
             frostSigma: AppFrost.panelSigma,
