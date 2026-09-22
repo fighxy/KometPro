@@ -83,6 +83,8 @@ import 'core/utils/debug_session_log.dart';
 import 'frontend/widgets/liquid_glass.dart';
 import 'frontend/komet_app.dart';
 
+import 'core/config/app_native_glass.dart';
+
 final api = Api();
 final accountModule = AccountModule(api);
 final messagesModule = MessagesModule(api);
@@ -254,6 +256,7 @@ void main(List<String> args) async {
   await DesktopUiScale.load();
   await AppDesktopDensity.load();
   await GlassIntensity.load();
+  await AppNativeGlass.load();
   if (KometSettings.ghostMode.value) SelfPresence.markOffline();
   await ContactCache.load();
   final initialFpsOverlay = prefs.getBool('dev_fps_overlay') ?? false;

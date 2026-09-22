@@ -127,6 +127,7 @@ class ComposerInputBar extends StatelessWidget {
           children: [
             Expanded(
               child: GlossyPill(
+                nativeGlass: true,
                 onTap: onToggleMute,
                 color: cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(22),
@@ -160,6 +161,7 @@ class ComposerInputBar extends StatelessWidget {
             if (onOpenSearch != null) ...[
               const SizedBox(width: 10),
               GlossyPill(
+                nativeGlass: true,
                 onTap: onOpenSearch,
                 color: cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(22),
@@ -684,6 +686,7 @@ class ComposerInputBar extends StatelessWidget {
             ),
       blurSigma: _frost ? AppFrost.sigma : null,
       liquid: _liquid,
+      nativeGlass: _liquid,
       backdropKey: backdropKey,
       borderRadius: BorderRadius.circular(_controlSize / 2),
       depth: IosChrome.capsuleDepth,

@@ -5617,6 +5617,11 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Quit'**
   String get trayQuit;
+
+  String get appearanceNativeGlassTitle;
+
+  String get appearanceNativeGlassSubtitle;
+
 }
 
 class _AppLocalizationsDelegate

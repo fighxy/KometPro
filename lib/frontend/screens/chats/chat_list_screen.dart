@@ -102,6 +102,8 @@ import '../../../core/config/app_fonts.dart';
 import '../../../core/config/app_theme_mode.dart';
 import '../../../core/config/app_amoled.dart';
 
+import 'package:komet/frontend/widgets/native_glass.dart';
+
 const String _savedWelcomeKey = 'welcome.saved.dialog.message';
 
 class _StoriesScrollPhysics extends BouncingScrollPhysics {
@@ -2399,7 +2401,13 @@ class _ChatListScreenState extends State<ChatListScreen>
     if (widget.archiveMode) {
       return _buildArchiveScaffold(cs);
     }
-    return Scaffold(
+    return AnimatedBuilder(
+      animation: _navPageAnimController,
+      builder: (context, child) => NativeGlassScope(
+        suspended: _navPageAnimController.isAnimating || _isFabOpen,
+        child: child!,
+      ),
+      child: Scaffold(
       backgroundColor: cs.surface,
       body: SafeArea(
         bottom: false,
@@ -2639,6 +2647,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             );
           },
         ),
+      ),
       ),
     );
   }

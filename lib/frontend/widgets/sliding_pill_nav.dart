@@ -12,6 +12,7 @@ import '../../core/design/ios_chrome.dart';
 import 'animated_lottie_icon.dart';
 import 'glossy_pill.dart';
 import 'liquid_glass.dart';
+import 'native_glass.dart';
 
 class PillNavItem {
   final IconData icon;
@@ -265,7 +266,9 @@ class SlidingPillNav extends StatelessWidget {
         child: ColoredBox(color: cs.surfaceContainerHigh, child: nav),
       ) : nav;
     }
-    return DecoratedBox(
+    return NativeGlassSurface(
+      borderRadius: BorderRadius.circular(outer),
+      fallback: DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(outer),
         boxShadow: [
@@ -280,8 +283,10 @@ class SlidingPillNav extends StatelessWidget {
         borderRadius: BorderRadius.circular(outer),
         tint: base,
         preset: GlassPreset.resolvedControl,
-        child: nav,
+        child: const SizedBox.expand(),
       ),
+      ),
+      child: nav,
     );
   }
 }

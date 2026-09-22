@@ -88,6 +88,7 @@ class SelectionTopBar extends StatelessWidget {
             width: 56,
             height: 56,
             child: GlossyPill(
+      nativeGlass: true,
               onTap: onClear,
               child: Center(
                 child: Icon(
@@ -102,6 +103,7 @@ class SelectionTopBar extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: GlossyPill(
+      nativeGlass: true,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: SizedBox(
                 height: 56,
@@ -124,6 +126,7 @@ class SelectionTopBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           GlossyPill(
+      nativeGlass: true,
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: SizedBox(
               height: 56,
@@ -221,6 +224,7 @@ class SelectionBottomBar extends StatelessWidget {
     );
     final iconWidget = Icon(icon, color: cs.onSurface, size: 22, weight: 500);
     return GlossyPill(
+      nativeGlass: true,
       onTap: onTap,
       color: Color.alphaBlend(
         cs.surfaceContainerHighest.withValues(alpha: 0.92),

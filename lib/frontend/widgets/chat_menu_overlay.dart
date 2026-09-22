@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+
+import 'native_glass.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/utils/haptics.dart';
@@ -37,20 +39,29 @@ void showChatMenu({
   bool compact = false,
 }) {
   final overlay = Overlay.of(context, rootOverlay: true);
+  final releaseGlass = NativeGlassOverlays.suspend();
   late OverlayEntry entry;
   entry = OverlayEntry(
-    builder: (ctx) => _ChatMenuLayer(
-      anchorRect: anchorRect,
-      items: items,
-      header: header,
-      footer: footer,
-      compact: compact,
-      onDismiss: () {
-        if (entry.mounted) entry.remove();
-      },
+    builder: (ctx) => NativeGlassOverlay(
+      release: releaseGlass,
+      child: _ChatMenuLayer(
+        anchorRect: anchorRect,
+        items: items,
+        header: header,
+        footer: footer,
+        compact: compact,
+        onDismiss: () {
+          if (entry.mounted) entry.remove();
+        },
+      ),
     ),
   );
-  overlay.insert(entry);
+  try {
+    overlay.insert(entry);
+  } catch (_) {
+    releaseGlass();
+    rethrow;
+  }
   Haptics.medium();
 }
 
@@ -285,7 +296,9 @@ class _ChatMenuRow extends StatelessWidget {
     final fg = item.destructive ? cs.error : cs.onSurface;
     return InkWell(
       onTap: onTap,
-      splashFactory: compact ? NoSplash.splashFactory : InkSparkle.splashFactory,
+      splashFactory: compact
+          ? NoSplash.splashFactory
+          : InkSparkle.splashFactory,
       overlayColor: compact
           ? WidgetStatePropertyAll(cs.onSurface.withValues(alpha: 0.06))
           : null,

@@ -1033,5 +1033,7 @@
   "authLimitsConfirm": "Понятно",
   "shellSelectChat": "Выберите чат",
   "trayOpenKomet": "Открыть Komet",
-  "trayQuit": "Выйти"
+  "trayQuit": "Выйти",
+  "appearanceNativeGlassTitle": "Системный Liquid Glass",
+  "appearanceNativeGlassSubtitle": "Нативные панели на iOS 26+. Работает в стиле Liquid Glass; интенсивностью управляет iOS."
 }

@@ -1289,5 +1289,7 @@
   "authLimitsConfirm": "Got it",
   "shellSelectChat": "Select a chat",
   "trayOpenKomet": "Open Komet",
-  "trayQuit": "Quit"
+  "trayQuit": "Quit",
+  "appearanceNativeGlassTitle": "System Liquid Glass",
+  "appearanceNativeGlassSubtitle": "Native panels on iOS 26+. Requires the Liquid Glass style; intensity is controlled by iOS."
 }

@@ -2986,4 +2986,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trayQuit => 'Quit';
+
+  @override
+  String get appearanceNativeGlassTitle => 'System Liquid Glass';
+
+  @override
+  String get appearanceNativeGlassSubtitle => 'Native panels on iOS 26+. Requires the Liquid Glass style; intensity is controlled by iOS.';
 }

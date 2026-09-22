@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+
+import 'native_glass.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -133,43 +135,52 @@ void showMessageActions({
       MessageActionsInteraction.dragAndRelease,
 }) {
   final overlay = Overlay.of(context, rootOverlay: true);
+  final releaseGlass = NativeGlassOverlays.suspend();
   late OverlayEntry entry;
   entry = OverlayEntry(
-    builder: (ctx) => _MessageActionsLayer(
-      snapshot: snapshot,
-      originRect: originRect,
-      tapPoint: tapPoint,
-      isMe: isMe,
-      messageText: messageText,
-      copyText: copyText,
-      controller: controller,
-      style: style,
-      interaction: interaction,
-      editHistory: editHistory,
-      loadReadBy: loadReadBy,
-      onReaderTap: onReaderTap,
-      loadReportReasons: loadReportReasons,
-      onReport: onReport,
-      onDelete: onDelete,
-      allowDelete: allowDelete,
-      allowCopy: allowCopy,
-      onEdit: onEdit,
-      onReply: onReply,
-      onForward: onForward,
-      onMarkUnread: onMarkUnread,
-      onPin: onPin,
-      isPinned: isPinned,
-      onReact: onReact,
-      selectedReaction: selectedReaction,
-      quickReactions: quickReactions,
-      loadReactionEmojis: loadReactionEmojis,
-      onDismiss: () {
-        if (entry.mounted) entry.remove();
-        onDispose();
-      },
+    builder: (ctx) => NativeGlassOverlay(
+      release: releaseGlass,
+      child: _MessageActionsLayer(
+        snapshot: snapshot,
+        originRect: originRect,
+        tapPoint: tapPoint,
+        isMe: isMe,
+        messageText: messageText,
+        copyText: copyText,
+        controller: controller,
+        style: style,
+        interaction: interaction,
+        editHistory: editHistory,
+        loadReadBy: loadReadBy,
+        onReaderTap: onReaderTap,
+        loadReportReasons: loadReportReasons,
+        onReport: onReport,
+        onDelete: onDelete,
+        allowDelete: allowDelete,
+        allowCopy: allowCopy,
+        onEdit: onEdit,
+        onReply: onReply,
+        onForward: onForward,
+        onMarkUnread: onMarkUnread,
+        onPin: onPin,
+        isPinned: isPinned,
+        onReact: onReact,
+        selectedReaction: selectedReaction,
+        quickReactions: quickReactions,
+        loadReactionEmojis: loadReactionEmojis,
+        onDismiss: () {
+          if (entry.mounted) entry.remove();
+          onDispose();
+        },
+      ),
     ),
   );
-  overlay.insert(entry);
+  try {
+    overlay.insert(entry);
+  } catch (_) {
+    releaseGlass();
+    rethrow;
+  }
 }
 
 class _MessageActionsLayer extends StatefulWidget {
